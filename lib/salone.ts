@@ -88,11 +88,20 @@ export const ordineSettimana = [1, 2, 3, 4, 5, 6, 0];
 /* ── Listino ────────────────────────────────────────────────────────────── */
 
 export type Servizio = {
+  // Identificatore stabile: lo usano il widget di prenotazione e l'API. Non
+  // cambiarlo dopo la messa in linea, o le prenotazioni già salvate non
+  // troverebbero più il servizio.
+  id: string;
   nome: string;
   dettaglio: string;
   prezzo: number;
+  // Minuti di poltrona, usati per generare gli slot. ⚠️ STIMATI: da far
+  // confermare a Francesco insieme ai prezzi.
+  durata: number;
   // "da" per i servizi a prezzo variabile, "+" per i supplementi.
   prefisso?: "da" | "+";
+  // I supplementi non si prenotano da soli: si aggiungono a un altro servizio.
+  prenotabile?: false;
 };
 
 export type GruppoListino = {
@@ -107,31 +116,46 @@ export const listino: GruppoListino[] = [
     id: "taglio",
     titolo: "Taglio",
     servizi: [
-      { nome: "Taglio uomo", dettaglio: "Forbice e macchinetta, shampoo e styling", prezzo: 18 },
-      { nome: "Skin fade", dettaglio: "Sfumatura a zero, rifinita a rasoio", prezzo: 20 },
-      { nome: "Rasatura testa", dettaglio: "Macchinetta e rasoio, panno caldo", prezzo: 15 },
-      { nome: "Taglio bambino", dettaglio: "Fino a 12 anni", prezzo: 13 },
-      { nome: "Disegno rasato", dettaglio: "Linee e grafiche a rasoio, in aggiunta al taglio", prezzo: 5, prefisso: "+" },
+      { id: "taglio-uomo", nome: "Taglio uomo", dettaglio: "Forbice e macchinetta, shampoo e styling", prezzo: 18, durata: 30 },
+      { id: "skin-fade", nome: "Skin fade", dettaglio: "Sfumatura a zero, rifinita a rasoio", prezzo: 20, durata: 45 },
+      { id: "rasatura-testa", nome: "Rasatura testa", dettaglio: "Macchinetta e rasoio, panno caldo", prezzo: 15, durata: 30 },
+      { id: "taglio-bambino", nome: "Taglio bambino", dettaglio: "Fino a 12 anni", prezzo: 13, durata: 30 },
+      { id: "disegno-rasato", nome: "Disegno rasato", dettaglio: "Linee e grafiche a rasoio, in aggiunta al taglio", prezzo: 5, durata: 15, prefisso: "+", prenotabile: false },
     ],
   },
   {
     id: "barba",
     titolo: "Barba",
     servizi: [
-      { nome: "Rifinitura barba", dettaglio: "Contorni e lunghezza a macchinetta", prezzo: 10 },
-      { nome: "Barba completa", dettaglio: "Panno caldo, rasoio a mano libera, olio", prezzo: 15 },
+      { id: "rifinitura-barba", nome: "Rifinitura barba", dettaglio: "Contorni e lunghezza a macchinetta", prezzo: 10, durata: 20 },
+      { id: "barba-completa", nome: "Barba completa", dettaglio: "Panno caldo, rasoio a mano libera, olio", prezzo: 15, durata: 30 },
     ],
   },
   {
     id: "combo",
     titolo: "Combo",
     servizi: [
-      { nome: "Taglio + barba", dettaglio: "Taglio uomo e rifinitura barba", prezzo: 26 },
-      { nome: "Skin fade + barba completa", dettaglio: "Il servizio completo, con panno caldo", prezzo: 32 },
-      { nome: "Papà + figlio", dettaglio: "Taglio uomo e taglio bambino, stesso appuntamento", prezzo: 29 },
+      { id: "taglio-barba", nome: "Taglio + barba", dettaglio: "Taglio uomo e rifinitura barba", prezzo: 26, durata: 50 },
+      { id: "skin-fade-barba", nome: "Skin fade + barba completa", dettaglio: "Il servizio completo, con panno caldo", prezzo: 32, durata: 75 },
+      { id: "papa-figlio", nome: "Papà + figlio", dettaglio: "Taglio uomo e taglio bambino, stesso appuntamento", prezzo: 29, durata: 60 },
     ],
   },
 ];
+
+/* ── Chi lavora in salone ───────────────────────────────────────────────── */
+
+// Oggi c'è solo Francesco: il widget salta la scelta dell'operatore quando la
+// lista ha un nome solo, ma l'API e l'agenda ragionano già per operatore.
+export type Operatore = { id: string; nome: string };
+
+export const operatori: Operatore[] = [{ id: "francesco", nome: "Francesco" }];
+
+// Quanto tempo prima si può prenotare online, in minuti. Sotto questa soglia
+// l'orario non compare più: serve un margine per non farsi sorprendere.
+export const PREAVVISO_MINUTI = 60;
+
+// Fin dove si può prenotare, in giorni.
+export const GIORNI_PRENOTABILI = 21;
 
 /* ── Portfolio ──────────────────────────────────────────────────────────── */
 

@@ -4,6 +4,7 @@ import { Hero } from "@/components/Hero";
 import { Navbar } from "@/components/Navbar";
 import { Portfolio } from "@/components/Portfolio";
 import { PriceList } from "@/components/PriceList";
+import { BookingWidget } from "@/components/BookingWidget";
 import { RevealOnScroll } from "@/components/RevealOnScroll";
 import { SmoothScroll } from "@/components/SmoothScroll";
 import { orari, salone } from "@/lib/salone";
@@ -62,6 +63,8 @@ export default function Home() {
         <Footer />
       </div>
       <RevealOnScroll />
+      {/* Foglio di prenotazione: montato una volta, lo aprono i bottoni "Prenota". */}
+      <BookingWidget />
     </SmoothScroll>
   );
 }

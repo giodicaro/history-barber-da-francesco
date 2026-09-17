@@ -4,8 +4,8 @@ Passaggio di consegne per il sito vetrina di **History Barber da Francesco**, ba
 
 **Fotografia scattata il:** 17 settembre 2026
 **Cartella:** `C:\Users\foscolo\Parruchieria\my-app`
-**Versionamento:** ❌ **nessuno**, la cartella non è un repository git
-**Produzione:** ❌ **non ancora pubblicato**, nessun deploy configurato
+**Versionamento:** https://github.com/giodicaro/history-barber-da-francesco (pubblico, ramo `main`)
+**Produzione:** https://history-barber-da-francesco.vercel.app (Vercel, progetto `history-barber-da-francesco`, collegato al repository: ogni push su `main` va in produzione)
 **Sviluppo:** http://localhost:3200
 
 > ⚠️ **Prezzi e foto non sono reali.** Il listino è indicativo (nessuna fonte pubblica lo riporta). La foto della hero è generata con Higgsfield e non ritrae un cliente del salone; il logo è ridisegnato a mano da uno screenshot minuscolo; i lavori del portfolio sono ancora segnaposto a tratteggio. Il sito **non è pubblicabile** finché questi punti non sono risolti. Vedi §11.
@@ -73,7 +73,9 @@ Tutto è stato fatto il 16–17 settembre 2026, in una sola sessione.
    - **tipografia**: tutti i metadati passano all'utility `info` (12px), comprese le sigle A/B/C di Chi Siamo, le tecniche del portfolio, indirizzo, telefono e Instagram del footer (§3.2);
    - **nuova foto della hero**: nuca con sfumatura e vapore, più incisiva della poltrona (Higgsfield, 2 crediti), in `public/images/hero-sfumatura.webp`. La vecchia `hero-bg.webp` è stata tolta da `public/`. Velo della hero rinforzato dopo una misura di contrasto (§9.17);
    - **nuovo logo "HB da Francesco"** in `components/Logo.tsx`, al posto del monogramma testuale nella barra e aggiunto nella barra finale del footer (§3.6).
-6. **Terza revisione del 17 settembre**: segnalato un monospazio "pixelato" nei metadati di hero, menu e footer (riferimenti `image_62d41e.png` e `image_62d45f.png`, cioè gli screenshot delle 13:40 e 13:41, più la registrazione delle 13:42). Il font era già JetBrains Mono (§9.19). Richiesti peso medio e spaziatura più larga: il token `info` passa a **peso 500 e 0.05em** e vale ovunque; "alle 14:30" non si spezza più.
+6. **Pubblicazione (17 settembre).** Repository GitHub pubblico, progetto Vercel collegato, primo deploy in produzione (§12).
+7. **Modulo di prenotazione (17 settembre).** Il sistema nativo chiesto dal committente esiste: widget a tre passi, API degli slot, agenda per la cassa (§6.9 e §6.13). L'archivio è ancora in memoria: **non è pronto per prendere appuntamenti veri** (§11).
+8. **Terza revisione del 17 settembre**: segnalato un monospazio "pixelato" nei metadati di hero, menu e footer (riferimenti `image_62d41e.png` e `image_62d45f.png`, cioè gli screenshot delle 13:40 e 13:41, più la registrazione delle 13:42). Il font era già JetBrains Mono (§9.19). Richiesti peso medio e spaziatura più larga: il token `info` passa a **peso 500 e 0.05em** e vale ovunque; "alle 14:30" non si spezza più.
 
 **Scostamenti dal brief, consapevoli:**
 
@@ -245,15 +247,26 @@ my-app/
 │   ├── SectionHead.tsx     Intestazione di sezione: eyebrow + titolo a righe mascherate
 │   ├── RevealOnScroll.tsx  ★ Motore delle entrate allo scroll (non disegna nulla)
 │   ├── GridLines.tsx       Linee verticali della griglia
+│   ├── BookingWidget.tsx   ★ Prenotazione in tre passi (foglio a tutto schermo)
 │   ├── Logo.tsx            Logo "HB da Francesco" in SVG (currentColor), completo o adattivo
 │   ├── Photo.tsx           next/image a riempimento (con object-position), o segnaposto a tratteggio
 │   ├── SectionLink.tsx     Link interno con scorrimento Lenis (usato da "Torna su")
 │   └── icons.tsx           ArrowRight, ArrowUpRight, InstagramGlyph (SVG a mano)
+├── app/
+│   ├── admin/page.tsx      Agenda del giorno per la cassa (server, noindex)
+│   └── api/bookings/route.ts  ★ GET slot liberi · POST nuova prenotazione
 ├── lib/
+│   ├── prenotazioni/
+│   │   ├── tipi.ts         Interfacce condivise (ServiceOption, BookingSlot, Prenotazione…)
+│   │   ├── slot.ts         Algoritmo degli orari (funzioni pure)
+│   │   ├── validazione.ts  Controlli stile Zod sul payload
+│   │   ├── archivio.ts     Archivio in memoria + schema SQL per il passaggio a database
+│   │   ├── avvisi.ts       Avviso al titolare (Telegram/Resend pronti da scommentare)
+│   │   └── telefono.ts     Normalizzazione del numero, condivisa client/server
 │   ├── salone.ts           ★ SORGENTE UNICA: dati salone, orari, listino, portfolio, menu
 │   ├── orari.ts            Ora di Roma, stato di apertura, formattazione dei turni
 │   ├── gsap.ts             Registrazione ScrollTrigger, EASE, prendiInCarico()
-│   ├── prenotazione.ts     Punto d'innesto (vuoto) del sistema di prenotazione
+│   ├── prenotazione.ts     Evento che collega i bottoni "Prenota" al widget
 │   └── utils.ts            cn() e formatoPrezzo() (it-IT, EUR, senza decimali)
 ├── public/
 │   ├── images/hero-sfumatura.webp   Foto della hero (354 KB)
@@ -361,7 +374,10 @@ Non ci sono error boundary, logging né telemetria. Le difese sono locali:
 | `Turno` | `{ apre: number; chiude: number }` | Minuti dalla mezzanotte | 35 |
 | `orari` | `{ giorno, breve, turni: Turno[] }[]` | **Indice = `Date.getDay()`** (0 = domenica). Array `turni` vuoto = chiuso | 39-82 |
 | `ordineSettimana` | `number[]` | `[1,2,3,4,5,6,0]`: la tabella parte da lunedì, i calcoli restano su `getDay()` | 86 |
-| `Servizio` | `{ nome, dettaglio, prezzo, prefisso? }` | `prefisso`: `"da"` per prezzo variabile, `"+"` per supplemento | 90-96 |
+| `Servizio` | `{ id, nome, dettaglio, prezzo, durata, prefisso?, prenotabile? }` | `id` è la chiave usata da API e widget: non cambiarlo dopo la messa in linea. `durata` in minuti ⚠️ **stimata**. `prenotabile: false` = supplemento, non si prenota da solo | 90-105 |
+| `operatori` | `Operatore[]` | Oggi solo Francesco; API e agenda ragionano già per operatore | 149-151 |
+| `PREAVVISO_MINUTI` | `number` | 60: quanto prima si può prenotare online | 155 |
+| `GIORNI_PRENOTABILI` | `number` | 21: fin dove arriva il calendario | 158 |
 | `GruppoListino` | `{ id, titolo, servizi }` | Una categoria | 98-102 |
 | `listino` | `GruppoListino[]` | ⚠️ **indicativo** | 105-134 |
 | `Lavoro` | `{ titolo, tecnica, alt, src? }` | `src` assente = segnaposto | 138-146 |
@@ -421,10 +437,11 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 | 6.6 | Portfolio | `Portfolio.tsx` | ⚠️ 8 segnaposto |
 | 6.7 | Listino con cascata | `PriceList.tsx`, `RevealOnScroll.tsx:65-82` | ⚠️ Prezzi indicativi |
 | 6.8 | Contatti / footer | `Footer.tsx` | ⚠️ P.IVA assente |
-| 6.9 | Bottone "Prenota" | `BookButton.tsx`, `lib/prenotazione.ts` | 🟥 **Simulato per scelta** |
+| 6.9 | Prenotazione (bottoni + widget + API) | `BookButton.tsx`, `BookingWidget.tsx`, `app/api/bookings`, `lib/prenotazioni/` | 🟠 **Funziona, ma l'archivio è in memoria** |
 | 6.10 | Scorrimento morbido e ancore | `SmoothScroll.tsx`, `SectionLink.tsx` | ✅ Completa |
 | 6.11 | SEO e dati strutturati | `app/layout.tsx:24-39`, `app/page.tsx:16-38` | ⚠️ Parziale |
 | 6.12 | Link "Vai al contenuto" | `app/page.tsx:47-52` | ⚠️ Classe inesistente |
+| 6.13 | Agenda del giorno | `app/admin/page.tsx` | 🟠 Senza autenticazione vera |
 
 **6.1 Barra fissa.**
 - **Trasparente** solo con la pagina ferma in cima alla hero (sentinella `data-cima`, `Hero.tsx:107`).
@@ -476,8 +493,45 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 - Barra finale con logo, ©, "Rivenditore autorizzato Depot" e "Torna su" (`Footer.tsx:99-109`), più la firma gigante "HISTORY BARBER" tagliata dal bordo.
 - La P.IVA compare solo se compilata (`Footer.tsx:103`).
 
-**6.9 Bottone "Prenota" (5 istanze: barra, menu, hero, listino, footer).**
-- Link `href="#"` che **non fa nulla**: `preventDefault` e poi chiamata a `apriPrenotazione(origine)`, che è vuota (`lib/prenotazione.ts:10-12`). Il committente ha chiesto di non collegare piattaforme esterne: il sistema di prenotazione sarà nativo.
+**6.9 Prenotazione: bottoni, widget, API.**
+
+*Il giro completo:* bottone "Prenota" → `apriPrenotazione(origine)` manda un evento sulla finestra (`lib/prenotazione.ts`) → `BookingWidget` apre il foglio → `GET /api/bookings` per gli orari → `POST /api/bookings` per salvare → avviso al titolare → l'appuntamento compare in `/admin`. Nessuna piattaforma esterna, come chiesto dal committente.
+
+*Perché un evento e non un contesto React:* i cinque bottoni sono sparsi in componenti diversi, il widget è uno solo, montato in fondo a `app/page.tsx`. Un evento tiene `BookButton` minuscolo e non obbliga a un provider attorno a tutta la pagina.
+
+**Widget** (`components/BookingWidget.tsx`, client):
+- tre passi — servizio, data e ora, dati — dentro un foglio a tutto schermo (colonna centrata da `md`); niente cambio di pagina, niente ricaricamenti;
+- passo 1: una scheda per servizio, con categoria, durata e prezzo presi dal listino; i supplementi (`prenotabile: false`) non compaiono;
+- passo 2: striscia orizzontale di 22 giorni (i chiusi restano, spenti) e griglia di orari a 3 colonne (4 da `sm`). Gli orari non disponibili restano visibili barrati, con il motivo nel `title`: una giornata piena si vede;
+- passo 3: nome, telefono e note, con riepilogo. Il telefono è validato mentre si scrive, con la **stessa funzione del server** (`lib/prenotazioni/telefono.ts`);
+- conferma: riepilogo con data, ora, servizio e il telefono del salone per spostare l'appuntamento;
+- stati: rotella durante il caricamento degli orari e durante l'invio; messaggi in chiaro per ogni errore;
+- accessibilità: `role="dialog"`, `aria-modal`, Esc chiude, Tab gira dentro il foglio, la pagina sotto diventa `inert` e Lenis si ferma (come il menu, §6.2);
+- gli orari **non si calcolano nel browser**: arrivano dall'API, che è l'unica a decidere cosa è libero.
+
+**API** (`app/api/bookings/route.ts`):
+
+| | `GET /api/bookings` | `POST /api/bookings` |
+|---|---|---|
+| Parametri | `date=YYYY-MM-DD` (default: oggi), `servizio=<id>`, `operatore=<id>` | corpo JSON: `servizioId`, `data`, `ora`, `operatoreId?`, `origine?`, `cliente: { nome, telefono, note? }` |
+| Risposta | `{ data, giorno, giornoNome, aperto, servizio, slot[], liberi }` | 201 `{ ok, prenotazione }` |
+| Errori | 400 data non valida | 400 dati non validi (`campi`), 409 orario appena occupato, 429 troppe richieste, 500 |
+
+- **Algoritmo degli slot** (`lib/prenotazioni/slot.ts`, funzioni pure): dai turni del giorno (`lib/salone.ts`) si generano gli inizi ogni 30 minuti; si scarta chi si sovrappone a un appuntamento, chi è già passato (con 60 minuti di preavviso) e chi non ci starebbe prima della chiusura. Esempio verificato: servizio da 75 minuti di martedì → ultimo orario utile 18:30, 19:00 e 19:30 spenti con motivo `chiusura`.
+- **Validazione** (`lib/prenotazioni/validazione.ts`): scritta a mano nello stile di Zod, restituisce o i dati puliti o un errore per campo. Il server **rigenera gli slot** e accetta solo un orario che lui stesso proporrebbe: un payload costruito a mano non entra nella pausa pranzo. Prezzo, durata e nome del servizio vengono dal listino, mai dal client.
+- **Freno agli abusi:** 5 POST ogni 10 minuti per indirizzo IP, in memoria. È un argine, non una difesa (§11).
+
+**Avviso al titolare** (`lib/prenotazioni/avvisi.ts`): oggi scrive nei log del server. Dentro il file ci sono, pronti da scommentare, il bot Telegram (`api.telegram.org/sendMessage`) e l'email con Resend, con le variabili d'ambiente da impostare. Un avviso che fallisce non fa fallire la prenotazione già salvata.
+
+**Archivio** (`lib/prenotazioni/archivio.ts`): `Map` in memoria su `globalThis` (sopravvive al ricaricamento a caldo). Le funzioni sono già asincrone e l'API non sa com'è fatto dentro: per passare a Vercel Postgres o Supabase si cambia solo questo file. Nel commento in cima c'è lo schema SQL, con il vincolo di esclusione che impedisce due appuntamenti sovrapposti **a livello di database**, cioè l'unico punto in cui il controllo è davvero sicuro.
+
+**6.13 Agenda del giorno** (`app/admin/page.tsx`).
+- Pagina server (`dynamic = "force-dynamic"`, `robots: noindex`) pensata per un tablet in cassa: una riga ogni 30 minuti, appuntamenti in nero con nome, servizio, telefono cliccabile e note, righe "— in corso" per la durata che prosegue, "Pausa" fra i due turni, "Libero" dove non c'è nulla.
+- In alto: numero di appuntamenti, percentuale di poltrona occupata, incasso previsto.
+- `?data=YYYY-MM-DD` per guardare un altro giorno; si aggiorna ricaricando.
+- **Protezione:** se esiste la variabile `ADMIN_TOKEN` serve `?chiave=…`; se non esiste, la pagina si apre a chiunque e lo dichiara con una fascia nera. Prima di usarla sul serio serve un'autenticazione vera (§11).
+
+*I bottoni:*
 - Micro-interazioni (solo mouse). **Il bottone non si sposta**: il magnetismo del brief v2 è stato tolto su richiesta, e con lui `ATTRAZIONE`, `useSpring` e `useTransform`. Il contenitore è un `<a>` semplice; l'unica parte animata è il riempimento.
   - riempimento bianco dal basso, 0,55s; uscendo, il bianco prosegue verso l'alto;
   - testo in `mix-blend-difference`, che si inverte pixel per pixel.
@@ -616,6 +670,11 @@ Il blocco da 107 KB è il candidato principale a una dieta: `LazyMotion` + `m` d
 - `max-w-none` sulla `<svg>` è necessario: il preflight di Tailwind limita le svg al contenitore, e la versione compatta verrebbe schiacciata invece che ritagliata.
 - Non duplicare il logo con due `<svg>` e `hidden`: le maschere dentro un elemento `display: none` in alcuni browser non si disegnano, e l'id della prima istanza vince sulle altre.
 
+**9.20 Prenotazioni: le tre trappole del modulo.**
+- **Memoria, non database.** Archivio e freno agli abusi vivono nel processo: su Vercel ogni istanza ha i suoi. Due clienti su istanze diverse possono prenotare lo stesso orario e l'agenda ne mostra uno solo. È il primo pezzo da sostituire (§11).
+- **L'ora è quella di Roma, non quella del cliente.** Slot, "passato" e giorno corrente passano da `oraDiRoma()` (`lib/orari.ts`). Un cliente a Londra vede gli orari del salone, non i suoi. Il giorno della settimana di una data ISO si ricava a mezzogiorno UTC (`giornoDellaData`), che cade nello stesso giorno sia con l'ora solare sia con quella legale.
+- **Niente `setState` dentro un effetto.** La regola `react-hooks/set-state-in-effect` (React Compiler) blocca il pattern "effetto che carica e aggiorna": nel widget gli orari si chiedono dalle azioni (`caricaOrari` in `scegliServizio` e `scegliGiorno`), e l'unico effetto rimasto annulla la richiesta in corso allo smontaggio.
+
 **9.19 "Font pixelato" nei metadati: cosa era e cosa non era.**
 - Il font disegnato è **JetBrains Mono, web font di next/font**, verificato con `CSS.getPlatformFontsForNode` su hero, menu e footer; nessun font di sistema di riserva, nessun `filter` né `text-shadow`.
 - Le frange colorate negli screenshot sono l'antialiasing ClearType di Windows (subpixel), che riguarda tutto il testo del sito. La grana "a pixel" viene dal pannello di anteprima, che mostra la vista da 375px rimpicciolita al 75% circa: lo screenshot della hero è largo 252px per un blocco che nella pagina ne misura 335.
@@ -654,6 +713,13 @@ Il blocco da 107 KB è il candidato principale a una dieta: `LazyMotion` + `m` d
 | Terza revisione, metadati di hero, menu e footer a 375 e 390px (densità 3x) e 1440px: font disegnato JetBrains Mono (web), peso 500, spaziatura 0,05em, maiuscolo, nessun filtro né ombra, nessuno scroll orizzontale | ✅ |
 | Righe: tabella orari su una riga a 375px, indirizzo su una riga, stato "RIAPRE OGGI / ALLE 14:30" su due righe a 375 e 390px (voluto) | ✅ |
 | `tsc`, `lint`, `build` dopo la terza revisione | ✅ |
+| Modulo prenotazioni: `tsc`, `lint`, `build` (`/` statica, `/admin` e `/api/bookings` dinamiche) | ✅ |
+| `GET /api/bookings`: giorno chiuso → `aperto: false`, 0 slot; servizio da 75 min → ultimo orario 18:30 e 19:00/19:30 con motivo `chiusura`; oggi alle 22:38 → tutti `passato`; `date=pippo` → 400 | ✅ |
+| `POST /api/bookings`: prenotazione valida → 201; stesso orario → rifiutato ("Orario appena occupato"); telefono "123" e nome "L" → 400 con due errori di campo; orario in pausa pranzo → 400; supplemento → 400; sesta richiesta ravvicinata → 429 | ✅ |
+| `GET` dopo la prenotazione: 10:00 e 10:30 diventano `occupato` (servizio da 50 minuti) | ✅ |
+| Widget su mobile 390px: apertura dal bottone della hero, scelta servizio, giorno, orario, errore del telefono mentre si scrive, conferma, riepilogo finale | ✅ |
+| Giornata senza orari liberi: messaggio dedicato con il telefono del salone | ✅ |
+| Agenda `/admin` su 1024px: appuntamento, righe "in corso", "Pausa", "Libero", contatori (1 appuntamento, 13% poltrona, 32 €) | ✅ |
 | Contrasto dei testi della hero sopra la nuova foto (§9.17): 15 testi su 15 sopra soglia a 375, 390 e 1440px | ✅ |
 | Bottone su fondo chiaro: bianco con bordo nero | ✅ |
 | Cascata del listino: opacità scaglionate a metà animazione (0,70 / 0,55 / 0,36 / 0,10 / 0 / 0), 23 elementi su 23 visibili alla fine | ✅ |
@@ -684,6 +750,14 @@ Ordinati per urgenza.
 3. **P.IVA mancante** → `lib/salone.ts:28`. Obbligatoria sul sito di un'attività italiana.
 4. **Testi di "Chi siamo" da validare** → `components/ChiSiamo.tsx:7-23, 38-44`.
 5. **Prenotazione inesistente** → `lib/prenotazione.ts`. Voluto, ma finché resta così i 5 bottoni "Prenota" non portano da nessuna parte e il telefono è l'unico canale.
+
+### 🔴 Bloccanti per l'uso vero delle prenotazioni
+
+6. **Archivio in memoria** → `lib/prenotazioni/archivio.ts`. Le prenotazioni spariscono a ogni riavvio e non sono condivise fra le istanze serverless: con il sito già in produzione, un cliente che prenota oggi potrebbe non trovare l'appuntamento domani. Serve un database (lo schema SQL è nel file, con il vincolo anti-sovrapposizione).
+7. **Agenda `/admin` senza autenticazione vera.** Con `ADMIN_TOKEN` impostata serve una chiave nell'indirizzo, ma un token nell'URL finisce nella cronologia e nei log. Serve un accesso vero (Auth.js, Supabase Auth) prima di metterci nomi e numeri di clienti reali.
+8. **Nessun avviso attivo:** la prenotazione oggi arriva solo nei log del server. Va collegato Telegram o l'email (`lib/prenotazioni/avvisi.ts`), altrimenti Francesco non sa che qualcuno ha prenotato.
+9. **Nessuna verifica del numero** (SMS o richiamata) e nessuna disdetta: chiunque può occupare orari con un numero inventato. Il freno attuale è di 5 richieste ogni 10 minuti per IP, in memoria.
+10. **Durate dei servizi stimate** → `lib/salone.ts`. Da 20 a 75 minuti: decidono quanti orari restano liberi, vanno confermate da Francesco insieme ai prezzi.
 
 ### 🟠 Da chiarire col committente
 
@@ -723,7 +797,14 @@ npm run start -- -p 3200      # prova della build di produzione
 ```
 
 - **Dagli strumenti agentici:** `preview_start` con nome `history-barber` (legge `..\.claude\launch.json`).
-- **Aggiornare listino, orari, contatti:** solo `lib/salone.ts`, più il telefono in `app/page.tsx:20`.
+- **Aggiornare listino, orari, contatti:** solo `lib/salone.ts`, più il telefono in `app/page.tsx:20`. Cambiando i servizi ricordati di `id` (stabile) e `durata` (minuti).
+- **Provare l'API dalla riga di comando:**
+  ```
+  curl "http://localhost:3200/api/bookings?date=2026-09-22&servizio=taglio-barba"
+  curl -X POST http://localhost:3200/api/bookings -H "Content-Type: application/json" \
+    -d '{"servizioId":"taglio-uomo","data":"2026-09-22","ora":"10:00","cliente":{"nome":"Mario Rossi","telefono":"3481234567"}}'
+  ```
+- **Guardare l'agenda:** `/admin` (oggi) oppure `/admin?data=2026-09-22`.
 - **Aggiungere le foto:** §5.4.
 - **Collegare la prenotazione:** implementare `apriPrenotazione()` in `lib/prenotazione.ts`. Tutti i bottoni la chiamano già, con l'origine (`navbar`, `menu`, `hero`, `listino`, `footer`).
 - **Disattivare le animazioni** per un test: attivare "riduci movimento" nel sistema operativo. Il sito resta completo.
