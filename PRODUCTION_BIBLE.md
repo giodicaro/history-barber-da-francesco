@@ -529,7 +529,7 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 - Pagina server (`dynamic = "force-dynamic"`, `robots: noindex`) pensata per un tablet in cassa: una riga ogni 30 minuti, appuntamenti in nero con nome, servizio, telefono cliccabile e note, righe "— in corso" per la durata che prosegue, "Pausa" fra i due turni, "Libero" dove non c'è nulla.
 - In alto: numero di appuntamenti, percentuale di poltrona occupata, incasso previsto.
 - `?data=YYYY-MM-DD` per guardare un altro giorno; si aggiorna ricaricando.
-- **Protezione:** se esiste la variabile `ADMIN_TOKEN` serve `?chiave=…`; se non esiste, la pagina si apre a chiunque e lo dichiara con una fascia nera. Prima di usarla sul serio serve un'autenticazione vera (§11).
+- **Protezione:** se esiste la variabile `ADMIN_TOKEN` serve `?chiave=…`; se non esiste, la pagina si apre a chiunque e lo dichiara con una fascia nera. **In produzione `ADMIN_TOKEN` è impostata** (Vercel → Settings → Environment Variables, valore nascosto): senza chiave si vede solo "Agenda riservata". In locale la variabile non c'è, quindi la pagina è aperta e lo dichiara. Resta un token nell'indirizzo, non un'autenticazione vera (§11).
 
 *I bottoni:*
 - Micro-interazioni (solo mouse). **Il bottone non si sposta**: il magnetismo del brief v2 è stato tolto su richiesta, e con lui `ATTRAZIONE`, `useSpring` e `useTransform`. Il contenitore è un `<a>` semplice; l'unica parte animata è il riempimento.
@@ -720,6 +720,8 @@ Il blocco da 107 KB è il candidato principale a una dieta: `LazyMotion` + `m` d
 | Widget su mobile 390px: apertura dal bottone della hero, scelta servizio, giorno, orario, errore del telefono mentre si scrive, conferma, riepilogo finale | ✅ |
 | Giornata senza orari liberi: messaggio dedicato con il telefono del salone | ✅ |
 | Agenda `/admin` su 1024px: appuntamento, righe "in corso", "Pausa", "Libero", contatori (1 appuntamento, 13% poltrona, 32 €) | ✅ |
+| **In produzione** dopo il deploy del 17/09: home 200, `GET /api/bookings` con 18 orari liberi, `POST` incompleto → 400 con quattro errori di campo, `POST` valido → 201 e l'orario risulta occupato alle richieste successive | ✅ |
+| **In produzione** `/admin` senza chiave → "Agenda riservata"; con chiave → agenda del giorno | ✅ |
 | Contrasto dei testi della hero sopra la nuova foto (§9.17): 15 testi su 15 sopra soglia a 375, 390 e 1440px | ✅ |
 | Bottone su fondo chiaro: bianco con bordo nero | ✅ |
 | Cascata del listino: opacità scaglionate a metà animazione (0,70 / 0,55 / 0,36 / 0,10 / 0 / 0), 23 elementi su 23 visibili alla fine | ✅ |
@@ -754,8 +756,8 @@ Ordinati per urgenza.
 ### 🔴 Bloccanti per l'uso vero delle prenotazioni
 
 6. **Archivio in memoria** → `lib/prenotazioni/archivio.ts`. Le prenotazioni spariscono a ogni riavvio e non sono condivise fra le istanze serverless: con il sito già in produzione, un cliente che prenota oggi potrebbe non trovare l'appuntamento domani. Serve un database (lo schema SQL è nel file, con il vincolo anti-sovrapposizione).
-7. **Agenda `/admin` senza autenticazione vera.** Con `ADMIN_TOKEN` impostata serve una chiave nell'indirizzo, ma un token nell'URL finisce nella cronologia e nei log. Serve un accesso vero (Auth.js, Supabase Auth) prima di metterci nomi e numeri di clienti reali.
-8. **Nessun avviso attivo:** la prenotazione oggi arriva solo nei log del server. Va collegato Telegram o l'email (`lib/prenotazioni/avvisi.ts`), altrimenti Francesco non sa che qualcuno ha prenotato.
+7. **Agenda `/admin` senza autenticazione vera.** In produzione `ADMIN_TOKEN` è impostata e senza chiave la pagina non mostra nulla, ma un token nell'indirizzo finisce nella cronologia del browser e nei log. Serve un accesso vero (Auth.js, Supabase Auth) prima di metterci nomi e numeri di clienti reali.
+8. **Nessun avviso attivo:** la prenotazione oggi arriva solo nei log del server (su Vercel: Deployments → Logs). Va collegato Telegram o l'email (`lib/prenotazioni/avvisi.ts`), altrimenti **un cliente vero può prenotare sul sito in produzione senza che nessuno lo sappia**. Finché non è collegato, questo è il rischio più concreto del modulo.
 9. **Nessuna verifica del numero** (SMS o richiamata) e nessuna disdetta: chiunque può occupare orari con un numero inventato. Il freno attuale è di 5 richieste ogni 10 minuti per IP, in memoria.
 10. **Durate dei servizi stimate** → `lib/salone.ts`. Da 20 a 75 minuti: decidono quanti orari restano liberi, vanno confermate da Francesco insieme ai prezzi.
 
