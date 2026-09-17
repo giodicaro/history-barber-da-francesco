@@ -1,0 +1,198 @@
+@import "tailwindcss";
+
+/* ── Design token ─────────────────────────────────────────────────────────
+   Tre colori da brief (bianco puro, nero profondo, grigio chiaro) più due
+   grigi per il testo secondario, scelti per il contrasto e non per gusto:
+   steel su bianco 6,2:1 · smoke su ink 8:1. */
+@theme {
+  --color-ink: #0a0a0a;
+  --color-paper: #ffffff;
+  --color-fog: #efefed;
+  --color-steel: #616161;
+  --color-smoke: #a3a3a3;
+
+  --font-display: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  --ease-crisp: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root {
+  color-scheme: light;
+  /* Altezza della barra fissa: la usano la barra stessa e l'offset delle
+     ancore. Un solo valore, così non si sommano due compensazioni. */
+  --nav-h: 4rem;
+}
+
+@media (min-width: 48rem) {
+  :root {
+    --nav-h: 4.5rem;
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+/* ── Tipografia ricorrente ───────────────────────────────────────────── */
+
+/* Titoli giganti in Syne Bold. Non al peso massimo: da 700 a 800 Syne
+   passa al disegno esteso e si allarga di metà (L’ECCELLENZA: 8,4 em
+   contro 12,3), e su uno smartphone il titolo non sarebbe più gigante. */
+@utility display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+  /* Syne disegna di serie numeri "old style", che scendono sotto la riga:
+     in "47/A-B" il 47 sembrerebbe più basso delle lettere. */
+  font-variant-numeric: lining-nums;
+}
+
+/* Testo sopra i titoli (eyebrow) e titoletti dei blocchi: stesso stile in
+   tutto il sito, maiuscolo, largo, in grassetto marcato. */
+@utility eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+/* Metadati (indirizzo, orari, stato di apertura, telefono, indici, didascalie
+   tecniche) in monospazio: blocchi allineati, dal tono tecnico.
+   Peso e spaziatura sono dichiarati qui e non ereditati: dentro un titolo
+   "display" (i numeri del menu) o in una <th> il testo resterebbe in
+   grassetto. 500 invece di 400: a 11-12px il tratto regge meglio, anche con
+   l'antialiasing a colori di Windows.
+   font-family è !important di proposito: nessuna classe o componente deve
+   poter cambiare il carattere di un metadato.
+   Niente font-feature-settings "zero": la versione Google Fonts di JetBrains
+   Mono non ha quella variante (GSUB: calt ccmp frac locl) e la regola non
+   farebbe nulla. Lo zero resta quello puntato di serie. */
+@utility info {
+  font-family: var(--font-mono) !important;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ── Griglia architettonica ──────────────────────────────────────────── */
+
+/* Il colore delle linee deriva dal testo della sezione: la stessa griglia è
+   grigio chiaro su bianco e grigio scuro su nero, senza varianti. */
+@utility grid-line {
+  border-color: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+/* La shell è anche un contenitore di misura (container query): dentro, 100cqi
+   è la larghezza del suo contenuto, padding esclusi. I titoli giganti si
+   dimensionano su quella e non su 100vw, che su un computer include la barra
+   di scorrimento e farebbe andare a capo le righe più lunghe.
+   Effetto collaterale da ricordare: il contenimento fa della shell il
+   riferimento anche per gli elementi position: fixed al suo interno. */
+@utility shell {
+  container-type: inline-size;
+  width: 100%;
+  max-width: 100rem;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+
+  @media (min-width: 48rem) {
+    padding-inline: 2.5rem;
+  }
+}
+
+/* ── Lenis ───────────────────────────────────────────────────────────── */
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis:not(.lenis-autoToggle).lenis-stopped {
+  overflow: clip;
+}
+
+.lenis [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+/* ── Stato iniziale delle animazioni ─────────────────────────────────────
+   Gli elementi da rivelare partono invisibili qui, non in JavaScript: così
+   non compaiono per un istante prima dell'idratazione. Il <noscript> nel
+   layout e il blocco reduced-motion qui sotto li riaccendono.
+   [data-slide] è la cascata del listino: parte già 50px più in basso. */
+[data-reveal] {
+  opacity: 0;
+}
+
+[data-slide] {
+  opacity: 0;
+  transform: translateY(50px);
+}
+
+[data-mask-line] > span {
+  display: block;
+  transform: translateY(105%);
+}
+
+/* Rete di sicurezza. Un elemento che nessuna animazione ha preso in carico
+   (data-animato, vedi prendiInCarico in lib/gsap.ts) compare comunque dopo
+   3 secondi. Copre il JavaScript che fallisce o arriva tardi e gli elementi
+   sostituiti dopo il caricamento: un testo non deve mai restare invisibile. */
+@keyframes comparsa-di-riserva {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+[data-reveal]:not([data-animato]),
+[data-slide]:not([data-animato]),
+[data-mask-line]:not([data-animato]) > span {
+  animation: comparsa-di-riserva 0.6s ease-out 3s forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal],
+  [data-slide] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  [data-mask-line] > span {
+    transform: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Anello di focus unico, visibile su bianco e su nero. */
+:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
