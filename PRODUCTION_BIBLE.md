@@ -2,7 +2,7 @@
 
 Passaggio di consegne per il sito vetrina di **History Barber da Francesco**, barbiere a Mestre (Venezia).
 
-**Fotografia scattata il:** 17 settembre 2026
+**Fotografia scattata il:** 25 settembre 2026 (riestratta dal codice; il codice non cambia dal 17 settembre, 3 commit su `main`)
 **Cartella:** `C:\Users\foscolo\Parruchieria\my-app`
 **Versionamento:** https://github.com/giodicaro/history-barber-da-francesco (pubblico, ramo `main`)
 **Produzione:** https://history-barber-da-francesco.vercel.app (Vercel, progetto `history-barber-da-francesco`, collegato al repository: ogni push su `main` va in produzione)
@@ -110,9 +110,9 @@ Tutto è stato fatto il 16–17 settembre 2026, in una sola sessione.
 
 | Pacchetto | Dove si importa | Uso |
 |---|---|---|
-| `lenis` ^1.3.26 | `components/SmoothScroll.tsx`, `components/Navbar.tsx` (`lenis/react`) | Scorrimento morbido globale, `stop()`/`start()` col menu, `scrollTo` |
+| `lenis` ^1.3.26 | `components/SmoothScroll.tsx`, `components/Navbar.tsx`, `components/BookingWidget.tsx` (`lenis/react`) | Scorrimento morbido globale, `stop()`/`start()` con menu e foglio di prenotazione, `scrollTo` |
 | `gsap` ^3.15.0 | **solo** `lib/gsap.ts` (con `ScrollTrigger`) | Entrate allo scroll, parallasse, sequenza della hero |
-| `framer-motion` ^13.4.0 | `components/Navbar.tsx`, `components/BookButton.tsx` | Menu (varianti + stagger), riempimento del bottone |
+| `framer-motion` ^13.4.0 | `components/Navbar.tsx`, `components/BookButton.tsx`, `components/BookingWidget.tsx` | Menu (varianti + stagger), riempimento del bottone, entrata e uscita del foglio di prenotazione |
 
 Non ci sono altre dipendenze: niente `clsx`/`tailwind-merge` (l'helper `cn` è un semplice join, `lib/utils.ts:1-3`) e niente librerie di icone (SVG scritti a mano in `components/icons.tsx`).
 
@@ -235,7 +235,7 @@ my-app/
 │   ├── SmoothScroll.tsx    ReactLenis root + sincronizzazione col ticker GSAP;
 │   │                       hook useVaiASezione per lo scorrimento alle ancore
 │   ├── Navbar.tsx          ★ Barra fissa (colore adattivo), hamburger, menu a tutto
-│   │                       schermo con varianti framer, trappola del focus (294 righe)
+│   │                       schermo con varianti framer, trappola del focus (295 righe)
 │   ├── BookButton.tsx      ★ Bottone "Prenota": link segnaposto, fermo, riempimento
 │   ├── Hero.tsx            Prima schermata: blocchi info, titolo mascherato, sequenza
 │   │                       d'entrata, parallasse
@@ -325,7 +325,7 @@ Non c'è stato globale applicativo: niente Context propri, niente store.
 |---|---|---|
 | **Lenis** | Scorrimento morbido, `scrollTo` alle ancore, `stop()`/`start()` col menu | `SmoothScroll.tsx`, `Navbar.tsx:100-105` |
 | **GSAP + ScrollTrigger** | Sequenza d'entrata della hero, parallasse della foto, entrate allo scroll, cascata del listino | `Hero.tsx`, `RevealOnScroll.tsx` |
-| **framer-motion** | Tenda e voci del menu (varianti + `staggerChildren`), riempimento del bottone | `Navbar.tsx`, `BookButton.tsx` |
+| **framer-motion** | Tenda e voci del menu (varianti + `staggerChildren`), riempimento del bottone, apertura del foglio di prenotazione | `Navbar.tsx`, `BookButton.tsx`, `BookingWidget.tsx` |
 
 **Regola 1: un solo `requestAnimationFrame`.** Lenis avanza dal ticker di GSAP (`SmoothScroll.tsx:13-18`, `autoRaf: false`) e ogni scroll aggiorna ScrollTrigger (`SmoothScroll.tsx:20`).
 
@@ -378,12 +378,12 @@ Non ci sono error boundary, logging né telemetria. Le difese sono locali:
 | `operatori` | `Operatore[]` | Oggi solo Francesco; API e agenda ragionano già per operatore | 149-151 |
 | `PREAVVISO_MINUTI` | `number` | 60: quanto prima si può prenotare online | 155 |
 | `GIORNI_PRENOTABILI` | `number` | 21: fin dove arriva il calendario | 158 |
-| `GruppoListino` | `{ id, titolo, servizi }` | Una categoria | 98-102 |
-| `listino` | `GruppoListino[]` | ⚠️ **indicativo** | 105-134 |
-| `Lavoro` | `{ titolo, tecnica, alt, src? }` | `src` assente = segnaposto | 138-146 |
-| `portfolio` | `Lavoro[]` | Nessun `src` compilato | 148-157 |
-| `fotoHero` | `{ src?, alt, posizione? }` | `src: "/images/hero-sfumatura.webp"`, `posizione: "60% 50%"`, immagine generata (§5.4) | 159-169 |
-| `vociMenu` | `{ id, etichetta }[]` | Gli `id` coincidono con gli `id` delle sezioni | 173-178 |
+| `GruppoListino` | `{ id, titolo, servizi }` | Una categoria | 107-111 |
+| `listino` | `GruppoListino[]` | ⚠️ **indicativo** | 114-143 |
+| `Lavoro` | `{ titolo, tecnica, alt, src? }` | `src` assente = segnaposto | 162-170 |
+| `portfolio` | `Lavoro[]` | Nessun `src` compilato | 172-181 |
+| `fotoHero` | `{ src?, alt, posizione? }` | `src: "/images/hero-sfumatura.webp"`, `posizione: "60% 50%"`, immagine generata (§5.4) | 189-193 |
+| `vociMenu` | `{ id, etichetta }[]` | Gli `id` coincidono con gli `id` delle sezioni | 197-202 |
 
 ### 5.2 Conteggi (misurati)
 
@@ -420,8 +420,8 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
   - dopo il cambio, rimisura il contrasto dei testi (§9.17): il velo è tarato su questa foto;
   - se il rapporto non è 16:9, ricalcola `LARGHEZZA_FOTO` (`Hero.tsx:29`, §9.16);
   - aggiorna `alt`: descrive l'immagine, non il salone.
-- **Gli orari:** modifica `turni` del giorno. Badge, tabella e JSON-LD si aggiornano insieme (`app/page.tsx:30-37`).
-- **Il telefono:** va cambiato in **tre punti**: `salone.telefono`, `salone.telefonoHref` e `app/page.tsx:20` (JSON-LD, scritto a mano, §11).
+- **Gli orari:** modifica `turni` del giorno. Badge, tabella, slot di prenotazione e JSON-LD si aggiornano insieme (`app/page.tsx:31-38`).
+- **Il telefono:** va cambiato in **tre punti**: `salone.telefono`, `salone.telefonoHref` e `app/page.tsx:21` (JSON-LD, scritto a mano, §11).
 
 ---
 
@@ -439,8 +439,8 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 | 6.8 | Contatti / footer | `Footer.tsx` | ⚠️ P.IVA assente |
 | 6.9 | Prenotazione (bottoni + widget + API) | `BookButton.tsx`, `BookingWidget.tsx`, `app/api/bookings`, `lib/prenotazioni/` | 🟠 **Funziona, ma l'archivio è in memoria** |
 | 6.10 | Scorrimento morbido e ancore | `SmoothScroll.tsx`, `SectionLink.tsx` | ✅ Completa |
-| 6.11 | SEO e dati strutturati | `app/layout.tsx:24-39`, `app/page.tsx:16-38` | ⚠️ Parziale |
-| 6.12 | Link "Vai al contenuto" | `app/page.tsx:47-52` | ⚠️ Classe inesistente |
+| 6.11 | SEO e dati strutturati | `app/layout.tsx:24-39`, `app/page.tsx:17-39` | ⚠️ Parziale |
+| 6.12 | Link "Vai al contenuto" | `app/page.tsx:48-53` | ⚠️ Classe inesistente |
 | 6.13 | Agenda del giorno | `app/admin/page.tsx` | 🟠 Senza autenticazione vera |
 
 **6.1 Barra fissa.**
@@ -468,7 +468,7 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 - **Velo:** gradiente dall'alto `ink/80 → ink/45 → ink/90`. L'eyebrow "Barbiere a Mestre" è bianco pieno, non al 70% (§9.17).
 
 **6.4 Stato apertura.** "Aperto ora · Fino alle HH:MM" oppure "Chiuso ora · Riapre oggi/domani/gio alle HH:MM".
-- Calcolato sull'**ora di Roma**, non su quella del dispositivo (`lib/orari.ts:12-26`); considera la pausa pranzo (`lib/orari.ts:36-44`).
+- Calcolato sull'**ora di Roma**, non su quella del dispositivo (`lib/orari.ts:19-42`); considera la pausa pranzo (`lib/orari.ts:63-71`).
 - Aggiornamento ogni 30 secondi.
 - Sul server non viene disegnato: c'è un contenuto invisibile della stessa misura, per evitare salti.
 - La tabella degli orari evidenzia il giorno corrente con `aria-current="date"`.
@@ -547,10 +547,10 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 **6.11 SEO e dati strutturati.**
 - `lang="it"`, title, description, Open Graph testuale, `themeColor`.
 - JSON-LD `HairSalon` (schema.org non ha un tipo "BarberShop") con indirizzo, telefono, Instagram e orari derivati.
-- `addressLocality` è "Venezia" (comune) e non "Mestre" (`app/page.tsx:25`).
+- `addressLocality` è "Venezia" (comune) e non "Mestre" (`app/page.tsx:26`).
 - **Mancano:** immagine Open Graph, `metadataBase`, favicon propria, `robots`/`sitemap`, dominio.
 
-**6.12 Link "Vai al contenuto."** Il link per saltare la navigazione esiste, ma usa la classe `label`, che non esiste più (rinominata in `eyebrow`/`info`, `app/page.tsx:49`). Funziona, ma senza lo stile previsto.
+**6.12 Link "Vai al contenuto."** Il link per saltare la navigazione esiste, ma usa la classe `label`, che non esiste più (rinominata in `eyebrow`/`info`, `app/page.tsx:50`). Funziona, ma senza lo stile previsto.
 
 ---
 
@@ -583,23 +583,23 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 
 ## 8. Performance
 
-### 8.1 Misure sulla build di produzione (17/09/2026)
+### 8.1 Misure sulla build di produzione (25/09/2026)
 
-Tutto è **statico**: `○ /` e `○ /_not-found` sono prerenderizzate.
+La home resta **statica** (`○ /`, `○ /_not-found`); il modulo di prenotazione aggiunge due rotte **dinamiche**, `ƒ /admin` e `ƒ /api/bookings`, che girano a ogni richiesta e non finiscono nel peso della home.
 
-| Risorsa della home | Peso | gzip |
+| Risorsa | Peso | gzip |
 |---|---|---|
-| HTML (`index.html`) | 85,8 KB | 11,4 KB |
-| CSS | 32,3 KB | 7,3 KB |
-| JavaScript (7 file) | 857 KB | **276 KB** |
-| ↳ blocco con gsap + ScrollTrigger + lenis + framer-motion | 305 KB | 107 KB |
+| HTML della home (`index.html`) | 95,5 KB | 14,0 KB |
+| CSS (1 file) | 41,6 KB | 8,7 KB |
+| JavaScript statico (10 file) | 874 KB | **282 KB** |
+| ↳ blocco con gsap + ScrollTrigger + lenis + framer-motion | 321 KB | 113 KB |
 | ↳ react-dom | 224 KB | 70 KB |
-| ↳ runtime Next e altri | 328 KB | 99 KB |
-| Font precaricati (5 woff2) | 218 KB | — (già compressi) |
-| Font totali nella build (16 woff2, subset) | 357 KB | — |
-| Immagini | 0 | — (nessuna foto ancora) |
+| ↳ pagina e componenti del sito | 174 KB | 46 KB |
+| ↳ runtime Next e resto | 155 KB | 53 KB |
+| Font nella build (16 woff2, subset) | 357 KB | — (già compressi) |
+| Foto della hero (`public/images/hero-sfumatura.webp`) | 354 KB | — (servita ridimensionata da `next/image`) |
 
-Il blocco da 107 KB è il candidato principale a una dieta: `LazyMotion` + `m` di framer-motion (§11).
+Rispetto alla misura del 17 settembre: +10 KB di HTML, +9 KB di CSS e +6 KB di JavaScript gzip, cioè il costo del widget di prenotazione. Il blocco da 113 KB resta il candidato principale a una dieta: `LazyMotion` + `m` di framer-motion (§11).
 
 ### 8.2 Strategia
 
@@ -722,6 +722,8 @@ Il blocco da 107 KB è il candidato principale a una dieta: `LazyMotion` + `m` d
 | Agenda `/admin` su 1024px: appuntamento, righe "in corso", "Pausa", "Libero", contatori (1 appuntamento, 13% poltrona, 32 €) | ✅ |
 | **In produzione** dopo il deploy del 17/09: home 200, `GET /api/bookings` con 18 orari liberi, `POST` incompleto → 400 con quattro errori di campo, `POST` valido → 201 e l'orario risulta occupato alle richieste successive | ✅ |
 | **In produzione** `/admin` senza chiave → "Agenda riservata"; con chiave → agenda del giorno | ✅ |
+| **Riestrazione del 25/09:** 95 riferimenti `file:riga` del documento controllati uno per uno con uno script; 0 file mancanti, 18 numeri di riga corretti perché il codice si era spostato | ✅ |
+| **Riestrazione del 25/09:** `tsc`, `lint`, `build` ripetuti, misure di §8.1 rifatte, produzione raggiungibile (home e API 200) | ✅ |
 | Contrasto dei testi della hero sopra la nuova foto (§9.17): 15 testi su 15 sopra soglia a 375, 390 e 1440px | ✅ |
 | Bottone su fondo chiaro: bianco con bordo nero | ✅ |
 | Cascata del listino: opacità scaglionate a metà animazione (0,70 / 0,55 / 0,36 / 0,10 / 0 / 0), 23 elementi su 23 visibili alla fine | ✅ |
@@ -747,8 +749,8 @@ Ordinati per urgenza.
 
 ### 🔴 Bloccanti per la pubblicazione
 
-1. **Prezzi e servizi inventati** → `lib/salone.ts:105-134`. Da far confermare a Francesco, voce per voce.
-2. **Foto non reali.** La hero usa un'immagine generata con Higgsfield (`public/images/hero-sfumatura.webp`), che mostra una persona inventata e non un cliente del salone: su un sito commerciale va sostituita con una foto vera, o almeno fatta approvare a Francesco. Gli 8 lavori del portfolio sono ancora segnaposto (`lib/salone.ts:148-157`).
+1. **Prezzi e servizi inventati** → `lib/salone.ts:114-143`. Da far confermare a Francesco, voce per voce.
+2. **Foto non reali.** La hero usa un'immagine generata con Higgsfield (`public/images/hero-sfumatura.webp`), che mostra una persona inventata e non un cliente del salone: su un sito commerciale va sostituita con una foto vera, o almeno fatta approvare a Francesco. Gli 8 lavori del portfolio sono ancora segnaposto (`lib/salone.ts:172-181`).
 3. **P.IVA mancante** → `lib/salone.ts:28`. Obbligatoria sul sito di un'attività italiana.
 4. **Testi di "Chi siamo" da validare** → `components/ChiSiamo.tsx:7-23, 38-44`.
 5. **Prenotazione inesistente** → `lib/prenotazione.ts`. Voluto, ma finché resta così i 5 bottoni "Prenota" non portano da nessuna parte e il telefono è l'unico canale.
@@ -774,10 +776,10 @@ Ordinati per urgenza.
 
 12. **Nessun git.** Si lavora senza storia: inizializzare il repository prima di qualsiasi altro intervento.
 13. **Nessun deploy.** Negli altri progetti si è usato Vercel da CLI; qui non è configurato.
-14. **Zero test.** Il candidato naturale è `calcolaStato()` (`lib/orari.ts:28-46`): pura, con pausa pranzo, fuso di Roma e cambio d'ora.
-15. **Classe inesistente `label`** nel link "Vai al contenuto" → `app/page.tsx:49`.
-16. **Telefono duplicato a mano nel JSON-LD** → `app/page.tsx:20`. Anche la formattazione dell'ora è duplicata (`app/page.tsx:12-13` rispetto a `lib/orari.ts:7-8`).
-17. **Trappola del focus su mobile.** Dedotto dalla lettura, non riprodotto. L'ultimo link del menu nel DOM (Instagram) è nascosto sotto md (`Navbar.tsx:277`): su mobile il Tab dall'ultimo elemento visibile non torna al primo.
+14. **Zero test.** I candidati naturali sono `calcolaStato()` (`lib/orari.ts:55-74`) e `generaSlot()` (`lib/prenotazioni/slot.ts:47-81`): funzioni pure, con pausa pranzo, fuso di Roma, cambio d'ora e durate dei servizi.
+15. **Classe inesistente `label`** nel link "Vai al contenuto" → `app/page.tsx:50`.
+16. **Telefono duplicato a mano nel JSON-LD** → `app/page.tsx:21`. Anche la formattazione dell'ora è duplicata (`app/page.tsx:12-13` rispetto a `lib/orari.ts:9-10`).
+17. **Trappola del focus su mobile.** Dedotto dalla lettura, non riprodotto. L'ultimo link del menu nel DOM (Instagram) è nascosto sotto md (`Navbar.tsx:278`): su mobile il Tab dall'ultimo elemento visibile non torna al primo.
 18. **Favicon, README e nome del pacchetto** (`my-app`) sono quelli di `create-next-app`. **Mancano** immagine Open Graph e `metadataBase`.
 19. **`public/` contiene 5 SVG del template non usati** (accanto a `images/hero-sfumatura.webp`, che invece è usato).
 20. **Peso di framer-motion.** È nel blocco da 107 KB gzip: `LazyMotion` + `m` ridurrebbe il costo, perché si usano solo animazioni semplici.
@@ -799,7 +801,7 @@ npm run start -- -p 3200      # prova della build di produzione
 ```
 
 - **Dagli strumenti agentici:** `preview_start` con nome `history-barber` (legge `..\.claude\launch.json`).
-- **Aggiornare listino, orari, contatti:** solo `lib/salone.ts`, più il telefono in `app/page.tsx:20`. Cambiando i servizi ricordati di `id` (stabile) e `durata` (minuti).
+- **Aggiornare listino, orari, contatti:** solo `lib/salone.ts`, più il telefono in `app/page.tsx:21`. Cambiando i servizi ricordati di `id` (stabile) e `durata` (minuti).
 - **Provare l'API dalla riga di comando:**
   ```
   curl "http://localhost:3200/api/bookings?date=2026-09-22&servizio=taglio-barba"
