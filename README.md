@@ -52,7 +52,7 @@ Supabase e Vercel ce l'hanno):
 npm run db:init    # applica lo schema al database di DATABASE_URL; è rieseguibile (Node 22.18+)
 ```
 
-**Neon (configurato il 27/09/2026).** Il progetto è collegato a Neon, progetto `falling-darkness-36477223`, branch `production`, regione AWS us-east-2. `neon link` scrive `DATABASE_URL` (pooler), `DATABASE_URL_UNPOOLED` e `NEON_BRANCH` in `.env.local`; lo schema è già applicato. Con `DATABASE_URL` in `.env.local` anche lo sviluppo in locale scrive sul branch `production`. `neon.ts` è la configurazione del CLI (`neon config plan` / `neon deploy`): l'app non lo usa.
+**Neon (configurato il 27/09/2026).** Il progetto è collegato a Neon, progetto `falling-darkness-36477223`, branch `production`, regione AWS us-east-2. `neon link` scrive `DATABASE_URL` (pooler), `DATABASE_URL_UNPOOLED` e `NEON_BRANCH` in `.env.local`; lo schema è già applicato. Due branch: `production` (lo usa Vercel, variabile `DATABASE_URL` impostata sul progetto) e `sviluppo` (lo usa `.env.local`, per le prove in locale). `.neon` punta a `sviluppo`: `neon deploy` senza `--branch` agisce lì. Per tornare a lavorare su produzione in locale: `neon checkout production`. `neon.ts` è la configurazione del CLI (`neon config plan` / `neon deploy`): l'app non lo usa.
 
 ## Comandi
 
