@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { formatoOra, giornoDellaData, oraDiRoma } from "@/lib/orari";
 import { avvisaTitolare } from "@/lib/prenotazioni/avvisi";
 import { ConflittoOrario, occupatiDelGiorno, salvaPrenotazione } from "@/lib/prenotazioni/archivio";
@@ -105,12 +106,16 @@ export async function POST(request: Request) {
 
   try {
     const prenotazione = await salvaPrenotazione(esito.dati);
-    // L'avviso non deve mai far fallire la prenotazione già salvata.
-    try {
-      await avvisaTitolare(prenotazione);
-    } catch (e) {
-      console.error("[prenotazione] avviso al titolare non riuscito", e);
-    }
+    // L'avviso parte DOPO aver risposto al cliente: "after" tiene viva la
+    // funzione quel tanto che basta, senza far aspettare chi ha prenotato.
+    // avvisaTitolare non lancia mai, ma la rete di sicurezza resta.
+    after(async () => {
+      try {
+        await avvisaTitolare(prenotazione);
+      } catch (e) {
+        console.error("[prenotazione] avviso al titolare non riuscito", e);
+      }
+    });
     return json(
       {
         ok: true,

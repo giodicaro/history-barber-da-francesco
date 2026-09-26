@@ -2,7 +2,7 @@
 
 Passaggio di consegne per il sito vetrina di **History Barber da Francesco**, barbiere a Mestre (Venezia).
 
-**Fotografia scattata il:** 25 settembre 2026 (riestratta dal codice; il codice non cambia dal 17 settembre, 3 commit su `main`)
+**Fotografia scattata il:** 26 settembre 2026, aggiornata dopo l'agenda interattiva (navigazione fra i giorni, gestione di appuntamenti e blocchi, database locale su file)
 **Cartella:** `C:\Users\foscolo\Parruchieria\my-app`
 **Versionamento:** https://github.com/giodicaro/history-barber-da-francesco (pubblico, ramo `main`)
 **Produzione:** https://history-barber-da-francesco.vercel.app (Vercel, progetto `history-barber-da-francesco`, collegato al repository: ogni push su `main` va in produzione)
@@ -75,7 +75,9 @@ Tutto è stato fatto il 16–17 settembre 2026, in una sola sessione.
    - **nuovo logo "HB da Francesco"** in `components/Logo.tsx`, al posto del monogramma testuale nella barra e aggiunto nella barra finale del footer (§3.6).
 6. **Pubblicazione (17 settembre).** Repository GitHub pubblico, progetto Vercel collegato, primo deploy in produzione (§12).
 7. **Modulo di prenotazione (17 settembre).** Il sistema nativo chiesto dal committente esiste: widget a tre passi, API degli slot, agenda per la cassa (§6.9 e §6.13). L'archivio è ancora in memoria: **non è pronto per prendere appuntamenti veri** (§11).
-8. **Terza revisione del 17 settembre**: segnalato un monospazio "pixelato" nei metadati di hero, menu e footer (riferimenti `image_62d41e.png` e `image_62d45f.png`, cioè gli screenshot delle 13:40 e 13:41, più la registrazione delle 13:42). Il font era già JetBrains Mono (§9.19). Richiesti peso medio e spaziatura più larga: il token `info` passa a **peso 500 e 0.05em** e vale ovunque; "alle 14:30" non si spezza più.
+8. **Completamento del modulo di prenotazione (25 settembre).** I tre punti bloccanti sono chiusi: archivio su Postgres (§6.9), agenda protetta con Auth.js (§6.13), avviso al titolare su Telegram (§6.9). Restano da confermare prezzi e durate, e manca la verifica del numero del cliente (§11).
+9. **Terza revisione del 17 settembre**: segnalato un monospazio "pixelato" nei metadati di hero, menu e footer (riferimenti `image_62d41e.png` e `image_62d45f.png`, cioè gli screenshot delle 13:40 e 13:41, più la registrazione delle 13:42). Il font era già JetBrains Mono (§9.19). Richiesti peso medio e spaziatura più larga: il token `info` passa a **peso 500 e 0.05em** e vale ovunque; "alle 14:30" non si spezza più.
+10. **Agenda interattiva (26 settembre).** Segnalati tre problemi: archivio che si azzerava ("Archivio in memoria"), agenda ferma su un giorno, righe non cliccabili. Il brief chiedeva SQLite con Prisma, ma il progetto non usa un ORM e in produzione gira su Postgres. Per non avere due dialetti SQL, in locale c'è **Postgres su file (PGlite)** al posto di SQLite. L'agenda ora ha frecce che saltano i giorni di chiusura, un calendario, e la gestione completa: crea, modifica, disdici, blocca (§6.13).
 
 **Scostamenti dal brief, consapevoli:**
 
@@ -113,6 +115,10 @@ Tutto è stato fatto il 16–17 settembre 2026, in una sola sessione.
 | `lenis` ^1.3.26 | `components/SmoothScroll.tsx`, `components/Navbar.tsx`, `components/BookingWidget.tsx` (`lenis/react`) | Scorrimento morbido globale, `stop()`/`start()` con menu e foglio di prenotazione, `scrollTo` |
 | `gsap` ^3.15.0 | **solo** `lib/gsap.ts` (con `ScrollTrigger`) | Entrate allo scroll, parallasse, sequenza della hero |
 | `framer-motion` ^13.4.0 | `components/Navbar.tsx`, `components/BookButton.tsx`, `components/BookingWidget.tsx` | Menu (varianti + stagger), riempimento del bottone, entrata e uscita del foglio di prenotazione |
+| `postgres` 3.4.9 | `lib/prenotazioni/db.ts`, `scripts/db-init.mjs` | Client Postgres delle prenotazioni. **Non** `@vercel/postgres`: è deprecato da Vercel, che ha spostato i database gestiti su Neon. postgres.js parla con qualsiasi Postgres, quindi il progetto non è legato a un fornitore |
+| `next-auth` 5.0.0-beta.32 | `auth.ts`, `auth.config.ts`, `middleware.ts` | Accesso all'agenda: una sola password, sessione in un cookie firmato |
+| `@electric-sql/pglite` 0.5.8 | `lib/prenotazioni/db.ts` | Postgres compilato in WebAssembly, dentro il processo di Next. È il database quando manca `DATABASE_URL`: su file in locale, in memoria su Vercel. Stesso SQL e stessi vincoli della produzione. In `serverExternalPackages` (`next.config.ts`), perché carica da sé i suoi file `.wasm` e l'estensione `btree_gist` |
+| `server-only` | `lib/prenotazioni/db.ts`, `lib/prenotazioni/avvisi.ts`, `lib/prenotazioni/archivio.ts` | Fa fallire la build se un modulo con segreti finisce in un componente client |
 
 Non ci sono altre dipendenze: niente `clsx`/`tailwind-merge` (l'helper `cn` è un semplice join, `lib/utils.ts:1-3`) e niente librerie di icone (SVG scritti a mano in `components/icons.tsx`).
 
@@ -128,7 +134,19 @@ Caricati con `next/font/google` in `app/layout.tsx:9-22`. Next li scarica in fas
 
 ### 2.4 Configurazione e variabili d'ambiente
 
-- **Nessuna variabile d'ambiente.** Non esiste `.env*`: tutto è costante in `lib/salone.ts`.
+- **Sei variabili, tutte facoltative**: il sito parte anche senza. L'elenco commentato è in `.env.example`; in locale si copiano in `.env.local` (che git ignora), in produzione stanno su Vercel → Settings → Environment Variables.
+
+| Variabile | Serve a | Se manca |
+|---|---|---|
+| `DATABASE_URL` (o `POSTGRES_URL`) | Postgres delle prenotazioni | In locale: database su file in `.data/agenda` (PGlite), che resta fra un riavvio e l'altro. Su Vercel: PGlite in memoria, che si azzera e ha una copia per istanza; l'agenda lo dichiara con una fascia nera |
+| `AUTH_SECRET` | Firma del cookie di sessione dell'agenda (`npx auth secret`) | Nessuno entra in `/admin` |
+| `ADMIN_PASSWORD` | Password unica dell'agenda | Come sopra |
+| `AUTH_URL` | Solo con un dominio diverso da quello di Vercel | Su Vercel si ricava da sola |
+| `TELEGRAM_BOT_TOKEN` | Bot che avvisa il titolare | L'avviso resta nei log del server |
+| `TELEGRAM_CHAT_ID` | Chat a cui arriva l'avviso | Come sopra |
+
+  `TELEGRAM_API_BASE` esiste solo per le prove in locale: punta l'invio a un finto endpoint invece che a `api.telegram.org`. Anche `AGENDA_DATA_DIR` serve solo alle prove: sposta il database locale in un'altra cartella, per provare l'app senza toccare l'agenda di tutti i giorni.
+- **Contenuti e prezzi non sono variabili d'ambiente:** restano costanti in `lib/salone.ts`.
 - `next.config.ts:6-8` imposta `turbopack.root` sulla cartella del progetto. Nella home dell'utente c'è un altro `package-lock.json` e senza questa riga Next avvisa a ogni avvio.
 - **Porta 3200.** La configurazione per gli strumenti agentici sta in **`C:\Users\foscolo\Parruchieria\.claude\launch.json`**, nella cartella madre: il pannello di anteprima la cerca lì, non in `my-app`. Lancia `npm --prefix my-app run dev -- -p 3200`. La 3200 evita conflitti con gli altri progetti sulla stessa macchina (Woody Pub usa la 3100).
 
@@ -253,14 +271,27 @@ my-app/
 │   ├── SectionLink.tsx     Link interno con scorrimento Lenis (usato da "Torna su")
 │   └── icons.tsx           ArrowRight, ArrowUpRight, InstagramGlyph (SVG a mano)
 ├── app/
-│   ├── admin/page.tsx      Agenda del giorno per la cassa (server, noindex)
+│   ├── admin/page.tsx      Agenda: sessione + lettura del giorno, poi passa al client (noindex)
+│   ├── admin/azioni.ts     Server Action: salva appuntamento/blocco, elimina (ognuna controlla la sessione)
+│   ├── admin/login/page.tsx   Accesso con password (Server Action)
+│   ├── api/auth/[...nextauth]/route.ts  Rotte di Auth.js
 │   └── api/bookings/route.ts  ★ GET slot liberi · POST nuova prenotazione
+├── auth.ts                 Provider Credentials (password unica), sessione JWT
+├── auth.config.ts          Parte di configurazione valida anche sul runtime Edge
+├── middleware.ts           Guardia davanti a /admin
+├── db/schema.ts            ★ Schema SQL (modulo usato dall'app e da db:init): appuntamenti + blocchi, vincolo anti-sovrapposizione
+├── scripts/db-init.mjs     npm run db:init — applica lo schema al Postgres di DATABASE_URL
+├── components/agenda/      Agenda.tsx, FoglioVoce.tsx (modulo e dettaglio), Calendario.tsx, FoglioInBasso.tsx (<dialog>)
+├── .env.example            Le sei variabili, commentate
 ├── lib/
 │   ├── prenotazioni/
 │   │   ├── tipi.ts         Interfacce condivise (ServiceOption, BookingSlot, Prenotazione…)
 │   │   ├── slot.ts         Algoritmo degli orari (funzioni pure)
 │   │   ├── validazione.ts  Controlli stile Zod sul payload
-│   │   ├── archivio.ts     Archivio in memoria + schema SQL per il passaggio a database
+│   │   ├── archivio.ts     Lettura/scrittura di appuntamenti e blocchi (solo SQL)
+│   │   ├── db.ts           Sceglie il motore: Postgres, PGlite su file, PGlite in memoria
+│   │   ├── agenda.ts       Regole pure dell'agenda: timeline, statistiche, giorni aperti
+│   │   ├── validazione-agenda.ts  Controlli sui moduli dell'agenda
 │   │   ├── avvisi.ts       Avviso al titolare (Telegram/Resend pronti da scommentare)
 │   │   └── telefono.ts     Normalizzazione del numero, condivisa client/server
 │   ├── salone.ts           ★ SORGENTE UNICA: dati salone, orari, listino, portfolio, menu
@@ -437,11 +468,11 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 | 6.6 | Portfolio | `Portfolio.tsx` | ⚠️ 8 segnaposto |
 | 6.7 | Listino con cascata | `PriceList.tsx`, `RevealOnScroll.tsx:65-82` | ⚠️ Prezzi indicativi |
 | 6.8 | Contatti / footer | `Footer.tsx` | ⚠️ P.IVA assente |
-| 6.9 | Prenotazione (bottoni + widget + API) | `BookButton.tsx`, `BookingWidget.tsx`, `app/api/bookings`, `lib/prenotazioni/` | 🟠 **Funziona, ma l'archivio è in memoria** |
+| 6.9 | Prenotazione (bottoni + widget + API) | `BookButton.tsx`, `BookingWidget.tsx`, `app/api/bookings`, `lib/prenotazioni/` | 🟠 Funziona; in produzione mancano database e variabili (§11) |
 | 6.10 | Scorrimento morbido e ancore | `SmoothScroll.tsx`, `SectionLink.tsx` | ✅ Completa |
 | 6.11 | SEO e dati strutturati | `app/layout.tsx:24-39`, `app/page.tsx:17-39` | ⚠️ Parziale |
 | 6.12 | Link "Vai al contenuto" | `app/page.tsx:48-53` | ⚠️ Classe inesistente |
-| 6.13 | Agenda del giorno | `app/admin/page.tsx` | 🟠 Senza autenticazione vera |
+| 6.13 | Agenda (navigazione, appuntamenti, blocchi) | `app/admin/`, `components/agenda/` | ✅ Completa in locale |
 
 **6.1 Barra fissa.**
 - **Trasparente** solo con la pagina ferma in cima alla hero (sentinella `data-cima`, `Hero.tsx:107`).
@@ -521,15 +552,41 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 - **Validazione** (`lib/prenotazioni/validazione.ts`): scritta a mano nello stile di Zod, restituisce o i dati puliti o un errore per campo. Il server **rigenera gli slot** e accetta solo un orario che lui stesso proporrebbe: un payload costruito a mano non entra nella pausa pranzo. Prezzo, durata e nome del servizio vengono dal listino, mai dal client.
 - **Freno agli abusi:** 5 POST ogni 10 minuti per indirizzo IP, in memoria. È un argine, non una difesa (§11).
 
-**Avviso al titolare** (`lib/prenotazioni/avvisi.ts`): oggi scrive nei log del server. Dentro il file ci sono, pronti da scommentare, il bot Telegram (`api.telegram.org/sendMessage`) e l'email con Resend, con le variabili d'ambiente da impostare. Un avviso che fallisce non fa fallire la prenotazione già salvata.
+**Avviso al titolare** (`lib/prenotazioni/avvisi.ts`): messaggio su **Telegram** con nome, telefono, servizio, orario e note. Tre scelte da conoscere:
+- parte **dopo** la risposta al cliente, con `after()` di `next/server` (`app/api/bookings/route.ts`): il 201 non aspetta Telegram (misurato: 284 ms di risposta);
+- `avvisaTitolare` **non lancia mai**: restituisce un esito e scrive nei log. Una prenotazione salvata non può fallire per colpa di un avviso;
+- timeout di 5 secondi (`AbortSignal.timeout`), niente `parse_mode`: un nome con caratteri speciali non deve rompere il messaggio.
+Senza `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` il messaggio finisce comunque nei log, così non si perde. L'alternativa con Resend è commentata in fondo al file.
 
-**Archivio** (`lib/prenotazioni/archivio.ts`): `Map` in memoria su `globalThis` (sopravvive al ricaricamento a caldo). Le funzioni sono già asincrone e l'API non sa com'è fatto dentro: per passare a Vercel Postgres o Supabase si cambia solo questo file. Nel commento in cima c'è lo schema SQL, con il vincolo di esclusione che impedisce due appuntamenti sovrapposti **a livello di database**, cioè l'unico punto in cui il controllo è davvero sicuro.
+**Archivio** (`lib/prenotazioni/archivio.ts`, `lib/prenotazioni/db.ts`). Una tabella sola, `prenotazioni`, con **appuntamenti e blocchi** (colonna `tipo`). Il motore lo sceglie `db.ts`:
 
-**6.13 Agenda del giorno** (`app/admin/page.tsx`).
-- Pagina server (`dynamic = "force-dynamic"`, `robots: noindex`) pensata per un tablet in cassa: una riga ogni 30 minuti, appuntamenti in nero con nome, servizio, telefono cliccabile e note, righe "— in corso" per la durata che prosegue, "Pausa" fra i due turni, "Libero" dove non c'è nulla.
-- In alto: numero di appuntamenti, percentuale di poltrona occupata, incasso previsto.
-- `?data=YYYY-MM-DD` per guardare un altro giorno; si aggiorna ricaricando.
-- **Protezione:** se esiste la variabile `ADMIN_TOKEN` serve `?chiave=…`; se non esiste, la pagina si apre a chiunque e lo dichiara con una fascia nera. **In produzione `ADMIN_TOKEN` è impostata** (Vercel → Settings → Environment Variables, valore nascosto): senza chiave si vede solo "Agenda riservata". In locale la variabile non c'è, quindi la pagina è aperta e lo dichiara. Resta un token nell'indirizzo, non un'autenticazione vera (§11).
+| Caso | Motore | Dati |
+|---|---|---|
+| `DATABASE_URL` presente | Postgres vero (postgres.js) | Persistenti: è la produzione |
+| Nessun URL, in locale | PGlite su file in `.data/agenda` (git la ignora) | Restano fra un riavvio e l'altro |
+| Nessun URL, su Vercel | PGlite in memoria | Si azzerano: l'agenda lo dice con una fascia nera |
+
+- Il resto del codice vede solo `query(testo, parametri)` con segnaposto `$1, $2…`: le query sono le stesse per i tre motori. La vecchia `Map` in memoria non esiste più.
+- Lo schema sta in `db/schema.ts`, un modulo senza import. L'app lo applica da sola a PGlite a ogni avvio (è rieseguibile); `npm run db:init` lo applica al Postgres di `DATABASE_URL` (serve Node 22.18+, che legge i `.ts` da solo). In fondo allo schema ci sono le migrazioni idempotenti dalla prima versione: colonne cliente e servizio facoltative, `tipo`, `modificata_il`. Verificato su un database creato con lo schema vecchio.
+- **Il controllo delle sovrapposizioni è nel database**, non nel codice: il vincolo di esclusione `exclude using gist (operatore_id with =, data with =, int4range(inizio, fine) with &&)` è l'unico punto in cui due richieste simultanee non passano entrambe. Vale anche per i blocchi: un blocco non può coprire un cliente, e il sito non propone orari bloccati (`occupatiDelGiorno` li include). La violazione (SQLSTATE `23P01`) diventa `ConflittoOrario`: 409 per il sito, messaggio "Si sovrappone a …" per l'agenda.
+- Il vincolo `prenotazioni_appuntamento_completo` impone nome del cliente e servizio agli appuntamenti; i blocchi non hanno cliente.
+- La giornata è una colonna `date` e i minuti sono interi: confronti semplici, nessun fuso orario dentro il database (§9.21).
+
+**6.13 Agenda** (`app/admin/page.tsx`, `app/admin/azioni.ts`, `components/agenda/`, `lib/prenotazioni/agenda.ts`).
+- **Divisione server/client.** La pagina server controlla la sessione, legge dal database le voci del giorno di `?data=YYYY-MM-DD` (default: oggi) e le passa ad `Agenda` (client). Il client non tiene copie dei dati: statistiche e timeline si calcolano dalle voci ricevute.
+- **Navigazione.** Frecce ai lati del giorno: saltano i giorni senza turni in `lib/salone.ts` (oggi domenica e lunedì) con `giornoApertoVicino`. Toccando il giorno si apre un calendario del mese (lunedì in testa, giorni chiusi barrati e disattivati, "Vai a oggi"). Cambiare giorno significa cambiare `?data=`: la pagina server rilegge quel giorno dal database. Il giorno in testata è ottimistico (`useOptimistic`): cambia subito, mentre la timeline resta velata, `inert` e con la rotella finché i dati nuovi non arrivano.
+- **Timeline** (`costruisciTimeline`): dentro ogni turno, le voci con la loro durata vera e i buchi spezzati sulla griglia della mezz'ora. Un servizio da 75 minuti è una scheda sola, alta quanto dura, e la riga libera dopo parte dall'orario giusto (es. "10:15 libero · 15 min"). Appuntamenti in nero, blocchi a tratteggio, pausa pranzo come separatore. Una voce fuori orario compare lo stesso: l'agenda non nasconde mai un cliente.
+- **Riga libera → foglio "Nuovo".** Interruttore Appuntamento / Pausa-blocco. Per l'appuntamento: inizio (ogni 15 minuti dentro i turni), durata, cliente, servizio (il listino propone durata e prezzo, modificabili; c'è "Altro, fuori listino"), prezzo, telefono facoltativo. Per il blocco: inizio, durata (compresa "fino alla chiusura del turno"), motivo facoltativo con scorciatoie. Un riepilogo sempre visibile mostra l'intervallo, quante mezz'ore copre e l'eventuale sovrapposizione; con una sovrapposizione il bottone è spento.
+- **Riga occupata → foglio "Dettaglio".** Servizio, prezzo, telefono cliccabile, nota del cliente, provenienza (sito e bottone, oppure agenda). Da qui **Modifica** (stesso modulo, precompilato: nota del cliente e origine restano) e **Disdici** / **Sblocca**, con conferma.
+- **Numeri del giorno** (`statistiche`): appuntamenti, poltrona % e previsto €, calcolati dalle voci del giorno letto. La poltrona è minuti di clienti ÷ (minuti di apertura − minuti bloccati): una pausa voluta non abbassa la percentuale. Sotto, le ore ancora libere.
+- **Scritture:** tre Server Action (`salvaAppuntamento`, `salvaBlocco`, `elimina`). Ognuna controlla la sessione per prima cosa (sono endpoint pubblici a tutti gli effetti), valida con `validazione-agenda.ts` e poi chiama `refresh()` di `next/cache`, che ridisegna la pagina nella stessa risposta. Regole diverse dal sito: prezzo e durata li decide Francesco, il telefono è facoltativo, si può scrivere nel passato; l'inizio deve cadere in un turno, la fine può sforare la chiusura.
+- **Rete lenta:** durante una scrittura il bottone gira ed è spento, il `fieldset` è disattivato e il foglio non si chiude, quindi un doppio tocco non crea due appuntamenti. Un errore di rete resta nel foglio ("non è stato salvato niente") invece di finire nella pagina d'errore.
+- **Tablet in cassa:** ogni 60 secondi, se la scheda è visibile e nessun foglio è aperto, `router.refresh()` rilegge il giorno. Le prenotazioni dal sito compaiono da sole.
+- **iPhone:** bersagli di almeno 44px (righe, frecce, bottoni da 48–56px), campi a 16px (niente zoom automatico di iOS), tastiera numerica per il prezzo e telefonica per il numero, margine per la barra home (`safe-area-inset-bottom`).
+- **Protezione: Auth.js** (`auth.ts`, `auth.config.ts`, `middleware.ts`). Niente più token nell'indirizzo: chi non ha la sessione finisce su `/admin/login`, dove serve la password di `ADMIN_PASSWORD`. La sessione è un cookie firmato con `AUTH_SECRET` e dura 12 ore; in fondo all'agenda c'è "Esci dall'agenda".
+- **Due controlli, non uno:** il middleware ferma la richiesta prima della pagina, e la pagina ricontrolla la sessione con `auth()`. Se un domani il matcher del middleware cambiasse, l'agenda resterebbe comunque chiusa.
+- **Password confrontata a tempo costante** (`timingSafeEqual`, `auth.ts`): un `===` esce al primo carattere diverso e, misurando i tempi, lascerebbe indovinare la password un pezzo alla volta.
+- Senza `ADMIN_PASSWORD`/`AUTH_SECRET` la pagina di accesso lo dice chiaramente invece di lasciare entrare.
 
 *I bottoni:*
 - Micro-interazioni (solo mouse). **Il bottone non si sposta**: il magnetismo del brief v2 è stato tolto su richiesta, e con lui `ATTRAZIONE`, `useSpring` e `useTransform`. Il contenitore è un `<a>` semplice; l'unica parte animata è il riempimento.
@@ -670,8 +727,27 @@ Rispetto alla misura del 17 settembre: +10 KB di HTML, +9 KB di CSS e +6 KB di J
 - `max-w-none` sulla `<svg>` è necessario: il preflight di Tailwind limita le svg al contenitore, e la versione compatta verrebbe schiacciata invece che ritagliata.
 - Non duplicare il logo con due `<svg>` e `hidden`: le maschere dentro un elemento `display: none` in alcuni browser non si disegnano, e l'id della prima istanza vince sulle altre.
 
+**9.21 Postgres: tre dettagli che mordono.**
+- **La colonna `date` non va letta come oggetto data.** postgres.js la convertirebbe in un `Date` a mezzanotte locale: riportato a ISO in UTC, per chi sta a est di Greenwich diventa **il giorno prima**. Le query chiedono `to_char(data, 'YYYY-MM-DD')` e il codice tratta la giornata come stringa (`lib/prenotazioni/archivio.ts`).
+- **`prepare: false`** nella connessione (`lib/prenotazioni/db.ts`): i connection pooler in modalità transazione (PgBouncer di Supabase, pooler di Neon) non reggono gli statement preparati e la seconda richiesta fallirebbe.
+- **Niente "prima leggo, poi scrivo"** per evitare le sovrapposizioni: due richieste simultanee leggerebbero entrambe "libero". L'inserimento va diretto e a dire di no è il vincolo di esclusione del database.
+
+**9.22 Auth.js su due runtime.**
+- La configurazione è divisa: `auth.config.ts` (pagine, sessione, callback) vale anche sul runtime **Edge** del middleware; `auth.ts` aggiunge il provider Credentials, che usa `node:crypto` e sull'Edge non girerebbe.
+- Il middleware deve esportare una **funzione riconoscibile staticamente**: `export const { auth: middleware } = NextAuth(...)` fa fallire la build con "must export a function". Serve `export default auth`.
+- `trustHost: true`: senza, Auth.js rifiuta le richieste da host che non riconosce (porte diverse in locale, anteprime di Vercel).
+
+**9.23 Agenda: sette cose da sapere prima di toccarla.**
+- **Un solo processo per cartella PGlite.** Il database locale è una cartella (`.data/agenda`) che va aperta da un solo processo alla volta: due server sulla stessa cartella (un `next dev` più un `next start`, o due `next dev`) la rovinano. Per un secondo server di prova serve `AGENDA_DATA_DIR` con un'altra cartella. L'istanza sta su `globalThis`, così il ricaricamento a caldo non ne apre una seconda.
+- **I fogli sono `<dialog>` nativi** aperti con `showModal()` (`FoglioInBasso.tsx`): trappola del focus, Esc e sfondo inerte li dà il browser. Esc passa da `onCancel` con `preventDefault`, perché lo stato è di React. Il blocco dello scorrimento sotto va fatto a mano, perché iOS non lo fa. L'entrata usa `@starting-style` (variante `starting:` di Tailwind): dove manca, il foglio appare senza animazione.
+- **Niente componenti definiti dentro il render.** La regola del React Compiler li segnala, perché si ricreerebbero a ogni render: `Freccia`, `FrecciaGiorno` e `Tendina` stanno fuori.
+- **`refresh()` e non `revalidatePath()`.** La pagina è `force-dynamic` e non c'è cache da invalidare: serve solo ridisegnare la rotta corrente con i dati nuovi, nella stessa risposta della Server Action.
+- **Il foglio segue la voce per id**, non per copia: dopo un `refresh` il dettaglio mostra i dati nuovi. Se la voce è sparita (disdetta da un altro dispositivo), il foglio si chiude da solo.
+- **Corpo del foglio con `flex: 1 1 auto`, mai `flex-1`** (`FoglioInBasso.tsx`). Il `<dialog>` ha solo un'altezza massima, non un'altezza definita: in una colonna flex così, Safari/WebKit legge la base 0% di `flex-1` come zero. Il corpo si riduce al suo padding e sull'iPhone il foglio resta "a metà": testata, 40px di campi, bottone. In Chrome non si vede. Riprodotto in Chrome forzando la base a 0px: foglio alto 207px su 740.
+- **Tastiera e sviluppo dal telefono.** La tastiera riduce solo il `visualViewport`: il foglio ne legge le misure e si appoggia sopra i tasti. Il campo attivo scorre in vista dopo il rendering, non dentro l'evento. Aprendo `next dev` dall'IP di rete (hotspot dell'iPhone, 172.20.10.x) Next 16 blocca le risorse di sviluppo e React non parte: `allowedDevOrigins` in `next.config.ts` elenca gli IP del computer, letti all'avvio.
+
 **9.20 Prenotazioni: le tre trappole del modulo.**
-- **Memoria, non database.** Archivio e freno agli abusi vivono nel processo: su Vercel ogni istanza ha i suoi. Due clienti su istanze diverse possono prenotare lo stesso orario e l'agenda ne mostra uno solo. È il primo pezzo da sostituire (§11).
+- **Il freno agli abusi vive ancora in memoria.** L'archivio è passato a Postgres, ma il conteggio dei 5 POST ogni 10 minuti sta nel processo: su Vercel ogni istanza ha il suo, quindi il limite vero è più alto. Per un limite serio serve un contatore condiviso (Vercel KV, Upstash).
 - **L'ora è quella di Roma, non quella del cliente.** Slot, "passato" e giorno corrente passano da `oraDiRoma()` (`lib/orari.ts`). Un cliente a Londra vede gli orari del salone, non i suoi. Il giorno della settimana di una data ISO si ricava a mezzogiorno UTC (`giornoDellaData`), che cade nello stesso giorno sia con l'ora solare sia con quella legale.
 - **Niente `setState` dentro un effetto.** La regola `react-hooks/set-state-in-effect` (React Compiler) blocca il pattern "effetto che carica e aggiorna": nel widget gli orari si chiedono dalle azioni (`caricaOrari` in `scegliServizio` e `scegliGiorno`), e l'unico effetto rimasto annulla la richiesta in corso allo smontaggio.
 
@@ -724,6 +800,17 @@ Rispetto alla misura del 17 settembre: +10 KB di HTML, +9 KB di CSS e +6 KB di J
 | **In produzione** `/admin` senza chiave → "Agenda riservata"; con chiave → agenda del giorno | ✅ |
 | **Riestrazione del 25/09:** 95 riferimenti `file:riga` del documento controllati uno per uno con uno script; 0 file mancanti, 18 numeri di riga corretti perché il codice si era spostato | ✅ |
 | **Riestrazione del 25/09:** `tsc`, `lint`, `build` ripetuti, misure di §8.1 rifatte, produzione raggiungibile (home e API 200) | ✅ |
+| **Schema SQL su un Postgres vero** (PGlite in processo): schema applicato e rieseguibile, sovrapposizione rifiutata con `23P01`, appuntamenti attaccati (10:50 dopo 10:00–10:50) accettati, stesso orario su altro operatore o altro giorno accettato, `fine <= inizio` e orari oltre la mezzanotte rifiutati dai check, indice `prenotazioni_giorno` usato dal piano di query | ✅ |
+| **API contro il database** (Postgres su porta TCP): `npm run db:init` applica lo schema, `POST` salva (201), il secondo `POST` sullo stesso orario viene rifiutato, `GET` mostra gli slot occupati, l'agenda legge le righe salvate, la data resta 2026-09-29 senza slittare di un giorno | ✅ |
+| **Accesso all'agenda:** `/admin` senza sessione → `/admin/login`; password sbagliata → "Password sbagliata."; password giusta → agenda; "Esci" → di nuovo login | ✅ |
+| **Avviso Telegram** verso un finto endpoint: messaggio completo (cliente, telefono, servizio, orario, note), risposta al cliente in 284 ms; con l'endpoint spento la prenotazione resta 201 e l'errore finisce nei log con tutto il messaggio | ✅ |
+| **Widget** dal sito con database e avvisi attivi: prenotazione completata fino alla schermata di conferma | ✅ |
+| **Agenda interattiva (26/09)**, build di produzione su server isolato, vista iPhone 375×812. Accesso. Nuovo appuntamento da riga libera: con un servizio da 75 min durata e prezzo si compilano, il riepilogo dice "occupa 3 mezz'ore", compaiono la scheda 09:00–10:15 e la riga "10:15 libero · 15 min". Blocco "Commissione". Conflitto con il blocco segnalato e bottone spento. Modifica della durata: 1 h 30 in conflitto → spento, 1 h → salvato. Sblocco con conferma. Statistiche aggiornate a ogni passo: 14% → 15% col blocco → 12% | ✅ |
+| **Stato di caricamento:** subito dopo il tocco il bottone dice "Salvataggio…" ed è spento; il foglio si chiude a salvataggio finito | ✅ |
+| **Navigazione:** da sabato 26 la freccia avanti porta a martedì 29 (domenica e lunedì saltati), quella indietro riporta a sabato. Nel calendario di settembre 2026 sono disattivati 6, 7, 13, 14, 20, 21, 27 e 28; in ottobre il 3 apre `?data=2026-10-03` | ✅ |
+| **Persistenza:** blocco e prenotazione dal sito ancora presenti dopo il riavvio del server (PGlite su file) | ✅ |
+| **Sito e blocchi:** con un blocco 10:00–11:00, `GET /api/bookings` segna 10:00 e 10:30 "occupato"; una prenotazione dal sito compare in agenda con nota e bottone d'origine | ✅ |
+| **Vincoli su PGlite:** sovrapposizione blocco/appuntamento → `23P01`; appuntamento senza cliente → `23514`. Migrazione da un database con lo schema vecchio: righe conservate, blocchi accettati | ✅ |
 | Contrasto dei testi della hero sopra la nuova foto (§9.17): 15 testi su 15 sopra soglia a 375, 390 e 1440px | ✅ |
 | Bottone su fondo chiaro: bianco con bordo nero | ✅ |
 | Cascata del listino: opacità scaglionate a metà animazione (0,70 / 0,55 / 0,36 / 0,10 / 0 / 0), 23 elementi su 23 visibili alla fine | ✅ |
@@ -757,11 +844,11 @@ Ordinati per urgenza.
 
 ### 🔴 Bloccanti per l'uso vero delle prenotazioni
 
-6. **Archivio in memoria** → `lib/prenotazioni/archivio.ts`. Le prenotazioni spariscono a ogni riavvio e non sono condivise fra le istanze serverless: con il sito già in produzione, un cliente che prenota oggi potrebbe non trovare l'appuntamento domani. Serve un database (lo schema SQL è nel file, con il vincolo anti-sovrapposizione).
-7. **Agenda `/admin` senza autenticazione vera.** In produzione `ADMIN_TOKEN` è impostata e senza chiave la pagina non mostra nulla, ma un token nell'indirizzo finisce nella cronologia del browser e nei log. Serve un accesso vero (Auth.js, Supabase Auth) prima di metterci nomi e numeri di clienti reali.
-8. **Nessun avviso attivo:** la prenotazione oggi arriva solo nei log del server (su Vercel: Deployments → Logs). Va collegato Telegram o l'email (`lib/prenotazioni/avvisi.ts`), altrimenti **un cliente vero può prenotare sul sito in produzione senza che nessuno lo sappia**. Finché non è collegato, questo è il rischio più concreto del modulo.
-9. **Nessuna verifica del numero** (SMS o richiamata) e nessuna disdetta: chiunque può occupare orari con un numero inventato. Il freno attuale è di 5 richieste ogni 10 minuti per IP, in memoria.
-10. **Durate dei servizi stimate** → `lib/salone.ts`. Da 20 a 75 minuti: decidono quanti orari restano liberi, vanno confermate da Francesco insieme ai prezzi.
+6. **Le variabili d'ambiente vanno impostate in produzione.** Il codice c'è, ma finché su Vercel mancano `DATABASE_URL`, `AUTH_SECRET`, `ADMIN_PASSWORD`, `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`, in produzione l'archivio resta in memoria (PGlite, si azzera), l'agenda non si apre e nessuno riceve gli avvisi. **Il database c'è (27/09):** Neon, progetto `falling-darkness-36477223`, branch `production`, regione AWS us-east-2, schema applicato con `npm run db:init` (0 prenotazioni, tutti i vincoli). Manca solo `DATABASE_URL` su Vercel.
+7. **Nessuna verifica del numero** (SMS o richiamata) e nessuna disdetta: chiunque può occupare orari con un numero inventato. Il freno attuale è di 5 richieste ogni 10 minuti per IP, e sta in memoria (§9.20).
+8. **Durate dei servizi stimate** → `lib/salone.ts`. Da 20 a 75 minuti: decidono quanti orari restano liberi, vanno confermate da Francesco insieme ai prezzi.
+9. **Niente pagina di disdetta o spostamento per il cliente:** oggi il cliente passa dal telefono, e Francesco disdice o sposta dall'agenda (§6.13). Il dato c'è (ogni prenotazione ha un id), manca il giro lato cliente.
+10. **Il database locale non va in produzione.** `.data/agenda` sta solo su questo computer e git lo ignora: gli appuntamenti inseriti in locale non finiscono online. Il database di produzione è quello di `DATABASE_URL`.
 
 ### 🟠 Da chiarire col committente
 
@@ -808,7 +895,11 @@ npm run start -- -p 3200      # prova della build di produzione
   curl -X POST http://localhost:3200/api/bookings -H "Content-Type: application/json" \
     -d '{"servizioId":"taglio-uomo","data":"2026-09-22","ora":"10:00","cliente":{"nome":"Mario Rossi","telefono":"3481234567"}}'
   ```
-- **Guardare l'agenda:** `/admin` (oggi) oppure `/admin?data=2026-09-22`.
+- **Guardare l'agenda:** `/admin` (oggi) oppure `/admin?data=2026-09-22`. Serve la password di `ADMIN_PASSWORD`.
+- **Database in locale:** niente da fare. Senza `DATABASE_URL` l'app crea da sola `.data/agenda` (PGlite) al primo accesso all'agenda o all'API. Per ripartire da zero: spegni il server e cancella `.data/`. **Mai due server contemporanei sulla stessa cartella** (§9.23).
+- **Preparare il database di produzione:** metti `DATABASE_URL` in `.env.local` (o su Vercel) e lancia `npm run db:init` (Node 22.18+). Lo schema è rieseguibile: applicarlo due volte non fa danni.
+- **Neon.** Collegamento con `neon link --project-id falling-darkness-36477223 --branch production -y`, che crea `.neon` (in `.gitignore`) e scrive `DATABASE_URL`, `DATABASE_URL_UNPOOLED` e `NEON_BRANCH` in `.env.local`. `neon.ts` è la configurazione del CLI, oggi vuota (`defineConfig({})`): `neon config plan` mostra cosa cambierebbe, `neon deploy --no-env-pull` applica senza riscrivere i file `.env`. L'app non importa niente da `@neon/*`: si collega con postgres.js e `DATABASE_URL`, e il parametro `channel_binding=require` degli URL di Neon è accettato (verificato). Attenzione: con `DATABASE_URL` in `.env.local` anche `npm run dev` scrive sul branch `production`. Per le prove conviene un branch di sviluppo.
+- **Collegare gli avvisi:** crea il bot con @BotFather, prendi il chat id da `https://api.telegram.org/bot<TOKEN>/getUpdates` e metti le due variabili. Senza, gli avvisi restano nei log.
 - **Aggiungere le foto:** §5.4.
 - **Collegare la prenotazione:** implementare `apriPrenotazione()` in `lib/prenotazione.ts`. Tutti i bottoni la chiamano già, con l'origine (`navbar`, `menu`, `hero`, `listino`, `footer`).
 - **Disattivare le animazioni** per un test: attivare "riduci movimento" nel sistema operativo. Il sito resta completo.

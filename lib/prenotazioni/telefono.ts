@@ -12,3 +12,9 @@ export function normalizzaTelefono(grezzo: string): string | null {
   if (!/^[03]/.test(senzaPrefisso)) return null;
   return `+39${senzaPrefisso}`;
 }
+
+/** "+393475551234" → "+39 347 555 1234": per leggerlo, non per salvarlo. */
+export function telefonoLeggibile(telefono: string): string {
+  const m = telefono.match(/^\+39(\d{3})(\d{3})(\d+)$/);
+  return m ? `+39 ${m[1]} ${m[2]} ${m[3]}` : telefono;
+}

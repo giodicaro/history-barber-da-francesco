@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# History Barber da Francesco
 
-## Getting Started
+Sito vetrina e sistema di prenotazione del barbiere di Via Ca' Rossa 47/A-B, Mestre (VE).
+Next.js 16 (App Router), React 19, Tailwind CSS 4.
 
-First, run the development server:
+- **Produzione:** https://history-barber-da-francesco.vercel.app
+- **Documentazione completa:** [`PRODUCTION_BIBLE.md`](./PRODUCTION_BIBLE.md) — architettura, scelte, trappole, debito noto. Da leggere prima di toccare il codice.
+
+## Avvio in locale
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # poi riempi i valori che ti servono
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Il sito parte anche senza nessuna variabile d'ambiente. Senza `DATABASE_URL` le
+prenotazioni finiscono in un database locale su file (`.data/agenda`, PGlite) che
+resta fra un riavvio e l'altro; senza `AUTH_SECRET` e `ADMIN_PASSWORD` l'agenda non
+è raggiungibile; senza Telegram nessuno riceve gli avvisi.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Variabili d'ambiente
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Tutte in `.env.local` (git le ignora) e, in produzione, su Vercel →
+Settings → Environment Variables. L'elenco commentato è in [`.env.example`](./.env.example).
 
-## Learn More
+| Variabile | Serve a | Se manca |
+|---|---|---|
+| `DATABASE_URL` | Database Postgres delle prenotazioni (Neon, Supabase, Vercel…). Vale anche `POSTGRES_URL` | In locale: Postgres su file in `.data/agenda` (PGlite). Su Vercel: in memoria, si azzera |
+| `AUTH_SECRET` | Firma dei cookie di sessione dell'agenda. Generala con `npx auth secret` | Nessuno può entrare in `/admin` |
+| `ADMIN_PASSWORD` | Password unica per entrare in `/admin` | Come sopra |
+| `AUTH_URL` | Solo se il sito gira su un dominio diverso da quello di Vercel | Su Vercel viene ricavata da sola |
+| `TELEGRAM_BOT_TOKEN` | Bot che avvisa il titolare a ogni prenotazione (`@BotFather` → `/newbot`) | L'avviso finisce solo nei log del server |
+| `TELEGRAM_CHAT_ID` | Chat a cui mandare l'avviso (`https://api.telegram.org/bot<TOKEN>/getUpdates`) | Come sopra |
 
-To learn more about Next.js, take a look at the following resources:
+## Database
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Lo schema sta in [`db/schema.ts`](./db/schema.ts): tabella `prenotazioni` con
+appuntamenti e blocchi (pause, assenze), più il vincolo di esclusione che impedisce
+due voci sovrapposte sullo stesso operatore. Il controllo è nel database, l'unico
+posto dove due richieste simultanee non passano entrambe.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**In locale non serve niente:** senza `DATABASE_URL` l'app crea da sola
+`.data/agenda` (Postgres su file, via PGlite) e ci applica lo schema. È lo stesso SQL
+della produzione. Per ripartire da zero: spegni il server e cancella `.data/`.
+Non avviare due server contemporaneamente sulla stessa cartella.
 
-## Deploy on Vercel
+**In produzione** serve un Postgres vero con l'estensione `btree_gist` (Neon,
+Supabase e Vercel ce l'hanno):
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run db:init    # applica lo schema al database di DATABASE_URL; è rieseguibile (Node 22.18+)
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Neon (configurato il 27/09/2026).** Il progetto è collegato a Neon, progetto `falling-darkness-36477223`, branch `production`, regione AWS us-east-2. `neon link` scrive `DATABASE_URL` (pooler), `DATABASE_URL_UNPOOLED` e `NEON_BRANCH` in `.env.local`; lo schema è già applicato. Con `DATABASE_URL` in `.env.local` anche lo sviluppo in locale scrive sul branch `production`. `neon.ts` è la configurazione del CLI (`neon config plan` / `neon deploy`): l'app non lo usa.
+
+## Comandi
+
+| Comando | Cosa fa |
+|---|---|
+| `npm run dev` | Sviluppo con Turbopack |
+| `npm run build` | Build di produzione |
+| `npm start` | Serve la build |
+| `npm run lint` | ESLint (config flat) |
+| `npm run db:init` | Applica `db/schema.ts` al Postgres di `DATABASE_URL` |
+
+## Mappa veloce
+
+| Dove | Cosa |
+|---|---|
+| `lib/salone.ts` | **Sorgente unica** dei contenuti: dati del salone, orari, listino, portfolio, menu |
+| `components/` | Sezioni del sito e widget di prenotazione (`BookingWidget.tsx`) |
+| `lib/prenotazioni/` | Tipi, algoritmo degli orari, validazione, archivio, avvisi |
+| `app/api/bookings/` | `GET` orari liberi · `POST` nuova prenotazione |
+| `app/admin/` | Agenda protetta da Auth.js: pagina server + Server Action (`azioni.ts`) |
+| `components/agenda/` | Agenda interattiva: navigazione fra i giorni, calendario, fogli per creare, modificare, disdire e bloccare |
+| `auth.ts`, `auth.config.ts`, `middleware.ts` | Accesso all'agenda |
+
+## Prima di prendere appuntamenti veri
+
+Vedi §11 della production bible: prezzi e durate da confermare, P.IVA, foto reali,
+e la verifica del numero di telefono del cliente.

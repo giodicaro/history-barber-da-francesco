@@ -32,6 +32,11 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# tranne l'esempio senza segreti, che serve a chi prende in mano il progetto
+!.env.example
+
+# database locale dell'agenda (PGlite): dati di prova, mai nel repo
+/.data/
 
 # vercel
 .vercel
@@ -39,3 +44,4 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.neon
