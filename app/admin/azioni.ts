@@ -14,6 +14,13 @@ import {
 import { etichettaVoce, primaSovrapposta } from "@/lib/prenotazioni/agenda";
 import type { DatiAppuntamento, DatiBlocco, EsitoAzione, NuovaVoce } from "@/lib/prenotazioni/tipi";
 import { analizzaAppuntamento, analizzaBlocco } from "@/lib/prenotazioni/validazione-agenda";
+import {
+  inviaATutti,
+  iscrizioneValida,
+  notificheConfigurate,
+  salvaIscrizione,
+  togliIscrizione,
+} from "@/lib/prenotazioni/notifiche";
 
 /* Server Action dell'agenda. Ognuna è un endpoint pubblico a tutti gli
    effetti (chiunque può chiamarla senza passare dall'interfaccia), quindi:
@@ -106,4 +113,40 @@ export async function elimina(id: string): Promise<EsitoAzione> {
   }
   refresh();
   return { ok: true };
+}
+
+/* ── Notifiche sul telefono ─────────────────────────────────────────────── */
+
+/** Registra questo dispositivo: riceverà una notifica a ogni prenotazione. */
+export async function attivaNotifiche(iscrizione: unknown, etichetta: string): Promise<EsitoAzione> {
+  if (!(await autorizzato())) return NON_AUTORIZZATO;
+  if (!notificheConfigurate()) return { ok: false, errore: "Notifiche non configurate sul server (chiavi VAPID)." };
+  if (!iscrizioneValida(iscrizione)) return { ok: false, errore: "Iscrizione del dispositivo non valida." };
+  await salvaIscrizione(iscrizione, etichetta.trim().slice(0, 60) || null);
+  return { ok: true };
+}
+
+export async function disattivaNotifiche(endpoint: string): Promise<EsitoAzione> {
+  if (!(await autorizzato())) return NON_AUTORIZZATO;
+  if (typeof endpoint !== "string" || endpoint.length > 1000) return { ok: false, errore: "Dispositivo non valido." };
+  await togliIscrizione(endpoint);
+  return { ok: true };
+}
+
+/** Manda una notifica di prova a tutti i dispositivi iscritti. */
+export async function notificaDiProva(): Promise<EsitoAzione & { inviate?: number }> {
+  if (!(await autorizzato())) return NON_AUTORIZZATO;
+  const { inviate, fallite } = await inviaATutti({
+    titolo: "Notifiche attive",
+    testo: "Da ora ogni prenotazione dal sito arriva qui.",
+    url: "/admin",
+    tag: "prova",
+  });
+  if (inviate === 0) {
+    return {
+      ok: false,
+      errore: fallite ? "Il servizio di notifiche ha rifiutato l'invio. Riattiva le notifiche." : "Nessun dispositivo iscritto.",
+    };
+  }
+  return { ok: true, inviate };
 }

@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { Agenda } from "@/components/agenda/Agenda";
+import { Notifiche } from "@/components/agenda/Notifiche";
 import { oraDiRoma } from "@/lib/orari";
 import { tipoArchivio, vociDelGiorno } from "@/lib/prenotazioni/archivio";
+import { chiavePubblica } from "@/lib/prenotazioni/notifiche";
 
 /* Agenda del salone, pensata per il telefono di Francesco e per un tablet
    appoggiato alla cassa.
@@ -42,6 +44,7 @@ export default async function PaginaAgenda(props: PageProps<"/admin">) {
     <main className="min-h-svh bg-paper pb-[env(safe-area-inset-bottom)] text-ink">
       <div className="shell max-w-3xl py-6 md:py-10">
         <Agenda data={data} oggi={adesso.data} adesso={adesso.minuti} voci={voci} archivio={tipoArchivio} />
+        <Notifiche chiave={chiavePubblica()} />
 
         <form
           action={async () => {

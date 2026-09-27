@@ -79,4 +79,17 @@ end $$;
 -- L'agenda e il calcolo degli slot leggono sempre "tutto un giorno, in
 -- ordine di orario".
 create index if not exists prenotazioni_giorno on prenotazioni (data, inizio);
+
+-- Telefoni (e computer) che ricevono una notifica a ogni prenotazione dal
+-- sito. Una riga per dispositivo: l'endpoint è l'indirizzo del servizio di
+-- notifiche del produttore (Apple, Google, Mozilla), le due chiavi servono a
+-- cifrare il messaggio per quel dispositivo e solo per lui.
+create table if not exists iscrizioni_push (
+  endpoint   text primary key,
+  p256dh     text not null,
+  auth       text not null,
+  -- "iPhone", "Chrome su Windows"…: per riconoscerle nell'agenda.
+  etichetta  text,
+  creata_il  timestamptz not null default now()
+);
 `;

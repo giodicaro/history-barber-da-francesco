@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { formatoOra, giornoDellaData, oraDiRoma } from "@/lib/orari";
 import { avvisaTitolare } from "@/lib/prenotazioni/avvisi";
+import { notificaPrenotazione } from "@/lib/prenotazioni/notifiche";
 import { ConflittoOrario, occupatiDelGiorno, salvaPrenotazione } from "@/lib/prenotazioni/archivio";
 import { generaSlot } from "@/lib/prenotazioni/slot";
 import type { RispostaSlot } from "@/lib/prenotazioni/tipi";
@@ -108,12 +109,12 @@ export async function POST(request: Request) {
     const prenotazione = await salvaPrenotazione(esito.dati);
     // L'avviso parte DOPO aver risposto al cliente: "after" tiene viva la
     // funzione quel tanto che basta, senza far aspettare chi ha prenotato.
-    // avvisaTitolare non lancia mai, ma la rete di sicurezza resta.
+    // Due canali in parallelo: Telegram e la notifica sul telefono di chi
+    // usa l'agenda. Nessuno dei due lancia, ma la rete di sicurezza resta.
     after(async () => {
-      try {
-        await avvisaTitolare(prenotazione);
-      } catch (e) {
-        console.error("[prenotazione] avviso al titolare non riuscito", e);
+      const esiti = await Promise.allSettled([avvisaTitolare(prenotazione), notificaPrenotazione(prenotazione)]);
+      for (const e of esiti) {
+        if (e.status === "rejected") console.error("[prenotazione] avviso al titolare non riuscito", e.reason);
       }
     });
     return json(

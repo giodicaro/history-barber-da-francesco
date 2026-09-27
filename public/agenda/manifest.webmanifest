@@ -1,0 +1,17 @@
+{
+  "name": "Agenda · History Barber",
+  "short_name": "Agenda HB",
+  "description": "Agenda del salone History Barber da Francesco",
+  "id": "/admin",
+  "start_url": "/admin",
+  "scope": "/admin",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#0a0a0a",
+  "lang": "it",
+  "icons": [
+    { "src": "/agenda/icona-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/agenda/icona-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
