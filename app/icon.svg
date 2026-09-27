@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512">
+<defs>
+  <path id="h" d="M0 0H40V12H38Q32 12 32 18V43H52V18Q52 12 46 12H44V0H84V12H78Q72 12 72 18V82Q72 88 78 88H84V100H44V88H46Q52 88 52 82V57H32V82Q32 88 38 88H40V100H0V88H6Q12 88 12 82V18Q12 12 6 12H0Z"/>
+  <path id="b" d="M0 0H46C70 0 80 10 80 25C80 35 74 43 64 46C78 49 86 59 86 72C86 89 74 100 50 100H0V88H6Q12 88 12 82V18Q12 12 6 12H0ZM32 12V41H44C55 41 59 35 59 26.5C59 18 55 12 44 12ZM32 54V88H48C59 88 64 81 64 71C64 61 59 54 48 54Z" fill-rule="evenodd" transform="translate(74 0)"/>
+  <mask id="ombra" maskUnits="userSpaceOnUse" x="-20" y="-20" width="220" height="150">
+    <rect x="-20" y="-20" width="220" height="150" fill="#fff"/>
+    <g fill="#000" stroke="#000" stroke-width="6" stroke-linejoin="round"><use xlink:href="#h"/><use xlink:href="#b"/></g>
+  </mask>
+  <mask id="sottoB" maskUnits="userSpaceOnUse" x="-20" y="-20" width="220" height="150">
+    <rect x="-20" y="-20" width="220" height="150" fill="#fff"/>
+    <use xlink:href="#b" fill="#000" stroke="#000" stroke-width="6" stroke-linejoin="round"/>
+  </mask>
+</defs>
+<rect width="512" height="512" rx="0" fill="#0a0a0a"/>
+<g transform="translate(49.61 111.66) scale(2.6980)" fill="#ffffff">
+  
+  <use xlink:href="#h" mask="url(#sottoB)"/>
+  <use xlink:href="#b"/>
+</g>
+</svg>
