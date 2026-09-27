@@ -26,7 +26,15 @@ export const salone = {
   // Obbligatoria sul sito di un'attività italiana: il footer la mostra solo
   // quando è compilata, per non esporre un segnaposto.
   partitaIva: "",
+  // Titolare del trattamento nell'informativa privacy (es. "Mario Rossi" o la
+  // ditta individuale): da farsi dare da Francesco insieme alla P.IVA.
+  titolare: "",
 } as const;
+
+/* Per quanti mesi dopo l'appuntamento restano nome e telefono del cliente.
+   Lo dice l'informativa (/privacy) e lo applica l'archivio, che cancella da
+   solo le voci più vecchie: cambiarlo qui cambia entrambi. */
+export const CONSERVAZIONE_MESI = 12;
 
 /* ── Orari ──────────────────────────────────────────────────────────────── */
 

@@ -860,7 +860,7 @@ Ordinati per urgenza.
 
 ### 🟠 Da chiarire col committente
 
-6. **Privacy e cookie.** Oggi il sito non usa cookie né raccoglie dati, ma un sistema di prenotazione li raccoglierà: servirà un'informativa. `[NON DEDUCIBILE DAL CODICE]`
+6. **Privacy e cookie.** Dal 27/09 c'è l'informativa `/privacy` (`app/privacy/page.tsx`), linkata dal footer e dal passo 3 del modulo di prenotazione. Nome e telefono restano al massimo `CONSERVAZIONE_MESI` (12, in `lib/salone.ts`): la cancellazione la fa `eliminaScadute()` (`lib/prenotazioni/archivio.ts`), lanciata con `after()` all'apertura dell'agenda, una volta al giorno per istanza. Nessun banner dei cookie, perché c'è solo il cookie tecnico della sessione dell'agenda. **Manca** `salone.titolare` (nome del titolare o della ditta), da compilare insieme alla P.IVA. Il testo va fatto rileggere a Francesco o al suo commercialista.
 7. **Font dei titoli.** Syne oppure Clash Display (da scaricare da Fontshare, licenza gratuita) → `app/layout.tsx:9-12`, `app/globals.css:14`.
 8. **Logo ridisegnato, non originale.** `components/Logo.tsx` è ricostruito a occhio da uno screenshot di 209×33px (§3.6). Serve il file vettoriale originale, o almeno un'immagine ad alta risoluzione, per confermare forme e proporzioni. La firma usa il serif di sistema e cambia leggermente fra Windows/Mac/iOS (Georgia) e Android (Noto Serif). Manca anche una favicon col logo (§11.18).
 9. **Link a Google Maps generico** (ricerca per nome). Con il Place ID della scheda Google porterebbe alla scheda esatta → `lib/salone.ts:22-23`.

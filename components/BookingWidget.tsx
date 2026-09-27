@@ -7,7 +7,7 @@ import { giornoDellaData, oraDiRoma, sommaGiorni } from "@/lib/orari";
 import { ascoltaPrenotazione, type OrigineCta } from "@/lib/prenotazione";
 import { normalizzaTelefono } from "@/lib/prenotazioni/telefono";
 import type { RispostaSlot, ServiceOption } from "@/lib/prenotazioni/tipi";
-import { GIORNI_PRENOTABILI, listino, operatori, orari, salone } from "@/lib/salone";
+import { CONSERVAZIONE_MESI, GIORNI_PRENOTABILI, listino, operatori, orari, salone } from "@/lib/salone";
 import { cn, formatoPrezzo } from "@/lib/utils";
 import { ArrowRight } from "./icons";
 
@@ -489,6 +489,13 @@ export function BookingWidget() {
                     aiuto={`${note.length}/280`}
                     multilinea
                   />
+                  <p className="text-xs leading-relaxed text-ink/70">
+                    Usiamo nome e telefono solo per questo appuntamento e li cancelliamo entro{" "}
+                    {CONSERVAZIONE_MESI} mesi.{" "}
+                    <a href="/privacy" target="_blank" rel="noopener" className="underline underline-offset-2">
+                      Informativa privacy
+                    </a>
+                  </p>
                 </div>
               )}
 

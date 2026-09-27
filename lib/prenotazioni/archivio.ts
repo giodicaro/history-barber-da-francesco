@@ -1,4 +1,5 @@
 import "server-only";
+import { CONSERVAZIONE_MESI } from "@/lib/salone";
 import { codiceErrore, db, tipoArchivio, VIOLAZIONE_ESCLUSIONE } from "./db";
 import type { Intervallo } from "./slot";
 import type { NuovaVoce, Prenotazione, RichiestaPrenotazione, VoceAgenda } from "./tipi";
@@ -181,6 +182,28 @@ export async function eliminaVoce(id: string): Promise<void> {
     [id],
   );
   if (righe.length === 0) throw new VoceNonTrovata();
+}
+
+// Giorno dell'ultima pulizia, per farla una volta al giorno per istanza e non
+// a ogni apertura dell'agenda.
+let ultimaPulizia: string | undefined;
+
+/** Cancella appuntamenti e blocchi più vecchi del periodo di conservazione
+    dichiarato nell'informativa privacy (/privacy). Non lancia mai: è una
+    pulizia di fondo, e se fallisce riprova alla prossima apertura. */
+export async function eliminaScadute(oggi: string): Promise<void> {
+  if (ultimaPulizia === oggi) return;
+  ultimaPulizia = oggi;
+  try {
+    const righe = await (await db()).query<{ id: string }>(
+      `delete from prenotazioni where data < $1::date - make_interval(months => $2) returning id`,
+      [oggi, CONSERVAZIONE_MESI],
+    );
+    if (righe.length > 0) console.info(`[agenda] cancellate ${righe.length} voci oltre il periodo di conservazione`);
+  } catch (e) {
+    ultimaPulizia = undefined;
+    console.error("[agenda] pulizia dei dati scaduti non riuscita", e);
+  }
 }
 
 /** Una voce sola, per rileggere lo stato prima di modificarla. */

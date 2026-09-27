@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { auth, signOut } from "@/auth";
 import { Agenda } from "@/components/agenda/Agenda";
 import { Notifiche } from "@/components/agenda/Notifiche";
 import { oraDiRoma } from "@/lib/orari";
-import { tipoArchivio, vociDelGiorno } from "@/lib/prenotazioni/archivio";
+import { eliminaScadute, tipoArchivio, vociDelGiorno } from "@/lib/prenotazioni/archivio";
 import { chiavePubblica } from "@/lib/prenotazioni/notifiche";
 
 /* Agenda del salone, pensata per il telefono di Francesco e per un tablet
@@ -39,6 +40,10 @@ export default async function PaginaAgenda(props: PageProps<"/admin">) {
       : adesso.data;
 
   const voci = await vociDelGiorno(data);
+
+  // Pulizia dei dati oltre il periodo di conservazione dell'informativa
+  // privacy, dopo aver mostrato la pagina.
+  after(() => eliminaScadute(adesso.data));
 
   return (
     <main className="min-h-svh bg-paper pb-[env(safe-area-inset-bottom)] text-ink">

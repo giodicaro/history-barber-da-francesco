@@ -103,6 +103,9 @@ export function Footer() {
             {salone.partitaIva && ` · P.IVA ${salone.partitaIva}`}
           </p>
           <p>Rivenditore autorizzato Depot</p>
+          <a href="/privacy" className="inline-flex min-h-11 items-center hover:text-paper">
+            Privacy
+          </a>
           <SectionLink id="top" className="inline-flex min-h-11 items-center hover:text-paper">
             Torna su ↑
           </SectionLink>
