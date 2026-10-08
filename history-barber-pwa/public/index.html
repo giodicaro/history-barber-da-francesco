@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>History Barber da Francesco · Barbiere a Mestre · Prenota online</title>
+  <meta name="description" content="History Barber da Francesco, barbiere in Via Ca' Rossa a Mestre. Taglio, skin fade e barba solo su appuntamento: prenota online in pochi tocchi e ricevi il promemoria.">
+  <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f3eee5" media="(prefers-color-scheme: light)">
+  <meta name="color-scheme" content="dark light">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="HistoryBarber">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="it_IT">
+  <meta property="og:site_name" content="History Barber">
+  <meta property="og:title" content="History Barber da Francesco · Barbiere a Mestre">
+  <meta property="og:description" content="Taglio, skin fade e barba solo su appuntamento. Prenota online e ricevi il promemoria.">
+  <meta property="og:image" content="icons/icon-512.png">
+  <link rel="preload" href="fonts/bodoni-moda-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/figtree-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="js/outbox.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Vai al contenuto</a>
+
+  <header class="topbar">
+    <a class="brand" href="#home" aria-label="History Barber, torna all'inizio">
+      <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+        <circle cx="20" cy="20" r="18.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <g fill="currentColor">
+          <path d="M19 21 19.6 8.5h.8L21 21z" transform="rotate(-20 20 20)"/>
+          <path d="M19 21 19.6 8.5h.8L21 21z" transform="rotate(20 20 20)"/>
+        </g>
+        <g fill="none" stroke="currentColor" stroke-width="1.6">
+          <circle cx="14.6" cy="28.5" r="2.6"/>
+          <circle cx="25.4" cy="28.5" r="2.6"/>
+        </g>
+      </svg>
+      <span class="brand-name" data-shop="name">History Barber</span>
+    </a>
+    <nav class="topnav" aria-label="Sezioni">
+      <a href="#servizi">Servizi</a>
+      <a href="#team">Team</a>
+      <a href="#contatti">Contatti</a>
+      <a class="btn btn-gold btn-sm" href="#booking">Prenota</a>
+    </nav>
+    <a class="topbar-call" data-shop-href="phoneHref" href="tel:+393486976353" aria-label="Chiama il salone">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z" fill="currentColor"/></svg>
+    </a>
+  </header>
+
+  <div id="demo-banner" class="notice notice-demo" hidden>
+    <strong>Modalità demo.</strong> Il server non risponde: le prenotazioni restano solo su questo dispositivo e non arrivano al salone.
+  </div>
+  <div id="net-status" class="notice notice-offline" role="status" hidden></div>
+
+  <main id="main">
+    <section id="home" class="hero" aria-labelledby="hero-title">
+      <div class="hero-pole" aria-hidden="true"><span></span></div>
+      <div class="hero-inner">
+        <p class="eyebrow"><span data-shop="city">Mestre</span> · <span data-shop="street">Via Ca' Rossa 47/A-B</span></p>
+        <h1 id="hero-title" class="hero-title">
+          <span class="hero-line" data-shop="name">History Barber</span>
+          <em class="hero-signature" data-shop="signature">da Francesco</em>
+        </h1>
+        <p class="hero-lead" data-shop="tagline">Barbiere a Mestre, solo su appuntamento</p>
+        <p id="open-status" class="open-status" hidden></p>
+        <div class="hero-actions">
+          <a class="btn btn-gold" href="#booking">Prenota ora</a>
+          <a class="btn btn-ghost" data-shop-href="phoneHref" href="tel:+393486976353">Chiama <span data-shop="phone">348 697 6353</span></a>
+        </div>
+      </div>
+    </section>
+
+    <section id="servizi" class="section" aria-labelledby="servizi-title">
+      <div class="section-head">
+        <p class="eyebrow">Listino</p>
+        <h2 id="servizi-title">Servizi</h2>
+        <p id="price-note" class="small muted" hidden>Prezzi e durate indicativi, in attesa di conferma dal salone.</p>
+      </div>
+      <div id="service-list" class="menu-board"></div>
+    </section>
+
+    <section id="team" class="section section-alt" aria-labelledby="team-title">
+      <div class="section-head">
+        <p class="eyebrow">In poltrona</p>
+        <h2 id="team-title">Team</h2>
+      </div>
+      <ul id="team-list" class="team-list" role="list"></ul>
+    </section>
+
+    <section id="booking" class="section booking" aria-labelledby="booking-title">
+      <div class="section-head">
+        <p class="eyebrow">Su appuntamento</p>
+        <h2 id="booking-title">Prenota</h2>
+      </div>
+
+      <div id="outbox-list" class="outbox" hidden></div>
+
+      <div id="repeat-card" class="card repeat-card" hidden>
+        <p class="repeat-title">Ripeti l'ultimo taglio</p>
+        <p id="repeat-detail" class="muted small"></p>
+        <button type="button" id="repeat-btn" class="btn btn-gold btn-sm">Ripeti in 1 tap</button>
+      </div>
+
+      <form id="booking-form" class="stepper" novalidate>
+        <div class="progress" aria-hidden="true"><span id="progress-bar"></span></div>
+        <p id="step-status" class="step-status" aria-live="polite"></p>
+
+        <fieldset class="step" data-step="1">
+          <legend class="step-title">Con chi?</legend>
+          <div id="barber-options" class="choice-grid"></div>
+        </fieldset>
+
+        <fieldset class="step" data-step="2" hidden>
+          <legend class="step-title">Quale servizio?</legend>
+          <div id="service-options" class="choice-list"></div>
+        </fieldset>
+
+        <fieldset class="step" data-step="3" hidden>
+          <legend class="step-title">Quando?</legend>
+          <p id="slot-message" class="field-hint" role="status"></p>
+          <div id="date-options" class="date-strip" role="radiogroup" aria-label="Giorno"></div>
+          <div id="slot-options" class="slot-grid" role="radiogroup" aria-label="Orario"></div>
+        </fieldset>
+
+        <fieldset class="step" data-step="4" hidden>
+          <legend class="step-title">I tuoi dati</legend>
+          <div class="field">
+            <label for="f-name">Nome e cognome</label>
+            <input id="f-name" name="name" autocomplete="name" maxlength="60" required aria-describedby="e-name">
+            <p id="e-name" class="field-error"></p>
+          </div>
+          <div class="field">
+            <label for="f-phone">Telefono</label>
+            <input id="f-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" required aria-describedby="h-phone e-phone">
+            <p id="h-phone" class="field-hint">Ti chiamiamo solo se c'è un imprevisto.</p>
+            <p id="e-phone" class="field-error"></p>
+          </div>
+          <div class="field">
+            <label for="f-email">Email</label>
+            <input id="f-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" required aria-describedby="e-email">
+            <p id="e-email" class="field-error"></p>
+          </div>
+          <div class="field">
+            <label for="f-notes">Note <span class="muted">(facoltative)</span></label>
+            <textarea id="f-notes" name="notes" rows="2" maxlength="300"></textarea>
+          </div>
+          <div class="field field-check">
+            <input id="f-privacy" name="privacy" type="checkbox" required aria-describedby="e-privacy">
+            <label for="f-privacy">Ho letto l'<a href="privacy.html">informativa privacy</a> e acconsento al trattamento dei dati per gestire la prenotazione.</label>
+            <p id="e-privacy" class="field-error"></p>
+          </div>
+        </fieldset>
+
+        <fieldset class="step" data-step="5" hidden>
+          <legend class="step-title">Riepilogo</legend>
+          <dl id="summary" class="summary"></dl>
+          <p id="submit-message" class="field-hint" role="status"></p>
+        </fieldset>
+
+        <div class="step-nav">
+          <button type="button" id="step-back" class="btn btn-ghost">Indietro</button>
+          <button type="submit" id="step-next" class="btn btn-gold">Avanti</button>
+        </div>
+      </form>
+
+      <div id="booking-done" class="card done" hidden tabindex="-1"></div>
+    </section>
+
+    <section id="gestisci" class="section" aria-labelledby="gestisci-title" hidden tabindex="-1">
+      <div class="section-head">
+        <p class="eyebrow">La tua prenotazione</p>
+        <h2 id="gestisci-title">Gestisci prenotazione</h2>
+      </div>
+      <div id="manage-body" class="card" aria-live="polite"></div>
+    </section>
+
+    <section id="contatti" class="section section-alt" aria-labelledby="contatti-title">
+      <div class="section-head">
+        <p class="eyebrow">Dove siamo</p>
+        <h2 id="contatti-title">Contatti</h2>
+      </div>
+      <div class="contact-grid">
+        <div class="contact-card">
+          <h3>Indirizzo</h3>
+          <address id="address-block" class="address"></address>
+          <p><a id="maps-link" class="link-arrow" href="#" rel="noopener" target="_blank">Apri in Mappe</a></p>
+          <h3>Telefono</h3>
+          <p><a class="link-arrow" data-shop-href="phoneHref" href="tel:+393486976353"><span data-shop="phone">348 697 6353</span></a></p>
+          <h3>Instagram</h3>
+          <p><a id="ig-link" class="link-arrow" href="#" rel="noopener" target="_blank"></a></p>
+        </div>
+        <div class="contact-card">
+          <h3>Orari</h3>
+          <table class="hours">
+            <caption class="sr-only">Orari di apertura</caption>
+            <tbody id="hours-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="impostazioni" class="card settings">
+        <h3>Promemoria sul telefono</h3>
+        <div id="reminders-panel" aria-live="polite"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p><span data-shop="name">History Barber</span> <span data-shop="signature">da Francesco</span> · <span data-shop="street">Via Ca' Rossa 47/A-B</span>, <span data-shop="city">Mestre</span></p>
+    <p><a href="privacy.html">Privacy</a> · <a href="#impostazioni">Promemoria</a> · <button type="button" class="linklike" id="install-footer" hidden>Installa l'app</button></p>
+  </footer>
+
+  <nav class="bottomnav" aria-label="Navigazione rapida">
+    <a href="#home" data-nav="home"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="currentColor"/></svg><span>Home</span></a>
+    <a href="#servizi" data-nav="servizi"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 5h16v2H4zm0 6h16v2H4zm0 6h10v2H4z" fill="currentColor"/></svg><span>Servizi</span></a>
+    <a href="#booking" data-nav="booking" class="bottomnav-cta"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 2v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2zm-2 8h14v10H5zm6 2v3H8v2h3v3h2v-3h3v-2h-3v-3z" fill="currentColor"/></svg><span>Prenota</span></a>
+    <a href="#team" data-nav="team"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9m0 2c-4 0-8 2-8 5v2h16v-2c0-3-4-5-8-5" fill="currentColor"/></svg><span>Team</span></a>
+    <a href="#contatti" data-nav="contatti"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7m0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5" fill="currentColor"/></svg><span>Contatti</span></a>
+  </nav>
+
+  <!-- Android/Chromium install banner: non-modal, so it never traps focus over the page. -->
+  <div id="install-banner" class="install-banner" role="dialog" aria-labelledby="install-title" aria-describedby="install-text" hidden>
+    <img src="icons/icon-192.png" width="48" height="48" alt="">
+    <div class="install-copy">
+      <p id="install-title" class="install-title">Installa History Barber</p>
+      <p id="install-text" class="small">Aggiungi History Barber alla Home per prenotare in 1 tap e ricevere i promemoria</p>
+    </div>
+    <div class="install-actions">
+      <button type="button" id="install-accept" class="btn btn-gold btn-sm">Installa</button>
+      <button type="button" id="install-dismiss" class="btn btn-ghost btn-sm">Non ora</button>
+    </div>
+  </div>
+
+  <!-- iOS: there is no install event, so a modal guide explains the Share-sheet steps. -->
+  <dialog id="ios-guide" class="sheet" aria-labelledby="ios-title">
+    <h2 id="ios-title">Aggiungi alla schermata Home</h2>
+    <ol class="ios-steps">
+      <li>
+        <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect x="10" y="18" width="28" height="24" rx="4" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M24 30V6m-8 8 8-8 8 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Tocca <strong>Condividi</strong> nella barra di Safari.</span>
+      </li>
+      <li>
+        <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect x="8" y="8" width="32" height="32" rx="7" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M24 16v16m-8-8h16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        <span>Scorri e scegli <strong>Aggiungi alla schermata Home</strong>.</span>
+      </li>
+      <li>
+        <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><circle cx="24" cy="24" r="16" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="m16 24 6 6 11-12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Conferma con <strong>Aggiungi</strong>, in alto a destra.</span>
+      </li>
+    </ol>
+    <p class="small muted">Su iPhone e iPad (iOS 16.4 o successivo) i promemoria arrivano <strong>solo dopo</strong> aver aggiunto l'app alla schermata Home: aprila dall'icona e attiva i promemoria.</p>
+    <div class="sheet-actions">
+      <button type="button" class="btn btn-gold" data-close>Ho capito</button>
+    </div>
+  </dialog>
+
+  <dialog id="confirm-dialog" class="sheet" aria-labelledby="confirm-title" aria-describedby="confirm-text">
+    <h2 id="confirm-title">Confermi?</h2>
+    <p id="confirm-text"></p>
+    <div class="sheet-actions">
+      <button type="button" class="btn btn-ghost" value="cancel" data-close>Annulla</button>
+      <button type="button" class="btn btn-danger" id="confirm-ok">Conferma</button>
+    </div>
+  </dialog>
+
+  <div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
+
+  <noscript><p class="notice">Per prenotare serve JavaScript. Puoi sempre chiamare il salone al 348 697 6353.</p></noscript>
+</body>
+</html>
