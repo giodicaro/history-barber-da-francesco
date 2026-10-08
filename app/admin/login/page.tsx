@@ -19,19 +19,35 @@ export default async function Login(props: PageProps<"/admin/login">) {
   const sessione = await auth();
   if (sessione?.user) redirect("/admin");
 
-  const errore = (await props.searchParams).errore;
+
+  const parametri = await props.searchParams;
+  const errore = parametri.errore;
   const configurato = accessoConfigurato();
+  // Dopo l'accesso si torna dove si voleva andare (es. il giorno aperto da
+  // una notifica). Solo pagine dell'agenda: niente redirect verso fuori.
+  const richiesta = Array.isArray(parametri.callbackUrl) ? parametri.callbackUrl[0] : parametri.callbackUrl;
+  const percorso = richiesta ? (() => {
+    try {
+      const u = new URL(richiesta, "http://x");
+      return u.pathname.startsWith("/admin") && !u.pathname.startsWith("/admin/login") ? u.pathname + u.search : null;
+    } catch {
+      return null;
+    }
+  })() : null;
+  const destinazione = percorso ?? "/admin";
 
   async function entra(dati: FormData) {
     "use server";
+    const verso = String(dati.get("verso") ?? "/admin");
+    const sicuro = verso.startsWith("/admin") && !verso.startsWith("//") ? verso : "/admin";
     try {
       await signIn("credentials", {
         password: String(dati.get("password") ?? ""),
-        redirectTo: "/admin",
+        redirectTo: sicuro,
       });
     } catch (e) {
       // signIn segnala il successo lanciando un redirect: va rilanciato.
-      if (e instanceof AuthError) redirect("/admin/login?errore=1");
+      if (e instanceof AuthError) redirect(`/admin/login?errore=1&callbackUrl=${encodeURIComponent(sicuro)}`);
       throw e;
     }
   }
@@ -44,6 +60,7 @@ export default async function Login(props: PageProps<"/admin/login">) {
 
         {configurato ? (
           <form action={entra} className="mt-10 max-w-sm">
+            <input type="hidden" name="verso" value={destinazione} />
             <label htmlFor="password" className="eyebrow text-smoke">
               Password del salone
             </label>
@@ -58,7 +75,7 @@ export default async function Login(props: PageProps<"/admin/login">) {
             />
             {errore && (
               <p role="alert" className="info mt-3 text-paper">
-                Password sbagliata.
+                Password sbagliata. Se è stata cambiata da poco, usa quella nuova.
               </p>
             )}
             <button

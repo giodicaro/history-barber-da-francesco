@@ -48,8 +48,9 @@ export default async function PaginaAgenda(props: PageProps<"/admin">) {
   return (
     <main className="min-h-svh bg-paper pb-[env(safe-area-inset-bottom)] text-ink">
       <div className="shell max-w-3xl py-6 md:py-10">
+        <Notifiche chiave={chiavePubblica()} posto="banner" />
         <Agenda data={data} oggi={adesso.data} adesso={adesso.minuti} voci={voci} archivio={tipoArchivio} />
-        <Notifiche chiave={chiavePubblica()} />
+        <Notifiche chiave={chiavePubblica()} posto="gestione" />
 
         <form
           action={async () => {

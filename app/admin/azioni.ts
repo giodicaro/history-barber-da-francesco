@@ -138,7 +138,7 @@ export async function notificaDiProva(): Promise<EsitoAzione & { inviate?: numbe
   if (!(await autorizzato())) return NON_AUTORIZZATO;
   const { inviate, fallite } = await inviaATutti({
     titolo: "Notifiche attive",
-    testo: "Da ora ogni prenotazione dal sito arriva qui.",
+    testo: "Da ora ogni prenotazione dal sito o dall'app arriva qui.",
     url: "/admin",
     tag: "prova",
   });

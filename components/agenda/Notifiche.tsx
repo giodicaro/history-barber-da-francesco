@@ -4,11 +4,16 @@ import { useEffect, useState, useTransition } from "react";
 import { attivaNotifiche, disattivaNotifiche, notificaDiProva } from "@/app/admin/azioni";
 import { Rotella } from "./FoglioInBasso";
 
-/* Riquadro "Notifiche" in fondo all'agenda: iscrive questo dispositivo alle
-   notifiche delle nuove prenotazioni (Web Push, vedi lib/prenotazioni/notifiche.ts).
+/* Notifiche delle prenotazioni sul telefono (Web Push, vedi
+   lib/prenotazioni/notifiche.ts). Il componente compare in due punti
+   dell'agenda (app/admin/page.tsx):
+   - posto="banner", in cima: finché le notifiche non sono attive su questo
+     dispositivo, un banner ben visibile con il bottone per attivarle;
+   - posto="gestione", in fondo: quando sono attive, una riga con "prova" e
+     "disattiva", che non ruba spazio alla giornata.
 
    Sull'iPhone Apple le permette solo all'agenda aggiunta alla schermata Home
-   (iOS 16.4+): in Safari normale il riquadro spiega come installarla. */
+   (iOS 16.4+): in Safari normale il banner spiega come installarla. */
 
 type Stato =
   | { tipo: "verifica" }
@@ -48,7 +53,7 @@ async function leggiStato(): Promise<Stato> {
   return iscrizione && Notification.permission === "granted" ? { tipo: "attive" } : { tipo: "spente" };
 }
 
-export function Notifiche({ chiave }: { chiave: string | null }) {
+export function Notifiche({ chiave, posto }: { chiave: string | null; posto: "banner" | "gestione" }) {
   const [stato, setStato] = useState<Stato>({ tipo: "verifica" });
   const [messaggio, setMessaggio] = useState("");
   const [inCorso, avvia] = useTransition();
@@ -56,14 +61,40 @@ export function Notifiche({ chiave }: { chiave: string | null }) {
   useEffect(() => {
     let vivo = true;
     leggiStato()
-      .then((s) => vivo && setStato(s))
+      .then(async (s) => {
+        if (!vivo) return;
+        setStato(s);
+        // Notifiche attive sul telefono: si ricorda al server l'iscrizione a
+        // ogni apertura, così torna a funzionare da sola se il server l'aveva
+        // persa (chiavi cambiate, database nuovo). Una volta sola: in fondo.
+        if (s.tipo === "attive" && posto === "gestione") {
+          const iscrizione = await (await navigator.serviceWorker.getRegistration(SCOPE))?.pushManager.getSubscription();
+          if (iscrizione) await attivaNotifiche(iscrizione.toJSON(), nomeDispositivo()).catch(() => {});
+        }
+      })
       .catch(() => vivo && setStato({ tipo: "non-supportato" }));
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [posto]);
 
-  if (!chiave || stato.tipo === "verifica") return null;
+  if (stato.tipo === "verifica") return null;
+
+  // Senza chiavi VAPID sul server il bottone non può funzionare: lo si dice
+  // chiaramente (lo vede solo chi è entrato nell'agenda).
+  if (!chiave) {
+    return posto === "banner" ? (
+      <p role="status" className="info mb-6 border border-ink/20 px-4 py-3 text-steel">
+        Notifiche sul telefono non disponibili: sul server mancano le chiavi VAPID (vedi .env.example).
+      </p>
+    ) : null;
+  }
+
+  // Ognuno dei due posti mostra solo la sua parte. Il banner resta visibile
+  // dopo l'attivazione finché c'è il messaggio di conferma.
+  if (posto === "banner" && (stato.tipo === "non-supportato" || (stato.tipo === "attive" && !messaggio))) return null;
+  // In fondo: quando sono attive, e dopo un "Disattiva" per poterle riattivare.
+  if (posto === "gestione" && stato.tipo !== "attive" && !messaggio) return null;
 
   const attiva = () => {
     setMessaggio("");
@@ -129,28 +160,56 @@ export function Notifiche({ chiave }: { chiave: string | null }) {
   const bottone =
     "eyebrow flex min-h-12 cursor-pointer items-center justify-center gap-3 border border-ink px-5 transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50";
 
+  if (posto === "banner") {
+    const bottoneBanner =
+      "eyebrow flex min-h-12 w-full cursor-pointer items-center justify-center gap-3 bg-paper px-5 text-ink transition-opacity duration-150 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto";
+    return (
+      <section aria-labelledby="titolo-banner-notifiche" className="mb-6 bg-ink px-5 py-5 text-paper">
+        <h2 id="titolo-banner-notifiche" className="eyebrow text-smoke">
+          Notifiche sul telefono
+        </h2>
+        {stato.tipo === "spente" && (
+          <>
+            <p className="mt-2 max-w-[52ch] text-base">
+              Ricevi un avviso su questo telefono a ogni prenotazione dal sito o dall&apos;app, e quando un cliente
+              sposta o disdice.
+            </p>
+            <button type="button" onClick={attiva} disabled={inCorso} className={`${bottoneBanner} mt-4`}>
+              {inCorso && <Rotella />}
+              {inCorso ? "Attivazione…" : "Attiva le notifiche"}
+            </button>
+          </>
+        )}
+        {stato.tipo === "installa-ios" && (
+          <div className="mt-2 max-w-[52ch] text-base">
+            <p>Sull&apos;iPhone le notifiche arrivano solo all&apos;agenda installata come app:</p>
+            <ol className="mt-3 list-decimal space-y-1 pl-5 text-smoke">
+              <li>in Safari tocca il pulsante Condividi (il quadrato con la freccia);</li>
+              <li>scegli &ldquo;Aggiungi alla schermata Home&rdquo;;</li>
+              <li>apri l&apos;agenda dalla nuova icona HB: qui comparirà il bottone per attivarle.</li>
+            </ol>
+          </div>
+        )}
+        {stato.tipo === "negato" && (
+          <p className="mt-2 max-w-[52ch] text-base">
+            Le notifiche sono bloccate per l&apos;agenda. Sull&apos;iPhone: Impostazioni → Notifiche → Agenda HB →
+            Consenti notifiche. Su Android: tieni premuta l&apos;icona → Info app → Notifiche. Poi riapri l&apos;agenda.
+          </p>
+        )}
+        {messaggio && (
+          <p role="status" className="info mt-3 text-smoke">
+            {messaggio}
+          </p>
+        )}
+      </section>
+    );
+  }
+
   return (
     <section aria-labelledby="titolo-notifiche" className="mt-10 border-t border-ink/15 pt-6">
       <h2 id="titolo-notifiche" className="eyebrow text-steel">
         Notifiche delle prenotazioni
       </h2>
-
-      {stato.tipo === "installa-ios" && (
-        <div className="mt-3 max-w-[52ch] text-base">
-          <p>Sull&apos;iPhone le notifiche arrivano solo all&apos;agenda installata come app:</p>
-          <ol className="mt-3 list-decimal space-y-1 pl-5 text-steel">
-            <li>in Safari tocca il pulsante Condividi (il quadrato con la freccia);</li>
-            <li>scegli &ldquo;Aggiungi alla schermata Home&rdquo;;</li>
-            <li>apri l&apos;agenda dalla nuova icona HB e torna qui.</li>
-          </ol>
-        </div>
-      )}
-
-      {stato.tipo === "non-supportato" && (
-        <p className="mt-3 max-w-[52ch] text-base text-steel">
-          Questo browser non riceve notifiche. Sull&apos;iPhone serve iOS 16.4 o successivo.
-        </p>
-      )}
 
       {stato.tipo === "negato" && (
         <p className="mt-3 max-w-[52ch] text-base text-steel">
