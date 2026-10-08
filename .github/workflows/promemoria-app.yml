@@ -1,13 +1,17 @@
 # Promemoria ai clienti dell'app (24 ore e 2 ore prima dell'appuntamento).
 # Il piano gratuito di Vercel permette cron solo una volta al giorno: questo
-# workflow chiama la rotta ogni 15 minuti. Senza i due segreti non fa nulla.
+# workflow chiama la rotta del sito ogni 15 minuti. Non serve configurare
+# niente: l'indirizzo del sito è qui sotto.
 #
-# Da configurare una volta (GitHub → Settings → Secrets and variables → Actions):
-#   CRON_SECRET  stesso valore della variabile CRON_SECRET su Vercel
-#   APP_URL      es. https://history-barber-da-francesco.vercel.app (senza / finale)
+# Facoltativo:
+#   - variabile APP_URL (Settings → Secrets and variables → Actions →
+#     Variables) se il sito cambia dominio;
+#   - segreto CRON_SECRET, con lo stesso valore della variabile CRON_SECRET
+#     su Vercel, per chiudere la rotta a chi non ha la chiave.
 #
-# Nota: GitHub esegue i workflow pianificati solo dal ramo principale e li
-# sospende dopo 60 giorni senza attività nel repository.
+# GitHub sospende i workflow pianificati di un repository pubblico dopo 60
+# giorni senza commit: il passo "Resta attivo" lo riattiva da sé ogni giorno,
+# con il token del workflow e senza azioni di terze parti.
 name: Promemoria app
 
 on:
@@ -15,22 +19,37 @@ on:
     - cron: "*/15 * * * *"
   workflow_dispatch:
 
-permissions: {}
+permissions:
+  actions: write
+
+concurrency:
+  group: promemoria-app
+  cancel-in-progress: false
 
 jobs:
   promemoria:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 3
     steps:
       - name: Invia i promemoria dovuti
         env:
+          APP_URL: ${{ vars.APP_URL || 'https://history-barber-da-francesco.vercel.app' }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          APP_URL: ${{ secrets.APP_URL }}
         run: |
-          if [ -z "$CRON_SECRET" ] || [ -z "$APP_URL" ]; then
-            echo "CRON_SECRET o APP_URL non configurati: nessun promemoria inviato."
-            exit 0
-          fi
-          curl --fail-with-body --silent --show-error --max-time 60 \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            "$APP_URL/app/api/cron/promemoria"
+          auth=()
+          if [ -n "$CRON_SECRET" ]; then auth=(-H "Authorization: Bearer $CRON_SECRET"); fi
+          # Due tentativi: una funzione serverless "fredda" può rispondere lenta.
+          for tentativo in 1 2; do
+            if curl --fail-with-body --silent --show-error --max-time 60 "${auth[@]}" "$APP_URL/app/api/cron/promemoria"; then
+              echo; exit 0
+            fi
+            sleep 20
+          done
+          exit 1
+
+      - name: Resta attivo (contro la sospensione dopo 60 giorni)
+        # Una volta al giorno basta.
+        if: github.event_name == 'schedule' && github.run_number % 96 == 0
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/promemoria-app.yml/enable"

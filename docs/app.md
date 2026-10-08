@@ -37,15 +37,14 @@ Orari, listino, durate, preavviso (60 min), finestra di prenotazione (oggi + 21 
 4. **Festività:** quelle nazionali sono calcolate in `lib/festivi.ts` (Capodanno, Epifania, Pasquetta, 25 aprile/San Marco, 1° maggio, 2 giugno, Ferragosto, Ognissanti, Immacolata, Natale, Santo Stefano). Con `CHIUSO_NEI_FESTIVI = true` il salone risulta chiuso nel sito, nell'app e nello stato «Aperto ora». È un'ipotesi prudente: nessuna fonte dice se il salone lavora nei festivi. Per ferie e chiusure straordinarie basta un blocco di un giorno intero nell'agenda.
 5. **Prezzi e durate:** restano indicativi finché Francesco non li conferma. Si correggono solo in `lib/salone.ts` e poi si mette `LISTINO_CONFERMATO = true`: sito e app smettono di scrivere «indicativi». La copia statica `public/app/data/shop.json` (per offline e demo) si rigenera da sola con `npm run dev` e `npm run build`, oppure a mano con `npm run app:dati`.
 6. **Informativa privacy unica:** `/privacy` del sito, con una sezione «App e promemoria».
-7. **Promemoria senza cron a pagamento:** il piano gratuito di Vercel permette cron solo una volta al giorno. La rotta `/app/api/cron/promemoria` (protetta da `CRON_SECRET`) è chiamata ogni 15 minuti da `.github/workflows/promemoria-app.yml`. In più i promemoria partono «di passaggio» quando qualcuno usa l'app. Ogni promemoria si segna prima di essere inviato (`promemoria_24h_il`, `promemoria_2h_il`): non partono doppioni.
+7. **Promemoria senza cron a pagamento e senza configurazione:** il piano gratuito di Vercel permette cron solo una volta al giorno. La rotta `/app/api/cron/promemoria` è chiamata ogni 15 minuti da `.github/workflows/promemoria-app.yml`, che conosce già l'indirizzo del sito. La rotta non ha bisogno di password: chiamarla può solo far partire promemoria già dovuti, e ognuno parte una volta sola, perché viene segnato nel database prima dell'invio (`promemoria_24h_il`, `promemoria_2h_il`). Un freno la limita a un'esecuzione al minuto per istanza. Chi vuole chiuderla imposta `CRON_SECRET` su Vercel e lo stesso valore nei segreti di GitHub. In più i promemoria partono «di passaggio» quando qualcuno usa l'app. GitHub sospende i workflow pianificati dopo 60 giorni senza commit: il workflow si riattiva da solo una volta al giorno tramite l'API di GitHub, e in ogni caso GitHub avvisa per email e si riattiva con un clic.
 8. **Schema del database:** le nuove colonne e tabelle (`richiesta_id`, `promemoria_*`, `iscrizioni_clienti`, `promemoria_iscrizioni`) stanno in `db/schema.ts`. Lo schema ora si applica da solo anche su Postgres alla prima connessione di ogni istanza, quindi non serve lanciare `npm run db:init` prima del deploy (resta valido).
 
 ## Da fare per metterla online
 
 1. Merge su `main`: Vercel la pubblica insieme al sito.
-2. Su Vercel ci sono già `DATABASE_URL`, `AUTH_SECRET` e le chiavi VAPID delle notifiche dell'agenda. Da aggiungere: `CRON_SECRET` (una stringa casuale).
-3. Su GitHub (Settings → Secrets and variables → Actions): `CRON_SECRET` con lo stesso valore e `APP_URL=https://history-barber-da-francesco.vercel.app`.
-4. Far confermare a Francesco prezzi e durate, e se lavora nei festivi.
+2. Nient'altro da configurare: database, `AUTH_SECRET` e chiavi VAPID sono quelli già in uso per l'agenda, e i promemoria partono dal workflow GitHub, che si attiva con il merge.
+3. Far confermare a Francesco prezzi e durate, e se lavora nei festivi.
 
 ## File
 
@@ -83,7 +82,7 @@ tests/app/                  slots.test.mjs (npm run test:app), e2e.mjs (npm run 
 | POST | `bookings/:id/cancel` · `bookings/:id/reschedule` | 403 dopo il limite delle 2 ore |
 | GET | `push/public-key` | 503 se le chiavi VAPID mancano |
 | POST | `push/subscribe` · `push/unsubscribe` | per collegare un appuntamento serve il suo token |
-| GET | `cron/promemoria` | `Authorization: Bearer <CRON_SECRET>` |
+| GET | `cron/promemoria` | libera; con `CRON_SECRET` impostato serve `Authorization: Bearer <CRON_SECRET>` |
 
 ## Verifiche fatte (8 ottobre 2026)
 
@@ -98,5 +97,5 @@ tests/app/                  slots.test.mjs (npm run test:app), e2e.mjs (npm run 
 ### Controllo manuale su telefoni veri
 
 - **Android/Chrome:** installare da `/app`; prenotare; spegnere la rete, prenotare («In attesa di invio»), riaccendere la rete («Prenotazione confermata»); «Sì, avvisami» → notifica di conferma; verificare in `/admin` che l'appuntamento c'è.
-- **iPhone (iOS 16.4+):** guida «Aggiungi alla schermata Home», aprire dall'icona, attivare i promemoria, prenotare per il giorno dopo e attendere il promemoria (serve il workflow GitHub attivo).
+- **iPhone (iOS 16.4+):** guida «Aggiungi alla schermata Home», aprire dall'icona, attivare i promemoria, prenotare per il giorno dopo e attendere il promemoria.
 - **Francesco:** dall'agenda, spostare un appuntamento preso dall'app e controllare che il link del cliente mostri il nuovo orario.

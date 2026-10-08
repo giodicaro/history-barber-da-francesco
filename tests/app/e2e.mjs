@@ -2,8 +2,8 @@
 // Servono il sito avviato e Playwright (installato a parte, non è una
 // dipendenza del progetto):
 //
-//   AGENDA_DATA_DIR=/tmp/agenda-prova ADMIN_PASSWORD=… CRON_SECRET=… npm run dev -- -p 3200
-//   NODE_PATH="$(npm root -g)" ADMIN_PASSWORD=… CRON_SECRET=… npm run e2e:app
+//   AGENDA_DATA_DIR=/tmp/agenda-prova ADMIN_PASSWORD=… APP_LIMITE_SCRITTURE=1000 npm run dev -- -p 3200
+//   NODE_PATH="$(npm root -g)" ADMIN_PASSWORD=… npm run e2e:app
 //
 // Variabili: BASE_URL (predefinito http://localhost:3200/app/), CHROMIUM_PATH,
 // E2E_DEBUG=1 per gli screenshot dei fallimenti. Usare un database di prova:
@@ -150,12 +150,15 @@ await check("Festivi: il sito considera chiuso l'8 dicembre (martedì)", async (
   assert.equal(site.liberi, 0);
 });
 
-await check("Promemoria: rotta del cron protetta da CRON_SECRET", async () => {
-  if (!process.env.CRON_SECRET) throw skip("CRON_SECRET non impostato per la prova");
-  assert.equal((await api("api/cron/promemoria")).status, 401);
-  const ok = await api("api/cron/promemoria", { headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` } });
+await check("Promemoria: la rotta del cron gira (e con CRON_SECRET vuole la chiave)", async () => {
+  const secret = process.env.CRON_SECRET;
+  if (secret) assert.equal((await api("api/cron/promemoria")).status, 401);
+  const ok = await api("api/cron/promemoria", { headers: secret ? { Authorization: `Bearer ${secret}` } : {} });
   assert.equal(ok.status, 200, JSON.stringify(ok.body));
   assert.equal(typeof ok.body.inviati, "number");
+  // Una seconda chiamata entro il minuto viene saltata: il freno funziona.
+  const again = await api("api/cron/promemoria", { headers: secret ? { Authorization: `Bearer ${secret}` } : {} });
+  assert.ok(again.body.saltato, JSON.stringify(again.body));
 });
 
 /* ── Browser ──────────────────────────────────────────────────────────── */
