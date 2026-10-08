@@ -17,6 +17,8 @@ name: Promemoria app
 on:
   schedule:
     - cron: "*/15 * * * *"
+    # Una volta al giorno: tiene attivo il workflow (vedi l'ultimo passo).
+    - cron: "17 4 * * *"
   workflow_dispatch:
 
 permissions:
@@ -48,8 +50,7 @@ jobs:
           exit 1
 
       - name: Resta attivo (contro la sospensione dopo 60 giorni)
-        # Una volta al giorno basta.
-        if: github.event_name == 'schedule' && github.run_number % 96 == 0
+        if: github.event.schedule == '17 4 * * *'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/promemoria-app.yml/enable"
