@@ -92,7 +92,7 @@ export default async function Login(props: PageProps<"/admin/login">) {
             </button>
           </form>
         ) : (
-          // Di solito ci pensa il middleware (503). Qui, se mai si arriva,
+          // Di solito ci pensa il proxy (503). Qui, se mai si arriva,
           // nessun dettaglio tecnico: quelli sono nei log del server.
           <p role="status" className="info mt-10 max-w-md text-smoke">
             {MESSAGGIO_NON_DISPONIBILE}

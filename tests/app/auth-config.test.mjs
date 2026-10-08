@@ -5,9 +5,17 @@ import { configAccesso, rispostaNonDisponibile } from "../../lib/auth-config.ts"
 
 const con = (vars, fn) => {
   const prima = { ADMIN_PASSWORD: process.env.ADMIN_PASSWORD, AUTH_SECRET: process.env.AUTH_SECRET };
-  for (const [k, v] of Object.entries(vars)) v === undefined ? delete process.env[k] : (process.env[k] = v);
-  try { return fn(); } finally {
-    for (const [k, v] of Object.entries(prima)) v === undefined ? delete process.env[k] : (process.env[k] = v);
+  const imposta = (valori) => {
+    for (const [k, v] of Object.entries(valori)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  };
+  imposta(vars);
+  try {
+    return fn();
+  } finally {
+    imposta(prima);
   }
 };
 const segreto = "a".repeat(64);
@@ -17,11 +25,11 @@ test("fail-closed: variabili mancanti o segreto corto → accesso negato", () =>
   assert.equal(con({ ADMIN_PASSWORD: "password-lunga-di-prova", AUTH_SECRET: undefined }, configAccesso).ok, false);
   const corto = con({ ADMIN_PASSWORD: "password-lunga-di-prova", AUTH_SECRET: "troppo-corto" }, configAccesso);
   assert.equal(corto.ok, false);
-  assert.match(corto.problemi.join(), /AUTH_SECRET troppo corto/);
+  assert.match(corto.problemi.join(), /AUTH_SECRET_TOO_SHORT/);
 });
 
-test("configurazione valida; spazi e a capo incollati vengono tolti", () => {
-  const c = con({ ADMIN_PASSWORD: "  password-lunga-di-prova\n", AUTH_SECRET: `${segreto}\n` }, configAccesso);
+test("configurazione valida; spazi, a capo e virgolette incollati vengono tolti", () => {
+  const c = con({ ADMIN_PASSWORD: "  password-lunga-di-prova\n", AUTH_SECRET: `"${segreto}"\n` }, configAccesso);
   assert.deepEqual(c, { ok: true, password: "password-lunga-di-prova", segreto });
 });
 

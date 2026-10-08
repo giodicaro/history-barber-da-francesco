@@ -17,7 +17,7 @@ import { chiavePubblica } from "@/lib/prenotazioni/notifiche";
    tramite le Server Action di ./azioni.ts.
 
    Accesso: sessione di Auth.js (auth.ts). Senza sessione si finisce alla
-   pagina di accesso, e il controllo è qui dentro oltre che nel middleware. */
+   pagina di accesso, e il controllo è qui dentro oltre che nel proxy (proxy.ts). */
 
 export const dynamic = "force-dynamic";
 

@@ -1,19 +1,17 @@
 import type { NextAuthConfig } from "next-auth";
 import { configAccesso } from "@/lib/auth-config";
 
-/* Configurazione condivisa fra il server e il middleware.
+/* Configurazione condivisa fra il server e il proxy (proxy.ts).
 
-   Perché è divisa in due file: il middleware gira sul runtime Edge, dove non
-   esistono le API di Node. Qui dentro c'è solo quello che vale ovunque
-   (pagine, durata, callback); il provider Credentials, che usa `node:crypto`
-   per confrontare la password, sta in auth.ts. */
+   Perché è divisa in due file: qui c'è solo quello che vale in qualsiasi
+   runtime (pagine, durata, callback); il provider Credentials, che usa
+   `node:crypto` per confrontare la password, sta in auth.ts. */
 
 /* La sessione è legata alla password: dentro il cookie c'è un'impronta di
    ADMIN_PASSWORD (SHA-256 insieme ad AUTH_SECRET, mai la password). Se la
    password cambia su Vercel, l'impronta non torna più e ogni telefono già
    entrato deve rifare l'accesso: cambiare password chiude davvero la porta.
-   Web Crypto e non node:crypto, perché questo file gira anche sul runtime
-   Edge del middleware. */
+   Web Crypto e non node:crypto: resta compatibile con qualsiasi runtime. */
 async function impronta(): Promise<string | null> {
   const config = configAccesso();
   if (!config.ok) return null;
@@ -27,7 +25,7 @@ export const authConfig = {
   // questo Auth.js rifiuterebbe le richieste non riconosciute.
   trustHost: true,
   // Il segreto validato (spazi tolti, lunghezza minima): Auth.js non legge
-  // AUTH_SECRET per conto suo. Se manca, middleware e rotte rispondono 503
+  // AUTH_SECRET per conto suo. Se manca, proxy e rotte rispondono 503
   // prima di arrivare qui.
   secret: (() => {
     const config = configAccesso();
@@ -49,7 +47,7 @@ export const authConfig = {
       // Sessione aperta con una password che non vale più: fuori.
       return token.pw === attuale ? token : null;
     },
-    // Usata dal middleware: decide chi può entrare in /admin.
+    // Usata dal proxy: decide chi può entrare in /admin.
     authorized: ({ auth, request }) => {
       const dentroAgenda = request.nextUrl.pathname.startsWith("/admin");
       const allaLogin = request.nextUrl.pathname === "/admin/login";
