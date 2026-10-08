@@ -2,6 +2,7 @@ import "server-only";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { after } from "next/server";
 import { costruisciDatiApp } from "@/lib/app-dati";
+import { configAccesso } from "@/lib/auth-config";
 import { festivitaDellAnno } from "@/lib/festivi";
 import { festivitaChiusa, formatoOra, giornoDellaData, minutiDaOra, oraDiRoma, sommaGiorni } from "@/lib/orari";
 import {
@@ -92,7 +93,8 @@ export function istanteRoma(data: string, minuti: number): number {
 // altrimenti AUTH_SECRET (già presente per l'agenda).
 let segretoDiRiserva: string | undefined;
 function segreto(): string {
-  const s = process.env.BOOKING_SECRET ?? process.env.AUTH_SECRET;
+  const config = configAccesso();
+  const s = process.env.BOOKING_SECRET?.trim() || (config.ok ? config.segreto : undefined);
   if (s) return s;
   if (!segretoDiRiserva) {
     segretoDiRiserva = randomBytes(32).toString("base64url");

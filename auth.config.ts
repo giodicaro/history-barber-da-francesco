@@ -1,4 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
+import { configAccesso } from "@/lib/auth-config";
 
 /* Configurazione condivisa fra il server e il middleware.
 
@@ -13,8 +14,10 @@ import type { NextAuthConfig } from "next-auth";
    entrato deve rifare l'accesso: cambiare password chiude davvero la porta.
    Web Crypto e non node:crypto, perché questo file gira anche sul runtime
    Edge del middleware. */
-async function impronta(): Promise<string> {
-  const testo = `${process.env.AUTH_SECRET ?? ""}:${process.env.ADMIN_PASSWORD ?? ""}`;
+async function impronta(): Promise<string | null> {
+  const config = configAccesso();
+  if (!config.ok) return null;
+  const testo = `${config.segreto}:${config.password}`;
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(testo));
   return Array.from(new Uint8Array(hash).slice(0, 16), (b) => b.toString(16).padStart(2, "0")).join("");
 }
@@ -23,6 +26,13 @@ export const authConfig = {
   // trustHost: il sito gira su Vercel e in locale su porte diverse; senza
   // questo Auth.js rifiuterebbe le richieste non riconosciute.
   trustHost: true,
+  // Il segreto validato (spazi tolti, lunghezza minima): Auth.js non legge
+  // AUTH_SECRET per conto suo. Se manca, middleware e rotte rispondono 503
+  // prima di arrivare qui.
+  secret: (() => {
+    const config = configAccesso();
+    return config.ok ? config.segreto : undefined;
+  })(),
   pages: { signIn: "/admin/login" },
   // Sessione via cookie firmato (JWT): non serve una tabella di sessioni,
   // e l'utente è uno solo.
@@ -33,6 +43,8 @@ export const authConfig = {
   callbacks: {
     jwt: async ({ token, user }) => {
       const attuale = await impronta();
+      // Configurazione mancante: nessuna sessione vale (fail-closed).
+      if (!attuale) return null;
       if (user) return { ...token, pw: attuale };
       // Sessione aperta con una password che non vale più: fuori.
       return token.pw === attuale ? token : null;

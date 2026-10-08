@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import { accessoConfigurato, auth, signIn } from "@/auth";
+import { MESSAGGIO_NON_DISPONIBILE } from "@/lib/auth-config";
 import { salone } from "@/lib/salone";
 
 /* Accesso all'agenda. Una password sola, quella del salone.
@@ -47,7 +48,10 @@ export default async function Login(props: PageProps<"/admin/login">) {
       });
     } catch (e) {
       // signIn segnala il successo lanciando un redirect: va rilanciato.
-      if (e instanceof AuthError) redirect(`/admin/login?errore=1&callbackUrl=${encodeURIComponent(sicuro)}`);
+      if (e instanceof AuthError) {
+        const troppi = "code" in e && e.code === "troppi";
+        redirect(`/admin/login?errore=${troppi ? "troppi" : "1"}&callbackUrl=${encodeURIComponent(sicuro)}`);
+      }
       throw e;
     }
   }
@@ -75,7 +79,9 @@ export default async function Login(props: PageProps<"/admin/login">) {
             />
             {errore && (
               <p role="alert" className="info mt-3 text-paper">
-                Password sbagliata. Se è stata cambiata da poco, usa quella nuova.
+                {errore === "troppi"
+                  ? "Troppi tentativi sbagliati. Riprova fra 15 minuti."
+                  : "Password sbagliata. Se è stata cambiata da poco, usa quella nuova."}
               </p>
             )}
             <button
@@ -86,9 +92,10 @@ export default async function Login(props: PageProps<"/admin/login">) {
             </button>
           </form>
         ) : (
-          <p className="info mt-10 max-w-md text-smoke">
-            Accesso non configurato: mancano le variabili d&apos;ambiente <b>ADMIN_PASSWORD</b> e{" "}
-            <b>AUTH_SECRET</b>. Vedi <b>.env.example</b>.
+          // Di solito ci pensa il middleware (503). Qui, se mai si arriva,
+          // nessun dettaglio tecnico: quelli sono nei log del server.
+          <p role="status" className="info mt-10 max-w-md text-smoke">
+            {MESSAGGIO_NON_DISPONIBILE}
           </p>
         )}
       </div>
