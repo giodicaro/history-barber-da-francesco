@@ -84,33 +84,35 @@ export interface Messaggio {
   tag?: string;
 }
 
-/** Manda a tutti i dispositivi iscritti. Restituisce quanti l'hanno ricevuta. */
-export async function inviaATutti(m: Messaggio): Promise<{ inviate: number; fallite: number }> {
-  if (!notificheConfigurate()) {
-    console.info("[notifiche] non configurate (mancano le chiavi VAPID):", m.titolo);
-    return { inviate: 0, fallite: 0 };
-  }
+export type RigaIscrizione = { endpoint: string; p256dh: string; auth: string };
+
+/** Manda `corpo` (JSON) a un elenco di iscrizioni. Le iscrizioni scadute
+    (404/410) vengono passate a `scaduta` per cancellarle. Non lancia. */
+export async function inviaAIscrizioni(
+  iscritti: RigaIscrizione[],
+  corpo: unknown,
+  scaduta: (endpoint: string) => Promise<unknown>,
+  ttl = 60 * 60 * 24,
+): Promise<{ inviate: number; fallite: number }> {
+  if (!notificheConfigurate()) return { inviate: 0, fallite: iscritti.length };
   prepara();
-  const iscritti = await (await db()).query<{ endpoint: string; p256dh: string; auth: string }>(
-    `select endpoint, p256dh, auth from iscrizioni_push`,
-  );
-  const corpo = JSON.stringify(m);
+  const testo = JSON.stringify(corpo);
   const esiti = await Promise.all(
     iscritti.map(async (r) => {
       try {
         await webpush.sendNotification(
           { endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } },
-          corpo,
-          // Se il telefono è spento la notifica aspetta al massimo un giorno;
+          testo,
+          // Se il telefono è spento la notifica aspetta al massimo `ttl`;
           // "high" la fa arrivare subito anche con il risparmio energetico.
-          { TTL: 60 * 60 * 24, urgency: "high", timeout: 5000 },
+          { TTL: ttl, urgency: "high", timeout: 5000 },
         );
         return true;
       } catch (e) {
         const stato = (e as { statusCode?: number }).statusCode;
-        // 404/410: il telefono ha tolto il permesso o disinstallato l'agenda.
+        // 404/410: il telefono ha tolto il permesso o disinstallato l'app.
         // L'iscrizione non vale più: si cancella, così non si riprova ogni volta.
-        if (stato === 404 || stato === 410) await togliIscrizione(r.endpoint).catch(() => {});
+        if (stato === 404 || stato === 410) await scaduta(r.endpoint).catch(() => {});
         else console.error("[notifiche] invio non riuscito", stato ?? e);
         return false;
       }
@@ -118,6 +120,16 @@ export async function inviaATutti(m: Messaggio): Promise<{ inviate: number; fall
   );
   const inviate = esiti.filter(Boolean).length;
   return { inviate, fallite: esiti.length - inviate };
+}
+
+/** Manda a tutti i dispositivi dell'agenda. Restituisce quanti l'hanno ricevuta. */
+export async function inviaATutti(m: Messaggio): Promise<{ inviate: number; fallite: number }> {
+  if (!notificheConfigurate()) {
+    console.info("[notifiche] non configurate (mancano le chiavi VAPID):", m.titolo);
+    return { inviate: 0, fallite: 0 };
+  }
+  const iscritti = await (await db()).query<RigaIscrizione>(`select endpoint, p256dh, auth from iscrizioni_push`);
+  return inviaAIscrizioni(iscritti, m, togliIscrizione);
 }
 
 const giornoBreve = new Intl.DateTimeFormat("it-IT", {

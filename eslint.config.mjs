@@ -12,8 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Separate vanilla-JS app with its own tooling (see history-barber-pwa/README.md).
-    "history-barber-pwa/**",
+    // App clienti in JavaScript semplice, senza build (vedi docs/app.md).
+    "public/app/**",
   ]),
 ]);
 

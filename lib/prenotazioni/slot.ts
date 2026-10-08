@@ -1,5 +1,5 @@
-import { formatoOra } from "@/lib/orari";
-import { orari, PREAVVISO_MINUTI, type Turno } from "@/lib/salone";
+import { formatoOra, turniDellaGiornata } from "@/lib/orari";
+import { orari, PASSO_SLOT_MINUTI, PREAVVISO_MINUTI, type Turno } from "@/lib/salone";
 import type { BookingSlot } from "./tipi";
 
 /* Generazione degli orari prenotabili. Funzioni pure: niente rete, niente
@@ -7,7 +7,7 @@ import type { BookingSlot } from "./tipi";
    così l'algoritmo è verificabile e non dipende dal fuso di chi chiama. */
 
 /** Ogni quanti minuti si propone un orario. */
-export const PASSO = 30;
+export const PASSO = PASSO_SLOT_MINUTI;
 
 export interface Intervallo {
   inizio: number;
@@ -52,7 +52,8 @@ export function generaSlot({
   adesso,
   preavviso = PREAVVISO_MINUTI,
 }: OpzioniSlot): BookingSlot[] {
-  const turni = turniDelGiorno(giorno);
+  // Nei festivi (se il salone chiude) la giornata non ha turni.
+  const turni = turniDellaGiornata(data).length ? turniDelGiorno(giorno) : [];
   const oggi = data === adesso.data;
   const limite = oggi ? adesso.minuti + preavviso : -Infinity;
   const slot: BookingSlot[] = [];

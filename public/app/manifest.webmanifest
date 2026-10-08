@@ -1,0 +1,29 @@
+{
+  "id": "./index.html",
+  "name": "History Barber - Appuntamenti & Salone",
+  "short_name": "HistoryBarber",
+  "description": "Prenota il tuo taglio da History Barber a Mestre in pochi tocchi, anche offline, e ricevi i promemoria dell'appuntamento.",
+  "lang": "it",
+  "dir": "ltr",
+  "start_url": "./index.html?utm_source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#121212",
+  "background_color": "#0f0f0f",
+  "categories": ["lifestyle", "business", "beauty"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Prenota ora",
+      "short_name": "Prenota",
+      "description": "Apri direttamente la prenotazione",
+      "url": "./index.html?utm_source=pwa-shortcut#booking",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

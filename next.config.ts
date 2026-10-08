@@ -23,6 +23,41 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@electric-sql/pglite"],
   // Vale solo in sviluppo: la build di produzione non ha risorse di sviluppo.
   allowedDevOrigins: indirizziDiRete,
+
+  /* App dei clienti (PWA): file statici in public/app, API in app/api/app.
+     L'app usa indirizzi relativi alla sua cartella ("api/days", "css/…"),
+     così funziona in qualsiasi sottocartella: qui /app/api/* porta alle
+     rotte vere e /app porta alla pagina dell'app. */
+  async redirects() {
+    return [{ source: "/app", destination: "/app/index.html", permanent: false }];
+  },
+  async rewrites() {
+    return [{ source: "/app/api/:path*", destination: "/api/app/:path*" }];
+  },
+  async headers() {
+    return [
+      {
+        source: "/app/:path*",
+        headers: [
+          // Nessuno script o stile inline nell'app: la politica può essere stretta.
+          {
+            key: "Content-Security-Policy",
+            value:
+              "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+          },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
+      // Il browser deve vedere sempre l'ultimo service worker per accorgersi
+      // degli aggiornamenti.
+      { source: "/app/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }] },
+      {
+        source: "/app/manifest.webmanifest",
+        headers: [{ key: "Content-Type", value: "application/manifest+json" }],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -20,6 +20,9 @@ import { SCHEMA } from "@/db/schema";
    Vercel, che ha spostato i database gestiti su Neon. postgres.js parla con
    qualsiasi Postgres, quindi il progetto non è legato a un fornitore.
 
+   In tutti e tre i casi lo schema (db/schema.ts) si applica da solo
+   all'apertura: è scritto per essere rieseguito senza danni.
+
    Il resto del codice vede solo `query(testo, parametri)` con segnaposto
    $1, $2…: non sa quale dei tre motori c'è sotto. */
 
@@ -61,6 +64,12 @@ async function apri(): Promise<Database> {
     // connection pooler in modalità transazione (PgBouncer di Supabase, il
     // pooler di Neon), che non reggono gli statement preparati.
     const sql = postgres(URL_DB, { max: 1, idle_timeout: 20, connect_timeout: 10, prepare: false });
+    // Lo schema è rieseguibile: applicarlo alla prima connessione di ogni
+    // istanza tiene il database allineato quando il codice aggiunge colonne o
+    // tabelle (es. quelle dell'app), senza dipendere da un `npm run db:init`
+    // lanciato a mano prima del deploy. Se fallisce (due istanze che migrano
+    // insieme, permessi) si va avanti: il resto dello schema c'è già.
+    await sql.unsafe(SCHEMA).catch((e) => console.error("[db] aggiornamento schema non riuscito", e));
     return {
       query: async <T,>(testo: string, parametri: unknown[] = []) =>
         (await sql.unsafe(testo, parametri as postgres.ParameterOrJSON<never>[])) as unknown as T[],

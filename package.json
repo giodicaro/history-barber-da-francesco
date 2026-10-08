@@ -3,11 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "npm run -s app:dati",
     "dev": "next dev",
+    "prebuild": "npm run -s app:dati",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:init": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/db-init.mjs"
+    "db:init": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/db-init.mjs",
+    "app:dati": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/genera-dati-app.mjs",
+    "app:icone": "node scripts/genera-icone-app.mjs",
+    "test:app": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-reporter=spec \"tests/app/*.test.mjs\"",
+    "e2e:app": "node tests/app/e2e.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",

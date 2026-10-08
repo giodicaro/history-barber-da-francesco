@@ -1,5 +1,5 @@
 import { after } from "next/server";
-import { formatoOra, giornoDellaData, oraDiRoma } from "@/lib/orari";
+import { formatoOra, giornoDellaData, oraDiRoma, turniDellaGiornata } from "@/lib/orari";
 import { avvisaTitolare } from "@/lib/prenotazioni/avvisi";
 import { notificaPrenotazione } from "@/lib/prenotazioni/notifiche";
 import { ConflittoOrario, occupatiDelGiorno, salvaPrenotazione } from "@/lib/prenotazioni/archivio";
@@ -54,7 +54,7 @@ export async function GET(request: Request) {
     data,
     giorno,
     giornoNome: orari[giorno].giorno,
-    aperto: orari[giorno].turni.length > 0,
+    aperto: turniDellaGiornata(data).length > 0,
     servizio: { id: servizio.id, nome: servizio.nome, durata: servizio.durata, prezzo: servizio.prezzo },
     slot,
     liberi: slot.filter((s) => s.disponibile).length,

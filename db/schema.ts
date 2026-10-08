@@ -80,6 +80,36 @@ end $$;
 -- ordine di orario".
 create index if not exists prenotazioni_giorno on prenotazioni (data, inizio);
 
+-- ── App dei clienti (PWA in /app) ──────────────────────────────────────────
+-- Id generato dal telefono del cliente per ogni richiesta: se la stessa
+-- richiesta arriva due volte (coda offline che riprova), si restituisce la
+-- prenotazione già creata invece di farne una seconda.
+alter table prenotazioni add column if not exists richiesta_id text;
+create unique index if not exists prenotazioni_richiesta
+  on prenotazioni (richiesta_id) where richiesta_id is not null;
+-- Quando è partito il promemoria al cliente: un promemoria solo per finestra.
+-- Si azzerano se l'appuntamento viene spostato.
+alter table prenotazioni add column if not exists promemoria_24h_il timestamptz;
+alter table prenotazioni add column if not exists promemoria_2h_il timestamptz;
+
+-- Telefoni dei clienti iscritti ai promemoria. Tabella separata da
+-- iscrizioni_push (i dispositivi dell'agenda): i clienti ricevono solo i
+-- promemoria dei propri appuntamenti, mai le notifiche per Francesco.
+create table if not exists iscrizioni_clienti (
+  endpoint   text primary key,
+  p256dh     text not null,
+  auth       text not null,
+  creata_il  timestamptz not null default now()
+);
+
+-- Quale telefono riceve i promemoria di quale appuntamento. Si cancella da
+-- sola con l'appuntamento (disdetto o oltre il periodo di conservazione).
+create table if not exists promemoria_iscrizioni (
+  prenotazione_id uuid not null references prenotazioni(id) on delete cascade,
+  endpoint        text not null references iscrizioni_clienti(endpoint) on delete cascade on update cascade,
+  primary key (prenotazione_id, endpoint)
+);
+
 -- Telefoni (e computer) che ricevono una notifica a ogni prenotazione dal
 -- sito. Una riga per dispositivo: l'endpoint è l'indirizzo del servizio di
 -- notifiche del produttore (Apple, Google, Mozilla), le due chiavi servono a

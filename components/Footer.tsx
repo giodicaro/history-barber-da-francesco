@@ -103,6 +103,11 @@ export function Footer() {
             {salone.partitaIva && ` · P.IVA ${salone.partitaIva}`}
           </p>
           <p>Rivenditore autorizzato Depot</p>
+          {/* L'app dei clienti (PWA): si installa sul telefono, prenota anche
+              offline e manda i promemoria. File statici in public/app. */}
+          <a href="/app/index.html" className="inline-flex min-h-11 items-center hover:text-paper">
+            App per prenotare
+          </a>
           <a href="/privacy" className="inline-flex min-h-11 items-center hover:text-paper">
             Privacy
           </a>

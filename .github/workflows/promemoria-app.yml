@@ -1,0 +1,36 @@
+# Promemoria ai clienti dell'app (24 ore e 2 ore prima dell'appuntamento).
+# Il piano gratuito di Vercel permette cron solo una volta al giorno: questo
+# workflow chiama la rotta ogni 15 minuti. Senza i due segreti non fa nulla.
+#
+# Da configurare una volta (GitHub → Settings → Secrets and variables → Actions):
+#   CRON_SECRET  stesso valore della variabile CRON_SECRET su Vercel
+#   APP_URL      es. https://history-barber-da-francesco.vercel.app (senza / finale)
+#
+# Nota: GitHub esegue i workflow pianificati solo dal ramo principale e li
+# sospende dopo 60 giorni senza attività nel repository.
+name: Promemoria app
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  promemoria:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Invia i promemoria dovuti
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ] || [ -z "$APP_URL" ]; then
+            echo "CRON_SECRET o APP_URL non configurati: nessun promemoria inviato."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error --max-time 60 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/app/api/cron/promemoria"

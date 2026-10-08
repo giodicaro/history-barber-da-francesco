@@ -79,6 +79,13 @@ async function inviaSuTelegram(messaggio: string): Promise<EsitoAvviso> {
   }
 }
 
+/** Avviso libero (es. disdetta o spostamento dall'app). Non lancia mai. */
+export async function avvisaTitolareConTesto(messaggio: string): Promise<EsitoAvviso> {
+  const esito = await inviaSuTelegram(messaggio);
+  if (!esito.inviato) console.info(`[avviso] (${esito.motivo})\n${messaggio}`);
+  return esito;
+}
+
 export async function avvisaTitolare(p: Prenotazione): Promise<EsitoAvviso> {
   const messaggio = testoAvviso(p);
   const esito = await inviaSuTelegram(messaggio);

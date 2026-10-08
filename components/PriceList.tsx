@@ -1,4 +1,4 @@
-import { listino } from "@/lib/salone";
+import { LISTINO_CONFERMATO, listino } from "@/lib/salone";
 import { formatoPrezzo } from "@/lib/utils";
 import { BookButton } from "./BookButton";
 import { GridLines } from "./GridLines";
@@ -76,6 +76,7 @@ export function PriceList() {
           <p data-reveal className="pl-3 pr-3 text-sm leading-relaxed text-steel md:col-span-2 md:col-start-2">
             Il prezzo può cambiare con la lunghezza e il tipo di capello: se hai un dubbio, chiedi al
             momento della prenotazione.
+            {!LISTINO_CONFERMATO && " Prezzi e durate sono indicativi, in attesa di conferma dal salone."}
           </p>
           <div data-reveal className="pl-3 md:justify-self-end md:pl-0">
             <BookButton origine="listino" size="lg">

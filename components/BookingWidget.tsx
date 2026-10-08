@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLenis } from "lenis/react";
-import { giornoDellaData, oraDiRoma, sommaGiorni } from "@/lib/orari";
+import { giornoDellaData, oraDiRoma, sommaGiorni, turniDellaGiornata } from "@/lib/orari";
 import { ascoltaPrenotazione, type OrigineCta } from "@/lib/prenotazione";
 import { normalizzaTelefono } from "@/lib/prenotazioni/telefono";
 import type { RispostaSlot, ServiceOption } from "@/lib/prenotazioni/tipi";
-import { CONSERVAZIONE_MESI, GIORNI_PRENOTABILI, listino, operatori, orari, salone } from "@/lib/salone";
+import { CONSERVAZIONE_MESI, GIORNI_PRENOTABILI, listino, operatori, salone } from "@/lib/salone";
 import { cn, formatoPrezzo } from "@/lib/utils";
 import { ArrowRight } from "./icons";
 
@@ -78,7 +78,7 @@ export function BookingWidget() {
       return {
         iso,
         settimana,
-        aperto: orari[settimana].turni.length > 0,
+        aperto: turniDellaGiornata(iso).length > 0,
         giorno: Number(iso.slice(8, 10)),
         mese: MESI[Number(iso.slice(5, 7)) - 1],
         oggi: i === 0,

@@ -119,6 +119,11 @@ export type GruppoListino = {
 };
 
 // ⚠️ PREZZI INDICATIVI, DA CONFERMARE. Vedi il commento in cima al file.
+// Quando Francesco li conferma (insieme alle durate), si correggono qui e si
+// mette LISTINO_CONFERMATO a true: sito e app smettono di scrivere
+// "prezzi indicativi". È l'unico posto: l'app legge questo stesso listino.
+export const LISTINO_CONFERMATO = false;
+
 export const listino: GruppoListino[] = [
   {
     id: "taglio",
@@ -154,16 +159,33 @@ export const listino: GruppoListino[] = [
 
 // Oggi c'è solo Francesco: il widget salta la scelta dell'operatore quando la
 // lista ha un nome solo, ma l'API e l'agenda ragionano già per operatore.
-export type Operatore = { id: string; nome: string };
+export type Operatore = { id: string; nome: string; ruolo?: string };
 
-export const operatori: Operatore[] = [{ id: "francesco", nome: "Francesco" }];
+export const operatori: Operatore[] = [{ id: "francesco", nome: "Francesco", ruolo: "Titolare" }];
 
 // Quanto tempo prima si può prenotare online, in minuti. Sotto questa soglia
 // l'orario non compare più: serve un margine per non farsi sorprendere.
 export const PREAVVISO_MINUTI = 60;
 
+// Ogni quanti minuti si propone un orario (sito e app).
+export const PASSO_SLOT_MINUTI = 30;
+
 // Fin dove si può prenotare, in giorni.
 export const GIORNI_PRENOTABILI = 21;
+
+// Chiuso nelle festività nazionali (calcolate in lib/festivi.ts: Capodanno,
+// Pasquetta, 25 aprile, Natale…). Nessuna fonte dice se il salone lavora nei
+// festivi: chiuso è l'ipotesi prudente, e vale per sito, app e stato
+// "Aperto ora". Se Francesco lavora in un festivo, si mette false; per ferie
+// e chiusure straordinarie basta un blocco di un giorno intero in agenda.
+export const CHIUSO_NEI_FESTIVI = true;
+
+// Fino a quanti minuti prima dell'appuntamento il cliente può spostarlo o
+// disdirlo da solo dall'app. Dopo, deve telefonare.
+export const MODIFICABILE_FINO_A_MINUTI = 120;
+
+// Prenotazioni future che uno stesso numero può avere aperte dall'app.
+export const PRENOTAZIONI_ATTIVE_MAX = 2;
 
 /* ── Portfolio ──────────────────────────────────────────────────────────── */
 

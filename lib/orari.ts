@@ -1,4 +1,5 @@
-import { orari } from "./salone";
+import { festivita } from "./festivi";
+import { CHIUSO_NEI_FESTIVI, orari, type Turno } from "./salone";
 
 export type StatoApertura =
   | { aperto: true; chiudeAlle: string }
@@ -52,19 +53,28 @@ export function sommaGiorni(data: string, giorni: number) {
   return d.toISOString().slice(0, 10);
 }
 
-export function calcolaStato(adesso = new Date()): StatoApertura {
-  const { giorno, minuti } = oraDiRoma(adesso);
+/** Festività in cui il salone è chiuso (null se aperto o se si lavora nei festivi). */
+export const festivitaChiusa = (data: string) => (CHIUSO_NEI_FESTIVI ? festivita(data) : null);
 
-  const turnoInCorso = orari[giorno].turni.find(
+/** Turni di una giornata precisa: quelli della settimana, nessuno nei festivi. */
+export function turniDellaGiornata(data: string): Turno[] {
+  return festivitaChiusa(data) ? [] : orari[giornoDellaData(data)].turni;
+}
+
+export function calcolaStato(adesso = new Date()): StatoApertura {
+  const { data, minuti } = oraDiRoma(adesso);
+
+  const turnoInCorso = turniDellaGiornata(data).find(
     (t) => minuti >= t.apre && minuti < t.chiude,
   );
   if (turnoInCorso) return { aperto: true, chiudeAlle: formatoOra(turnoInCorso.chiude) };
 
   // Prossima apertura: prima il resto di oggi (la pausa pranzo), poi i giorni
-  // seguenti. Sette giri bastano sempre, perché la settimana ha giorni aperti.
-  for (let avanti = 0; avanti < 7; avanti++) {
-    const g = (giorno + avanti) % 7;
-    const turno = orari[g].turni.find((t) => avanti > 0 || t.apre > minuti);
+  // seguenti. Due settimane bastano anche con un ponte di festività.
+  for (let avanti = 0; avanti < 14; avanti++) {
+    const giornata = sommaGiorni(data, avanti);
+    const g = giornoDellaData(giornata);
+    const turno = turniDellaGiornata(giornata).find((t) => avanti > 0 || t.apre > minuti);
     if (!turno) continue;
     const quando = avanti === 0 ? "oggi" : avanti === 1 ? "domani" : orari[g].breve.toLowerCase();
     // Spazio unificatore: se la riga non basta, "alle 14:30" va a capo intero.

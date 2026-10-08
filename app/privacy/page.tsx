@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CONSERVAZIONE_MESI, salone } from "@/lib/salone";
+import { CONSERVAZIONE_MESI, MODIFICABILE_FINO_A_MINUTI, salone } from "@/lib/salone";
 
-/* Informativa privacy (art. 13 GDPR) per chi prenota dal sito.
+/* Informativa privacy (art. 13 GDPR) per chi prenota dal sito o dall'app
+   (/app, la PWA dei clienti: la stessa pagina vale per entrambi).
 
    Il sito non usa cookie di profilazione né statistiche: l'unico cookie è
    quello tecnico della sessione dell'agenda, che riguarda solo il salone.
@@ -14,10 +15,10 @@ import { CONSERVAZIONE_MESI, salone } from "@/lib/salone";
 
 export const metadata: Metadata = {
   title: "Informativa privacy — History Barber da Francesco",
-  description: "Come History Barber da Francesco tratta i dati di chi prenota dal sito.",
+  description: "Come History Barber da Francesco tratta i dati di chi prenota dal sito o dall'app.",
 };
 
-const AGGIORNATA = "27 settembre 2026";
+const AGGIORNATA = "8 ottobre 2026";
 
 export default function Privacy() {
   const indirizzo = `${salone.via}, ${salone.cap} ${salone.citta} (${salone.provincia})`;
@@ -29,7 +30,7 @@ export default function Privacy() {
           ← {salone.nomeCompleto}
         </Link>
         <h1 className="display mt-6 text-[clamp(2.25rem,8vw,4.5rem)]">Privacy</h1>
-        <p className="info mt-4 text-ink/70">Informativa per chi prenota dal sito · aggiornata al {AGGIORNATA}</p>
+        <p className="info mt-4 text-ink/70">Informativa per chi prenota dal sito o dall&apos;app · aggiornata al {AGGIORNATA}</p>
 
         <div className="mt-12 space-y-10 text-base leading-relaxed [&_h2]:eyebrow [&_h2]:mb-3">
           <section>
@@ -58,6 +59,30 @@ export default function Privacy() {
               Non usiamo i tuoi dati per pubblicità, non li vendiamo e non li cediamo a nessuno. Per evitare
               prenotazioni automatiche il sito ricorda per pochi minuti l&apos;indirizzo IP da cui arriva la
               richiesta.
+            </p>
+          </section>
+
+          <section>
+            <h2>App e promemoria</h2>
+            <p>
+              Se prenoti dall&apos;app (<a href="/app/index.html" className="underline underline-offset-4">/app</a>)
+              raccogliamo gli stessi dati. In più ricevi un link personale per spostare o disdire
+              l&apos;appuntamento da solo, fino a {MODIFICABILE_FINO_A_MINUTI / 60} ore prima: il salone viene
+              avvisato di ogni modifica.
+            </p>
+            <p className="mt-3">
+              I <b>promemoria</b> sul telefono (24 ore e 2 ore prima) sono facoltativi: partono solo se li attivi e
+              puoi spegnerli quando vuoi dall&apos;app o dalle impostazioni del browser (base giuridica: il tuo
+              consenso, art. 6.1.a GDPR). Per mandarli conserviamo l&apos;indirizzo tecnico di notifica che il tuo
+              browser ci fornisce, collegato ai tuoi appuntamenti; non contiene nome né telefono. Lo cancelliamo
+              quando spegni i promemoria, quando il browser lo invalida, o 30 giorni dopo che non ha più
+              appuntamenti collegati. Il messaggio passa dal servizio di notifiche del produttore del telefono
+              (Apple, Google, Mozilla o Microsoft).
+            </p>
+            <p className="mt-3">
+              Sul tuo dispositivo l&apos;app ricorda l&apos;ultima prenotazione (servizio, nome e telefono, per
+              compilare il modulo più in fretta), i link delle tue prenotazioni e le richieste in attesa quando sei
+              offline. Restano solo lì: li cancelli svuotando i dati del sito dal browser.
             </p>
           </section>
 

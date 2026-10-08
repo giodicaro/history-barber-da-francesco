@@ -78,6 +78,7 @@ Tutto è stato fatto il 16–17 settembre 2026, in una sola sessione.
 8. **Completamento del modulo di prenotazione (25 settembre).** I tre punti bloccanti sono chiusi: archivio su Postgres (§6.9), agenda protetta con Auth.js (§6.13), avviso al titolare su Telegram (§6.9). Restano da confermare prezzi e durate, e manca la verifica del numero del cliente (§11).
 9. **Terza revisione del 17 settembre**: segnalato un monospazio "pixelato" nei metadati di hero, menu e footer (riferimenti `image_62d41e.png` e `image_62d45f.png`, cioè gli screenshot delle 13:40 e 13:41, più la registrazione delle 13:42). Il font era già JetBrains Mono (§9.19). Richiesti peso medio e spaziatura più larga: il token `info` passa a **peso 500 e 0.05em** e vale ovunque; "alle 14:30" non si spezza più.
 10. **Agenda interattiva (26 settembre).** Segnalati tre problemi: archivio che si azzerava ("Archivio in memoria"), agenda ferma su un giorno, righe non cliccabili. Il brief chiedeva SQLite con Prisma, ma il progetto non usa un ORM e in produzione gira su Postgres. Per non avere due dialetti SQL, in locale c'è **Postgres su file (PGlite)** al posto di SQLite. L'agenda ora ha frecce che saltano i giorni di chiusura, un calendario, e la gestione completa: crea, modifica, disdici, blocca (§6.13).
+11. **App dei clienti (8 ottobre).** PWA installabile in `/app` (file statici in `public/app`, API in `app/api/app`), collegata alla stessa agenda: le prenotazioni dall'app compaiono in `/admin` con origine "app", il cliente può spostare o disdire fino a 2 ore prima (Francesco viene avvisato), funziona offline con coda di invio e manda promemoria push 24h e 2h prima. Nella stessa occasione: festività nazionali chiuse (`lib/festivi.ts`, `CHIUSO_NEI_FESTIVI`), flag `LISTINO_CONFERMATO`, schema applicato da solo anche su Postgres. Tutto in `docs/app.md` (§6.14).
 
 **Scostamenti dal brief, consapevoli:**
 
@@ -473,6 +474,7 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 | 6.11 | SEO e dati strutturati | `app/layout.tsx:24-39`, `app/page.tsx:17-39` | ⚠️ Parziale |
 | 6.12 | Link "Vai al contenuto" | `app/page.tsx:48-53` | ⚠️ Classe inesistente |
 | 6.13 | Agenda (navigazione, appuntamenti, blocchi) | `app/admin/`, `components/agenda/` | ✅ Completa in locale |
+| 6.14 | App dei clienti (PWA in `/app`) | `public/app/`, `app/api/app/`, `lib/prenotazioni/app.ts` | ✅ Completa, documentata in `docs/app.md` |
 
 **6.1 Barra fissa.**
 - **Trasparente** solo con la pagina ferma in cima alla hero (sentinella `data-cima`, `Hero.tsx:107`).
@@ -844,7 +846,7 @@ Ordinati per urgenza.
 
 ### 🔴 Bloccanti per la pubblicazione
 
-1. **Prezzi e servizi inventati** → `lib/salone.ts:114-143`. Da far confermare a Francesco, voce per voce.
+1. **Prezzi e servizi inventati** → `lib/salone.ts` (`listino`). Da far confermare a Francesco, voce per voce; poi `LISTINO_CONFERMATO = true` toglie la scritta "indicativi" da sito e app. Da chiedergli anche se lavora nei festivi (`CHIUSO_NEI_FESTIVI`, oggi `true`).
 2. **Foto non reali.** La hero usa un'immagine generata con Higgsfield (`public/images/hero-sfumatura.webp`), che mostra una persona inventata e non un cliente del salone: su un sito commerciale va sostituita con una foto vera, o almeno fatta approvare a Francesco. Gli 8 lavori del portfolio sono ancora segnaposto (`lib/salone.ts:172-181`).
 3. **P.IVA mancante** → `lib/salone.ts:28`. Obbligatoria sul sito di un'attività italiana.
 4. **Testi di "Chi siamo" da validare** → `components/ChiSiamo.tsx:7-23, 38-44`.
@@ -853,9 +855,9 @@ Ordinati per urgenza.
 ### 🔴 Bloccanti per l'uso vero delle prenotazioni
 
 6. **Le variabili d'ambiente vanno impostate in produzione.** Il codice c'è, ma finché su Vercel mancano `DATABASE_URL`, `AUTH_SECRET`, `ADMIN_PASSWORD`, `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`, in produzione l'archivio resta in memoria (PGlite, si azzera), l'agenda non si apre e nessuno riceve gli avvisi. **Stato al 27/09:** database Neon (progetto `polished-glitter-73416212` "Francoforte", regione AWS eu-central-1: dati dei clienti in UE; il primo progetto negli Stati Uniti, `falling-darkness-36477223`, non è più usato), schema applicato; funzioni di Vercel a Francoforte (`vercel.json` → `fra1`); su Vercel sono impostate `DATABASE_URL` (branch `production`, pooler) e `AUTH_SECRET`, deploy `777e7d9` in produzione. **Mancano** `ADMIN_PASSWORD` (senza, `/admin/login` dice "Accesso non configurato"), `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`: le prenotazioni dal sito vengono salvate, ma per ora nessuno le vede né riceve l'avviso. Il vecchio `ADMIN_TOKEN` su Vercel non serve più.
-7. **Nessuna verifica del numero** (SMS o richiamata) e nessuna disdetta: chiunque può occupare orari con un numero inventato. Il freno attuale è di 5 richieste ogni 10 minuti per IP, e sta in memoria (§9.20).
+7. **Nessuna verifica del numero** (SMS o richiamata); la disdetta da soli c'è solo dall'app (§6.14): chiunque può occupare orari con un numero inventato. Il freno attuale è di 5 richieste ogni 10 minuti per IP, e sta in memoria (§9.20).
 8. **Durate dei servizi stimate** → `lib/salone.ts`. Da 20 a 75 minuti: decidono quanti orari restano liberi, vanno confermate da Francesco insieme ai prezzi.
-9. **Niente pagina di disdetta o spostamento per il cliente:** oggi il cliente passa dal telefono, e Francesco disdice o sposta dall'agenda (§6.13). Il dato c'è (ogni prenotazione ha un id), manca il giro lato cliente.
+9. **Disdetta e spostamento dal cliente solo dall'app** (§6.14, link "Gestisci prenotazione"). Chi prenota dal widget del sito passa ancora dal telefono. Per i promemoria dell'app servono `CRON_SECRET` su Vercel e i segreti `CRON_SECRET`/`APP_URL` su GitHub (`docs/app.md`).
 10. **Il database locale non va in produzione.** `.data/agenda` sta solo su questo computer e git lo ignora: gli appuntamenti inseriti in locale non finiscono online. Il database di produzione è quello di `DATABASE_URL`.
 
 ### 🟠 Da chiarire col committente
