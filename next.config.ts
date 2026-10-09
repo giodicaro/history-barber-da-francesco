@@ -23,6 +23,25 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@electric-sql/pglite"],
   // Vale solo in sviluppo: la build di produzione non ha risorse di sviluppo.
   allowedDevOrigins: indirizziDiRete,
+  async headers() {
+    return [
+      {
+        // "Il mio stile": pagine e foto personali, raggiungibili solo con il
+        // link del cliente. Mai nei motori di ricerca, e il link (che è la
+        // chiave d'accesso) non deve finire nel Referer di chi si apre da qui.
+        source: "/stile/:percorso*",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+        ],
+      },
+      {
+        // Il service worker del cliente si ricontrolla a ogni visita.
+        source: "/sw-stile.js",
+        headers: [{ key: "Cache-Control", value: "no-cache" }],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

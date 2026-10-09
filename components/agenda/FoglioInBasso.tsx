@@ -34,6 +34,7 @@ export function FoglioInBasso({
   sopratitolo,
   titolo,
   bloccato = false,
+  tema = "chiaro",
   children,
   piede,
 }: {
@@ -42,6 +43,8 @@ export function FoglioInBasso({
   sopratitolo?: ReactNode;
   titolo: ReactNode;
   bloccato?: boolean;
+  /** "scuro" per le pagine del cliente (lookbook): nero ink, testo paper. */
+  tema?: "chiaro" | "scuro";
   children: ReactNode;
   /** Bottoni d'azione: restano incollati in fondo, sopra la tastiera. */
   piede?: ReactNode;
@@ -113,6 +116,8 @@ export function FoglioInBasso({
     if (!bloccato) onChiudi();
   };
 
+  const t = TEMI[tema];
+
   // Trascinamento verso il basso dalla testata (solo dita e penna: col mouse
   // la testata resta selezionabile). Il corpo non trascina: lì si scorre.
   const trascinamento = {
@@ -164,12 +169,12 @@ export function FoglioInBasso({
       }}
       className={[
         // Chiuso il <dialog> ha display:none dal browser: "flex" solo da aperto.
-        "m-0 mt-auto w-full max-w-none flex-col overflow-hidden bg-paper p-0 text-ink",
-        "backdrop:bg-ink/70 open:flex",
+        "m-0 mt-auto w-full max-w-none flex-col overflow-hidden p-0 open:flex",
+        t.foglio,
         // Altezza massima: 100vh dove dvh non c'è (iOS < 15.4), altrimenti il
         // viewport dinamico, che segue la barra del browser che entra ed esce.
         "max-h-[calc(100vh-1.5rem)] supports-[height:100dvh]:max-h-[calc(100dvh-1.5rem)]",
-        "md:m-auto md:max-h-[85vh] md:max-w-lg md:border md:border-ink md:supports-[height:100dvh]:max-h-[85dvh]",
+        "md:m-auto md:max-h-[85vh] md:max-w-lg md:border md:supports-[height:100dvh]:max-h-[85dvh]",
         // Entrata: sale dal basso fino a 0. @starting-style dove c'è
         // (Safari 17.5+, Chrome 117+); altrimenti appare già aperto.
         "translate-y-0 transition-transform duration-300 ease-crisp starting:open:translate-y-full",
@@ -178,12 +183,12 @@ export function FoglioInBasso({
     >
       <header
         {...trascinamento}
-        className="flex shrink-0 touch-none items-start justify-between gap-4 border-b border-ink px-5 pb-4 pt-3 md:touch-auto md:px-6 md:pt-5"
+        className={`flex shrink-0 touch-none items-start justify-between gap-4 border-b px-5 pb-4 pt-3 md:touch-auto md:px-6 md:pt-5 ${t.bordo}`}
       >
         <div className="min-w-0 pt-2 md:pt-0">
           {/* Maniglia: dice "questo è un foglio" e si trascina, solo sul telefono. */}
-          <span aria-hidden className="absolute left-1/2 top-2 h-1 w-10 -translate-x-1/2 bg-ink/20 md:hidden" />
-          {sopratitolo && <p className="info text-steel">{sopratitolo}</p>}
+          <span aria-hidden className={`absolute left-1/2 top-2 h-1 w-10 -translate-x-1/2 md:hidden ${t.maniglia}`} />
+          {sopratitolo && <p className={`info ${t.secondario}`}>{sopratitolo}</p>}
           <h2 id={titoloId} className="mt-1 text-xl font-extrabold tracking-[-0.02em] md:text-2xl">
             {titolo}
           </h2>
@@ -193,7 +198,7 @@ export function FoglioInBasso({
           onClick={chiudi}
           disabled={bloccato}
           aria-label="Chiudi"
-          className="-mr-3 mt-1 flex size-12 shrink-0 cursor-pointer items-center justify-center text-steel hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+          className={`-mr-3 mt-1 flex size-12 shrink-0 cursor-pointer items-center justify-center disabled:cursor-not-allowed disabled:opacity-40 ${t.chiudi}`}
         >
           <svg viewBox="0 0 24 24" aria-hidden className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M6 6l12 12M18 6L6 18" />
@@ -206,13 +211,33 @@ export function FoglioInBasso({
       </div>
 
       {piede && (
-        <div className="shrink-0 border-t border-ink bg-paper px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-6">
+        <div className={`shrink-0 border-t px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-6 ${t.piede}`}>
           {piede}
         </div>
       )}
     </dialog>
   );
 }
+
+/* Le classi che cambiano col tema. "chiaro" è l'agenda così com'era. */
+const TEMI = {
+  chiaro: {
+    foglio: "bg-paper text-ink backdrop:bg-ink/70 md:border-ink",
+    bordo: "border-ink",
+    maniglia: "bg-ink/20",
+    secondario: "text-steel",
+    chiudi: "text-steel hover:text-ink",
+    piede: "border-ink bg-paper",
+  },
+  scuro: {
+    foglio: "border-t border-paper/25 bg-ink text-paper backdrop:bg-ink/80 md:border-paper/40",
+    bordo: "border-paper/25",
+    maniglia: "bg-paper/30",
+    secondario: "text-smoke",
+    chiudi: "text-smoke hover:text-paper",
+    piede: "border-paper/25 bg-ink",
+  },
+};
 
 /** Rotella di caricamento: eredita il colore del testo. */
 export function Rotella({ className = "size-4" }: { className?: string }) {

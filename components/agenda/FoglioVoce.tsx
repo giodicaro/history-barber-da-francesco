@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition, type ComponentProps, type FormEvent, type ReactNode } from "react";
 import { elimina, salvaAppuntamento, salvaBlocco } from "@/app/admin/azioni";
 import { formatoOra } from "@/lib/orari";
@@ -17,6 +18,7 @@ import type { EsitoAzione, VoceAgenda } from "@/lib/prenotazioni/tipi";
 import { listino } from "@/lib/salone";
 import { cn, formatoPrezzo } from "@/lib/utils";
 import { FoglioInBasso, Rotella } from "./FoglioInBasso";
+import { bottonePieno, bottoneVuoto, campo } from "./stili";
 
 /* Il foglio di una riga dell'agenda. Tre facce:
    - "modulo" per una riga libera: nuovo appuntamento o blocco;
@@ -33,15 +35,6 @@ export type Bersaglio = { tipo: "nuovo"; inizio: number } | { tipo: "voce"; voce
 const servizi = listino.flatMap((g) =>
   g.servizi.filter((s) => s.prenotabile !== false).map((s) => ({ ...s, categoria: g.titolo })),
 );
-
-const campo =
-  "mt-2 block min-h-12 w-full appearance-none rounded-none border border-ink/30 bg-paper px-3 text-base text-ink outline-none transition-colors duration-150 focus:border-ink aria-invalid:border-ink aria-invalid:border-2";
-
-const bottonePieno =
-  "eyebrow flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-3 border border-ink bg-ink px-5 text-paper transition-colors duration-150 hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-ink disabled:hover:text-paper";
-
-const bottoneVuoto =
-  "eyebrow flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-3 border border-ink px-5 transition-colors duration-150 hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-50";
 
 const dataLunga = new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 export const etichettaGiorno = (data: string) => dataLunga.format(new Date(`${data}T12:00:00Z`));
@@ -201,6 +194,18 @@ function Dettaglio({
           In questa fascia il sito non propone orari ai clienti. Il blocco non conta nella percentuale
           della poltrona.
         </p>
+      )}
+      {appuntamento && (
+        // Al lookbook del cliente: la pagina cerca la scheda per telefono e,
+        // se non c'è, propone di crearla con nome e telefono di questo
+        // appuntamento. Nell'indirizzo c'è solo l'id, mai nome o numero.
+        <Link href={`/admin/lookbook?da=${voce.id}`} className={`${bottoneVuoto} mt-5 w-full`}>
+          <svg viewBox="0 0 24 24" aria-hidden className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 7h4l2-3h6l2 3h4v13H3z" />
+            <circle cx="12" cy="13" r="4" />
+          </svg>
+          Lookbook del cliente
+        </Link>
       )}
     </FoglioInBasso>
   );
