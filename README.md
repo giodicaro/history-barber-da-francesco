@@ -75,6 +75,7 @@ npm run db:init    # applica lo schema al database di DATABASE_URL; è rieseguib
 | `app/admin/` | Agenda protetta da Auth.js: pagina server + Server Action (`azioni.ts`) |
 | `components/agenda/` | Agenda interattiva: navigazione fra i giorni, calendario, fogli per creare, modificare, disdire e bloccare |
 | `auth.ts`, `auth.config.ts`, `middleware.ts` | Accesso all'agenda |
+| `app/admin/lookbook/`, `app/stile/`, `lib/lookbook/` | Lookbook personale: schede dei clienti con foto e note del taglio (lato barbiere) e "Il mio stile" con link personale e copia offline (lato cliente). Vedi §6.14 della bible |
 
 ## Prima di prendere appuntamenti veri
 

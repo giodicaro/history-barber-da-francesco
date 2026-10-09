@@ -2,7 +2,7 @@
 
 Passaggio di consegne per il sito vetrina di **History Barber da Francesco**, barbiere a Mestre (Venezia).
 
-**Fotografia scattata il:** 26 settembre 2026, aggiornata dopo l'agenda interattiva (navigazione fra i giorni, gestione di appuntamenti e blocchi, database locale su file)
+**Fotografia scattata il:** 26 settembre 2026, aggiornata dopo l'agenda interattiva; 10 ottobre 2026: Lookbook personale (§6.14), sul ramo `feature/lookbook`, non ancora in produzione
 **Cartella:** `C:\Users\foscolo\Parruchieria\my-app`
 **Versionamento:** https://github.com/giodicaro/history-barber-da-francesco (pubblico, ramo `main`)
 **Produzione:** https://history-barber-da-francesco.vercel.app (Vercel, progetto `history-barber-da-francesco`, collegato al repository: ogni push su `main` va in produzione)
@@ -119,6 +119,7 @@ Tutto è stato fatto il 16–17 settembre 2026, in una sola sessione.
 | `next-auth` 5.0.0-beta.32 | `auth.ts`, `auth.config.ts`, `middleware.ts` | Accesso all'agenda: una sola password, sessione in un cookie firmato |
 | `@electric-sql/pglite` 0.5.8 | `lib/prenotazioni/db.ts` | Postgres compilato in WebAssembly, dentro il processo di Next. È il database quando manca `DATABASE_URL`: su file in locale, in memoria su Vercel. Stesso SQL e stessi vincoli della produzione. In `serverExternalPackages` (`next.config.ts`), perché carica da sé i suoi file `.wasm` e l'estensione `btree_gist` |
 | `server-only` | `lib/prenotazioni/db.ts`, `lib/prenotazioni/avvisi.ts`, `lib/prenotazioni/archivio.ts` | Fa fallire la build se un modulo con segreti finisce in un componente client |
+| `qrcode` ^1.5.4 | solo `app/admin/lookbook/[id]/page.tsx` (server) | SVG del QR del link personale del cliente (Lookbook, §6.14). Unica dipendenza aggiunta dal lookbook: nel browser non arriva niente |
 
 Non ci sono altre dipendenze: niente `clsx`/`tailwind-merge` (l'helper `cn` è un semplice join, `lib/utils.ts:1-3`) e niente librerie di icone (SVG scritti a mano in `components/icons.tsx`).
 
@@ -282,6 +283,13 @@ my-app/
 ├── db/schema.ts            ★ Schema SQL (modulo usato dall'app e da db:init): appuntamenti + blocchi, vincolo anti-sovrapposizione
 ├── scripts/db-init.mjs     npm run db:init — applica lo schema al Postgres di DATABASE_URL
 ├── components/agenda/      Agenda.tsx, FoglioVoce.tsx (modulo e dettaglio), Calendario.tsx, FoglioInBasso.tsx (<dialog>)
+├── components/lookbook/    Lookbook (§6.14): SchedaCliente, FoglioNuovoLook, Fotocamera, CondividiStile, CreaScheda,
+│                           StileCliente, MostraAlBarbiere, RegistraSW, Pezzi (carosello, note), NavAdmin
+├── app/admin/lookbook/     Elenco schede, scheda cliente, Server Action del lookbook
+├── app/api/lookbook/       POST look con foto (multipart) · GET foto per il barbiere
+├── app/stile/[token]/      "Il mio stile" del cliente: pagina, foto, manifest, azione preferito
+├── lib/lookbook/           Tipi, archivio SQL, validazione, preset, compressione foto (+ worker), bozze IndexedDB
+├── public/sw-stile.js      Service worker del cliente, scope /stile/ (copia offline)
 ├── .env.example            Le sei variabili, commentate
 ├── lib/
 │   ├── prenotazioni/
@@ -473,6 +481,7 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 | 6.11 | SEO e dati strutturati | `app/layout.tsx:24-39`, `app/page.tsx:17-39` | ⚠️ Parziale |
 | 6.12 | Link "Vai al contenuto" | `app/page.tsx:48-53` | ⚠️ Classe inesistente |
 | 6.13 | Agenda (navigazione, appuntamenti, blocchi) | `app/admin/`, `components/agenda/` | ✅ Completa in locale |
+| 6.14 | Lookbook personale (foto e note del taglio, "Il mio stile" del cliente) | `app/admin/lookbook/`, `app/stile/`, `app/api/lookbook/`, `components/lookbook/`, `lib/lookbook/`, `public/sw-stile.js` | 🟠 Completo e verificato in locale; non su iPhone vero, non in produzione |
 
 **6.1 Barra fissa.**
 - **Trasparente** solo con la pagina ferma in cima alla hero (sentinella `data-cima`, `Hero.tsx:107`).
@@ -594,6 +603,59 @@ Senza `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` il messaggio finisce comunque ne
   - testo in `mix-blend-difference`, che si inverte pixel per pixel.
 - Da tastiera il focus attiva il riempimento.
 - `data-prenota` riporta l'origine, utile per un futuro tracciamento.
+
+**6.14 Lookbook personale** (10/10/2026, ramo `feature/lookbook`).
+
+*Cosa fa.* Dopo il taglio Francesco fotografa il lavoro (dietro, profilo, davanti), annota sfumatura, lunghezza sopra, barba e prodotto e salva nella scheda del cliente. Il cliente apre "Il mio stile" sul suo telefono con un link personale (QR in salone, WhatsApp o "Copia link"), rivede i tagli e alla visita dopo tocca **Mostra al barbiere**.
+
+*Decisioni prese (D1–D7).*
+- **D1 Niente account per il cliente:** link privato `/stile/<token>`, token di 32 byte casuali in base64url (`crypto.randomBytes`). "Rigenera link" lo cambia e il vecchio smette subito di funzionare.
+- **D2 Foto sul server** (Postgres/Neon, colonne `bytea`), non nel telefono. IndexedDB serve solo alla bozza del barbiere; la copia offline del cliente è nella Cache Storage del service worker.
+- **D3 Tre posizioni** `dietro`, `profilo`, `davanti`, almeno una per look; la nuca viene per prima, il volto è facoltativo.
+- **D4 Consenso registrato** (`consenso_il`) alla creazione della scheda; conservazione `CONSERVAZIONE_LOOKBOOK_MESI` = 24 mesi dall'ultimo look (`lib/salone.ts`), **proposta da confermare**.
+- **D5 Grafica del sito:** lato barbiere bianco come l'agenda, lato cliente nero `ink` con testo `paper`. Nessun colore nuovo, niente angoli arrotondati (anche la casella del consenso è disegnata a mano). `FoglioInBasso` ha un `tema="scuro"` facoltativo; senza, l'agenda resta identica.
+- **D6 Un operatore** (`operatori[0]`), ma `operatore_id` si salva.
+- **D7 Preferito** cambiabile dal barbiere e dal cliente (dal cliente solo online, tramite token).
+
+*Dati* (`db/schema.ts`, in coda, idempotente): `clienti_lookbook` (nome, telefono facoltativo e unico, token unico, consenso), `look` (data di salone, note, preferito), `look_foto` (posizione, tipo, `dati` ≤ 1080 px, `miniatura` ~360 px; una per look e posizione). Le foto sono in una tabella a parte: gli elenchi non leggono mai byte. Cancellando la scheda cade tutto a cascata.
+
+*Rotte.*
+
+| Rotta | Cosa | Protezione |
+|---|---|---|
+| `/admin/lookbook` | elenco + ricerca (nome o cifre del telefono); con `?da=<id appuntamento>` apre la scheda con lo stesso telefono o propone di crearla | sessione (middleware + `auth()` nella pagina) |
+| `/admin/lookbook/[id]` | scheda: linea del tempo, Nuovo look, QR e link, Elimina | sessione |
+| `POST /api/lookbook` | salva un look con le foto (multipart) | `auth()` per primo: il middleware copre solo `/admin` |
+| `GET /api/lookbook/foto/[id]?v=mini` o `full` | foto per il barbiere | `auth()` |
+| `/stile/[token]` | "Il mio stile" | solo token; altrimenti 404 neutro (`not-found.tsx`) |
+| `/stile/[token]/foto/[id]` | foto per il cliente | token, e la foto dev'essere sua: controllo nella join SQL |
+| `/stile/[token]/manifesto` | manifest per cliente (start_url e scope col token) | token |
+
+Scritture piccole (crea scheda, preferito, rigenera, elimina look o scheda) = Server Action in `app/admin/lookbook/azioni.ts`, con le stesse regole dell'agenda. Il cliente ha una sola azione, `segnaPreferitoCliente` (`app/stile/[token]/azioni.ts`). Dall'agenda: bottone **Lookbook del cliente** nel Dettaglio di un appuntamento (`FoglioVoce.tsx`); nell'indirizzo passa solo l'id dell'appuntamento, mai nome o telefono. In cima ad agenda e lookbook c'è la barra `NavAdmin` (Agenda · Lookbook).
+
+*Foto.* `lib/lookbook/immagine.ts`: `createImageBitmap` con orientamento EXIF e riduzione in decodifica → Web Worker (`compressione.worker.ts`, OffscreenCanvas) → WebP 0,82, con controllo di `blob.type` e ripiego JPEG 0,85 (mai PNG) → se oltre 250 KB, qualità 0,7 e poi 0,6. Ripieghi: thread principale con OffscreenCanvas o `<canvas>`; `<img>` + `decode()` se `createImageBitmap` non accetta le opzioni o gira male la foto (verificato sul risultato). Il passaggio dal canvas toglie EXIF e GPS. Una foto alla volta (coda), per la memoria dell'iPhone. Il server rilegge il tipo dai magic bytes; tetti di 400 KB per foto, 80 KB per miniatura e 3 MB per richiesta (letta a pezzi, senza fidarsi di Content-Length).
+
+*Acquisizione.* Base: "Scatta" (`<input capture="environment">`) e "Galleria" in ogni riquadro, ovunque. In più, solo in contesto sicuro, "Scatta in sequenza": mirino `getUserMedia` che passa da una posizione all'altra, con le tracce fermate alla chiusura e al cambio di scheda. Con permesso negato o senza fotocamera compare un messaggio in italiano e si resta sui due bottoni, senza perdere niente.
+
+*Salvataggio.* Prima dell'invio la bozza (foto compresse + note) va in IndexedDB; senza rete resta e il foglio offre "Riprova". L'id del look lo sceglie il browser: un secondo invio dello stesso look non lo duplica (`on conflict (id) do nothing`). Chiudere il foglio a metà salva la bozza, che la scheda propone di riprendere o scartare. Look e foto si inseriscono in un'unica istruzione (CTE): o tutto o niente.
+
+*Cliente.* Pagina `noindex` con `Referrer-Policy: no-referrer` (anche via `next.config.ts`). Nelle props solo testo e URL delle foto: niente base64, né cognome né telefono del cliente nell'HTML. In pagina: l'ultimo taglio in grande con "Mostra al barbiere", lo storico su 2/3 colonne a filo con "Solo i preferiti", lo stato vuoto, il piede con prenotazione, privacy e come cancellare. Il suggerimento "Aggiungi alla schermata Home" compare solo su iPhone fuori dall'app. Niente GSAP, Lenis né framer: verificato sui chunk della pagina.
+
+*Mostra al barbiere.* `<dialog>` a tutto schermo, note in Inter 700 da 28 px in su, carosello `scroll-snap` con pinch-zoom. Wake Lock con richiesta ripetuta su `visibilitychange`. "Specchio" rovescia in orizzontale: **ipotesi da provare in salone**. Si chiude con la X, con Esc e trascinando verso il basso.
+
+*Offline* (`public/sw-stile.js`, scope `/stile/`). Pagina network-first (4 s), foto e `/_next/static` cache-first, tutto il resto dritto (POST, RSC, manifest). Appena registrato riceve dalla pagina l'elenco delle foto e dei file statici già caricati e li salva. Una risposta 404/410 cancella dalla copia tutto ciò che riguarda quel token. `navigator.storage.persist()` solo nell'app installata.
+
+*Verificato (10/10, build di produzione su un server isolato con PGlite, Chrome headless e il pannello browser):*
+- foto da 4000×3000 / 7 MB con EXIF rotazione 6 e GPS → 810×1080 orientata giusta, WebP da 170 KB, senza EXIF né GPS;
+- il worker parte; mirino con fotocamera finta; permesso negato con ripiego senza perdite; WebP assente → JPEG;
+- senza rete: bozza e "Riprova" salvano una volta sola; doppio invio non duplica;
+- PNG camuffato da JPEG → 415, oltre 3 MB → 413;
+- isolamento fra clienti (scambiare gli id delle foto dà 404), rotte del barbiere senza sessione 401/redirect;
+- offline del cliente a server spento: pagina, stile e foto;
+- link rigenerato e scheda cancellata → 404 e copia ripulita;
+- regressione dell'agenda.
+
+Non verificato su un iPhone vero.
 
 **6.10 Scorrimento morbido e ancore.**
 - Lenis `lerp` 0,1 e `scrollTo` con `force` e `duration` 1,4 (`SmoothScroll.tsx:45`).
@@ -754,6 +816,14 @@ Rispetto alla misura del 17 settembre: +10 KB di HTML, +9 KB di CSS e +6 KB di J
 - Chiavi `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` in `.env.local` e su Vercel (produzione). Cambiarle invalida le iscrizioni esistenti. Un 404/410 dal servizio di notifiche cancella l'iscrizione da solo.
 - Verificato con un finto servizio di notifiche in HTTPS: messaggio cifrato (aes128gcm) e firmato VAPID, decifrato con testo, giorno e link giusti; TTL 24 h, urgenza alta; il 410 cancella l'iscrizione; la prenotazione resta 201 anche quando l'invio fallisce. Non verificato su un iPhone vero.
 
+**9.25 Lookbook: sei cose da sapere (10/10).**
+- **Un `<fieldset>` è largo almeno quanto il suo contenuto** (`min-inline-size: min-content`). Le righe di scorciatoie che scorrono di lato lo allargavano, e i riquadri delle foto diventavano larghi 383 px su uno schermo da 375. Serve `min-w-0` (`FoglioNuovoLook.tsx`).
+- **Server Action ≤ 1 MB di corpo** (`serverActions.bodySizeLimit`): per questo le foto passano da `POST /api/lookbook`. E `refresh()` non si può chiamare in un Route Handler: dopo il caricamento la pagina si ridisegna con `router.refresh()` dal client.
+- **`bytea` arriva diverso dai due driver** (PGlite `Uint8Array`, postgres.js `Buffer`): lo normalizza un solo punto (`inBuffer` in `lib/lookbook/archivio.ts`). Verificato con entrambi, postgres.js via TCP.
+- **Turbopack e i Web Worker:** `new Worker(new URL("./compressione.worker.ts", import.meta.url), { type: "module" })` diventa un worker vero (`turbopack-worker-*.js` più il chunk compilato). Nella build compare anche una copia del sorgente `.ts` in `static/media`, che non viene usata.
+- **Il pannello browser dell'app desktop non registra service worker** (nemmeno `sw-agenda.js`): l'offline si prova in Chrome, vero o headless, non lì.
+- **Mai log con dati personali:** `perLog()` scrive codice e messaggio dell'errore, mai `detail`, che in Postgres contiene i valori della riga rifiutata.
+
 **9.20 Prenotazioni: le tre trappole del modulo.**
 - **Il freno agli abusi vive ancora in memoria.** L'archivio è passato a Postgres, ma il conteggio dei 5 POST ogni 10 minuti sta nel processo: su Vercel ogni istanza ha il suo, quindi il limite vero è più alto. Per un limite serio serve un contatore condiviso (Vercel KV, Upstash).
 - **L'ora è quella di Roma, non quella del cliente.** Slot, "passato" e giorno corrente passano da `oraDiRoma()` (`lib/orari.ts`). Un cliente a Londra vede gli orari del salone, non i suoi. Il giorno della settimana di una data ISO si ricava a mezzogiorno UTC (`giornoDellaData`), che cade nello stesso giorno sia con l'ora solare sia con quella legale.
@@ -866,6 +936,18 @@ Ordinati per urgenza.
 9. **Link a Google Maps generico** (ricerca per nome). Con il Place ID della scheda Google porterebbe alla scheda esatta → `lib/salone.ts:22-23`.
 10. **Altri social** (Facebook, TikTok) → oggi solo Instagram.
 11. **Uso del marchio Depot** nel footer e in "Chi siamo" → da confermare.
+12. **Lookbook personale (§6.14).**
+    - **Da confermare con Francesco o con il commercialista:**
+      - periodo di conservazione: 24 mesi proposti (`CONSERVAZIONE_LOOKBOOK_MESI`);
+      - testo della frase di consenso (`FRASE_CONSENSO` in `components/lookbook/CreaScheda.tsx`) e della sezione dell'informativa (`/privacy#lookbook`);
+      - uso della foto "davanti" (il volto);
+      - interruttore "Specchio";
+      - scorciatoie delle note (`lib/lookbook/preset.ts`).
+    - **Non verificato su un iPhone vero:** mirino, Wake Lock, app aggiunta alla Home, offline in modalità aereo.
+    - **Prima della produzione:**
+      - `npm run db:init` sul branch Neon giusto: le tabelle nuove non ci sono ancora. Senza, il lookbook dice "non ancora attivo" e il resto funziona;
+      - merge su `main`;
+      - prova dal telefono sul sito https.
 
 ### 🟡 Igiene tecnica
 
