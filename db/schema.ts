@@ -122,4 +122,49 @@ create table if not exists iscrizioni_push (
   etichetta  text,
   creata_il  timestamptz not null default now()
 );
+
+-- ── Lookbook personale ──────────────────────────────────────────────────
+-- La scheda di un cliente che ha acconsentito a conservare foto e note.
+-- Non è la tabella prenotazioni: quella si cancella dopo 12 mesi (privacy),
+-- il lookbook ha un suo periodo e un suo consenso.
+create table if not exists clienti_lookbook (
+  id          uuid primary key default gen_random_uuid(),
+  nome        text        not null check (length(btrim(nome)) between 1 and 80),
+  -- +39…, come lo restituisce normalizzaTelefono(); facoltativo (cliente di passaggio)
+  telefono    text,
+  -- Chiave d'accesso del cliente a /stile/<token>: 32 byte casuali, base64url.
+  token       text        not null unique,
+  consenso_il timestamptz not null,
+  creato_il   timestamptz not null default now()
+);
+create unique index if not exists clienti_lookbook_telefono
+  on clienti_lookbook (telefono) where telefono is not null;
+
+create table if not exists look (
+  id           uuid primary key default gen_random_uuid(),
+  cliente_id   uuid        not null references clienti_lookbook (id) on delete cascade,
+  operatore_id text        not null,
+  -- Giornata di salone (Roma). Si legge con to_char(…), come prenotazioni.data.
+  data         date        not null,
+  sfumatura    text,       -- "Skin fade 0,5 mm ai lati"
+  sopra        text,       -- "Forbice 3 cm, pettinato indietro"
+  barba        text,
+  prodotto     text,       -- "Cera opaca"
+  note         text,
+  preferito    boolean     not null default false,
+  creato_il    timestamptz not null default now()
+);
+create index if not exists look_cliente on look (cliente_id, data desc, creato_il desc);
+
+-- Le foto stanno in una tabella a parte: l'elenco dei look non deve mai
+-- caricare byte di immagini.
+create table if not exists look_foto (
+  id        uuid primary key default gen_random_uuid(),
+  look_id   uuid  not null references look (id) on delete cascade,
+  posizione text  not null check (posizione in ('davanti', 'profilo', 'dietro')),
+  tipo      text  not null check (tipo in ('image/webp', 'image/jpeg')),
+  dati      bytea not null,      -- immagine intera, lato lungo ≤ 1080 px
+  miniatura bytea not null,      -- ~360 px, per la griglia
+  unique (look_id, posizione)
+);
 `;

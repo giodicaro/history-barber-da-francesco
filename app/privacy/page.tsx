@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CONSERVAZIONE_MESI, MODIFICABILE_FINO_A_MINUTI, salone } from "@/lib/salone";
+import { CONSERVAZIONE_LOOKBOOK_MESI, CONSERVAZIONE_MESI, MODIFICABILE_FINO_A_MINUTI, salone } from "@/lib/salone";
 
 /* Informativa privacy (art. 13 GDPR) per chi prenota dal sito o dall'app
-   (/app, la PWA dei clienti: la stessa pagina vale per entrambi).
+   (/app, la PWA dei clienti: la stessa pagina vale per entrambi) e per chi
+   accetta il Lookbook personale (foto e note del taglio, con consenso).
 
    Il sito non usa cookie di profilazione né statistiche: l'unico cookie è
    quello tecnico della sessione dell'agenda, che riguarda solo il salone.
@@ -15,10 +16,10 @@ import { CONSERVAZIONE_MESI, MODIFICABILE_FINO_A_MINUTI, salone } from "@/lib/sa
 
 export const metadata: Metadata = {
   title: "Informativa privacy — History Barber da Francesco",
-  description: "Come History Barber da Francesco tratta i dati di chi prenota dal sito o dall'app.",
+  description: "Come History Barber da Francesco tratta i dati di chi prenota dal sito o dall'app e di chi usa il lookbook.",
 };
 
-const AGGIORNATA = "8 ottobre 2026";
+const AGGIORNATA = "10 ottobre 2026";
 
 export default function Privacy() {
   const indirizzo = `${salone.via}, ${salone.cap} ${salone.citta} (${salone.provincia})`;
@@ -30,7 +31,9 @@ export default function Privacy() {
           ← {salone.nomeCompleto}
         </Link>
         <h1 className="display mt-6 text-[clamp(2.25rem,8vw,4.5rem)]">Privacy</h1>
-        <p className="info mt-4 text-ink/70">Informativa per chi prenota dal sito o dall&apos;app · aggiornata al {AGGIORNATA}</p>
+        <p className="info mt-4 text-ink/70">
+          Informativa per chi prenota dal sito o dall&apos;app e per il lookbook · aggiornata al {AGGIORNATA}
+        </p>
 
         <div className="mt-12 space-y-10 text-base leading-relaxed [&_h2]:eyebrow [&_h2]:mb-3">
           <section>
@@ -94,10 +97,39 @@ export default function Privacy() {
             </p>
           </section>
 
+          <section id="lookbook">
+            <h2>Lookbook personale (facoltativo)</h2>
+            <p>
+              Se sei d&apos;accordo, dopo il taglio conserviamo le <b>foto del lavoro finito</b> (dietro, di profilo
+              e, se vuoi, davanti), le <b>note tecniche</b> (sfumatura, lunghezze, barba, prodotto), il tuo{" "}
+              <b>nome</b> e, se lo lasci, il <b>telefono</b>. Servono a ricordare com&apos;è fatto il tuo taglio e a
+              rifarlo uguale la volta dopo.
+            </p>
+            <p className="mt-3">
+              La base giuridica è il tuo <b>consenso</b> (art. 6.1.a GDPR), che chiediamo in salone prima di creare la
+              scheda. Puoi ritirarlo quando vuoi, senza conseguenze sugli appuntamenti: basta chiamare il{" "}
+              <a href={salone.telefonoHref} className="underline underline-offset-4">
+                {salone.telefono}
+              </a>{" "}
+              o dirlo in salone, e cancelliamo scheda, foto e note.
+            </p>
+            <p className="mt-3">
+              Foto e note le vedi solo tu, dalla pagina &ldquo;Il mio stile&rdquo;, con il link personale che ti diamo
+              (anche con un codice QR). Chi non ha il link non le vede, e la pagina non compare nei motori di
+              ricerca. Se il link finisce in mani sbagliate possiamo cambiarlo: quello vecchio smette di funzionare.
+            </p>
+            <p className="mt-3">
+              Restano al massimo {CONSERVAZIONE_LOOKBOOK_MESI} mesi dal tuo ultimo taglio fotografato: dopo, la scheda
+              viene cancellata in automatico con tutte le foto. Per funzionare anche senza rete, la pagina
+              &ldquo;Il mio stile&rdquo; tiene una copia sul tuo telefono; se la scheda viene cancellata, la copia
+              sparisce la prima volta che riapri la pagina con la rete.
+            </p>
+          </section>
+
           <section>
             <h2>Dove stanno</h2>
             <p>
-              Il sito è ospitato da Vercel Inc. e le prenotazioni sono salvate in un database di Neon.
+              Il sito è ospitato da Vercel Inc.; le prenotazioni e il lookbook sono salvati in un database di Neon.
               Entrambi trattano i dati per nostro conto come responsabili del trattamento, su server nell&apos;Unione
               Europea (Francoforte). Quando arriva una prenotazione, il salone riceve una notifica sul proprio
               telefono.
@@ -117,7 +149,8 @@ export default function Privacy() {
             <h2>Cookie</h2>
             <p>
               Il sito non usa cookie di profilazione né strumenti di statistica. L&apos;unico cookie è tecnico e serve
-              al salone per accedere alla propria agenda.
+              al salone per accedere alla propria agenda. La copia di &ldquo;Il mio stile&rdquo; sul tuo telefono è
+              una memoria tecnica del browser, che serve solo a mostrarti la pagina senza rete.
             </p>
           </section>
         </div>
