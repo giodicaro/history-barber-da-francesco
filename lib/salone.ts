@@ -36,6 +36,12 @@ export const salone = {
    solo le voci più vecchie: cambiarlo qui cambia entrambi. */
 export const CONSERVAZIONE_MESI = 12;
 
+/* Per quanti mesi dall'ultimo look restano scheda, foto e note del Lookbook
+   personale (con il consenso del cliente). Come sopra: lo dice l'informativa
+   e lo applica l'archivio. ⚠️ PROPOSTA: da confermare con Francesco o con il
+   suo commercialista. */
+export const CONSERVAZIONE_LOOKBOOK_MESI = 24;
+
 /* ── Orari ──────────────────────────────────────────────────────────────── */
 
 // Indice come Date.getDay(): 0 = domenica. Ogni turno è in minuti dalla
