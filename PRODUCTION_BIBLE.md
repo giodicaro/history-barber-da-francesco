@@ -2,7 +2,7 @@
 
 Passaggio di consegne per il sito vetrina di **History Barber da Francesco**, barbiere a Mestre (Venezia).
 
-**Fotografia scattata il:** 26 settembre 2026, aggiornata dopo l'agenda interattiva; 10 ottobre 2026: Lookbook personale (§6.14), sul ramo `feature/lookbook`, non ancora in produzione
+**Fotografia scattata il:** 26 settembre 2026, aggiornata dopo l'agenda interattiva; 10 ottobre 2026: Lookbook personale (§6.14), in produzione; next 16.3.8
 **Cartella:** `C:\Users\foscolo\Parruchieria\my-app`
 **Versionamento:** https://github.com/giodicaro/history-barber-da-francesco (pubblico, ramo `main`)
 **Produzione:** https://history-barber-da-francesco.vercel.app (Vercel, progetto `history-barber-da-francesco`, collegato al repository: ogni push su `main` va in produzione)
@@ -481,7 +481,7 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 | 6.11 | SEO e dati strutturati | `app/layout.tsx:24-39`, `app/page.tsx:17-39` | ⚠️ Parziale |
 | 6.12 | Link "Vai al contenuto" | `app/page.tsx:48-53` | ⚠️ Classe inesistente |
 | 6.13 | Agenda (navigazione, appuntamenti, blocchi) | `app/admin/`, `components/agenda/` | ✅ Completa in locale |
-| 6.14 | Lookbook personale (foto e note del taglio, "Il mio stile" del cliente) | `app/admin/lookbook/`, `app/stile/`, `app/api/lookbook/`, `components/lookbook/`, `lib/lookbook/`, `public/sw-stile.js` | 🟠 Completo e verificato in locale; non su iPhone vero, non in produzione |
+| 6.14 | Lookbook personale (foto e note del taglio, "Il mio stile" del cliente) | `app/admin/lookbook/`, `app/stile/`, `app/api/lookbook/`, `components/lookbook/`, `lib/lookbook/`, `public/sw-stile.js` | 🟠 In produzione dal 10/10 (schema applicato a Neon production e sviluppo); non ancora provato su iPhone vero |
 
 **6.1 Barra fissa.**
 - **Trasparente** solo con la pagina ferma in cima alla hero (sentinella `data-cima`, `Hero.tsx:107`).
@@ -604,7 +604,7 @@ Senza `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` il messaggio finisce comunque ne
 - Da tastiera il focus attiva il riempimento.
 - `data-prenota` riporta l'origine, utile per un futuro tracciamento.
 
-**6.14 Lookbook personale** (10/10/2026, ramo `feature/lookbook`).
+**6.14 Lookbook personale** (10/10/2026, in produzione).
 
 *Cosa fa.* Dopo il taglio Francesco fotografa il lavoro (dietro, profilo, davanti), annota sfumatura, lunghezza sopra, barba e prodotto e salva nella scheda del cliente. Il cliente apre "Il mio stile" sul suo telefono con un link personale (QR in salone, WhatsApp o "Copia link"), rivede i tagli e alla visita dopo tocca **Mostra al barbiere**.
 
@@ -944,10 +944,7 @@ Ordinati per urgenza.
       - interruttore "Specchio";
       - scorciatoie delle note (`lib/lookbook/preset.ts`).
     - **Non verificato su un iPhone vero:** mirino, Wake Lock, app aggiunta alla Home, offline in modalità aereo.
-    - **Prima della produzione:**
-      - `npm run db:init` sul branch Neon giusto: le tabelle nuove non ci sono ancora. Senza, il lookbook dice "non ancora attivo" e il resto funziona;
-      - merge su `main`;
-      - prova dal telefono sul sito https.
+    - **Fatto il 10/10:** schema applicato a Neon `production` e `sviluppo` (`npm run db:init`), merge su `main`, deploy. Manca la prova dal telefono sul sito https.
 
 ### 🟡 Igiene tecnica
 
