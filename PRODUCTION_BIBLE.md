@@ -2,7 +2,7 @@
 
 Passaggio di consegne per il sito vetrina di **History Barber da Francesco**, barbiere a Mestre (Venezia).
 
-**Fotografia scattata il:** 26 settembre 2026, aggiornata dopo l'agenda interattiva; 10 ottobre 2026: Lookbook personale (§6.15), in produzione; next 16.3.8
+**Fotografia scattata il:** 26 settembre 2026, aggiornata dopo l'agenda interattiva; 10 ottobre 2026: Lookbook personale (§6.15), in produzione; next 16.4.3 (26/10); 26 ottobre: app clienti tolta dal footer (§6.14)
 **Cartella:** `C:\Users\foscolo\Parruchieria\my-app`
 **Versionamento:** https://github.com/giodicaro/history-barber-da-francesco (pubblico, ramo `main`)
 **Produzione:** https://history-barber-da-francesco.vercel.app (Vercel, progetto `history-barber-da-francesco`, collegato al repository: ogni push su `main` va in produzione)
@@ -98,11 +98,11 @@ Tutto è stato fatto il 16–17 settembre 2026, in una sola sessione.
 
 | | Versione | Nota |
 |---|---|---|
-| Next.js | **16.3.5** | App Router, Turbopack |
+| Next.js | **16.4.3** | App Router, Turbopack |
 | React / React DOM | **19.2.8** | — |
 | TypeScript | 5.9.3 | `strict: true`, alias `@/*` → `./*` (`tsconfig.json`) |
 | Tailwind CSS | **4.3.3** | Via `@tailwindcss/postcss`, niente `tailwind.config`; token in `@theme` |
-| ESLint | 9.39.5 | `eslint-config-next` 16.3.5 (core-web-vitals + typescript) |
+| ESLint | 9.39.5 | `eslint-config-next` 16.4.3 (core-web-vitals + typescript) |
 | Node / npm | 24.19.0 / 11.17.0 | In locale |
 
 > ⚠️ **Leggi `AGENTS.md` prima di scrivere codice.** Questa versione di Next ha API diverse da quelle documentate altrove; le guide aggiornate sono in `node_modules/next/dist/docs/`. Il blocco viene **riscritto da `next dev`**. Due differenze già incontrate:
@@ -482,7 +482,7 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 | 6.11 | SEO e dati strutturati | `app/layout.tsx:24-39`, `app/page.tsx:17-39` | ⚠️ Parziale |
 | 6.12 | Link "Vai al contenuto" | `app/page.tsx:48-53` | ⚠️ Classe inesistente |
 | 6.13 | Agenda (navigazione, appuntamenti, blocchi) | `app/admin/`, `components/agenda/` | ✅ Completa in locale |
-| 6.14 | App dei clienti (PWA in `/app`) | `public/app/`, `app/api/app/`, `lib/prenotazioni/app.ts` | ✅ Completa, documentata in `docs/app.md` |
+| 6.14 | App dei clienti (PWA in `/app`) | `public/app/`, `app/api/app/`, `lib/prenotazioni/app.ts` | ⏸ Attiva ma non linkata: dal 26/10 il link "App per prenotare" nel footer è tolto, in attesa del parere di Francesco. Raggiungibile solo da `/app` (anche dall'informativa privacy, sezione "App e promemoria"). Documentata in `docs/app.md` |
 | 6.15 | Lookbook personale (foto e note del taglio, "Il mio stile" del cliente) | `app/admin/lookbook/`, `app/stile/`, `app/api/lookbook/`, `components/lookbook/`, `lib/lookbook/`, `public/sw-stile.js` | 🟠 In produzione dal 10/10 (schema applicato a Neon production e sviluppo); non ancora provato su iPhone vero |
 
 **6.1 Barra fissa.**
