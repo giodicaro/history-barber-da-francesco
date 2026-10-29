@@ -100,7 +100,7 @@ function colonne(v: NuovaVoce) {
 }
 
 // Traduce la violazione del vincolo nell'errore che l'interfaccia sa spiegare.
-export async function conVincolo<T>(operazione: () => Promise<T>): Promise<T> {
+async function conVincolo<T>(operazione: () => Promise<T>): Promise<T> {
   try {
     return await operazione();
   } catch (e) {
@@ -164,10 +164,7 @@ export async function aggiornaVoce(id: string, voce: NuovaVoce): Promise<VoceAge
          tipo = $2, data = $3::date, inizio = $4, fine = $5,
          servizio_id = $6, servizio_nome = $7, prezzo = $8, operatore_id = $9,
          cliente_nome = $10, cliente_telefono = $11, note = $12,
-         origine = coalesce(origine, $13), modificata_il = now(),
-         -- Appuntamento spostato: i promemoria al cliente ripartono da capo.
-         promemoria_24h_il = case when data = $3::date and inizio = $4 then promemoria_24h_il end,
-         promemoria_2h_il = case when data = $3::date and inizio = $4 then promemoria_2h_il end
+         origine = coalesce(origine, $13), modificata_il = now()
        where id = $1
        returning ${COLONNE}`,
       [id, ...colonne(voce)],

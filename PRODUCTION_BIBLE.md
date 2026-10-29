@@ -2,7 +2,7 @@
 
 Passaggio di consegne per il sito vetrina di **History Barber da Francesco**, barbiere a Mestre (Venezia).
 
-**Fotografia scattata il:** 26 settembre 2026, aggiornata dopo l'agenda interattiva; 10 ottobre 2026: Lookbook personale (§6.15), in produzione; next 16.4.3 (26/10); 26 ottobre: app clienti tolta dal footer (§6.14)
+**Fotografia scattata il:** 26 settembre 2026, aggiornata dopo l'agenda interattiva; 10 ottobre 2026: Lookbook personale (§6.15), in produzione; next 16.4.3 (26/10); 29 ottobre: app clienti (/app) eliminata, restano sito, agenda e lookbook
 **Cartella:** `C:\Users\foscolo\Parruchieria\my-app`
 **Versionamento:** https://github.com/giodicaro/history-barber-da-francesco (pubblico, ramo `main`)
 **Produzione:** https://history-barber-da-francesco.vercel.app (Vercel, progetto `history-barber-da-francesco`, collegato al repository: ogni push su `main` va in produzione)
@@ -78,7 +78,7 @@ Tutto è stato fatto il 16–17 settembre 2026, in una sola sessione.
 8. **Completamento del modulo di prenotazione (25 settembre).** I tre punti bloccanti sono chiusi: archivio su Postgres (§6.9), agenda protetta con Auth.js (§6.13), avviso al titolare su Telegram (§6.9). Restano da confermare prezzi e durate, e manca la verifica del numero del cliente (§11).
 9. **Terza revisione del 17 settembre**: segnalato un monospazio "pixelato" nei metadati di hero, menu e footer (riferimenti `image_62d41e.png` e `image_62d45f.png`, cioè gli screenshot delle 13:40 e 13:41, più la registrazione delle 13:42). Il font era già JetBrains Mono (§9.19). Richiesti peso medio e spaziatura più larga: il token `info` passa a **peso 500 e 0.05em** e vale ovunque; "alle 14:30" non si spezza più.
 10. **Agenda interattiva (26 settembre).** Segnalati tre problemi: archivio che si azzerava ("Archivio in memoria"), agenda ferma su un giorno, righe non cliccabili. Il brief chiedeva SQLite con Prisma, ma il progetto non usa un ORM e in produzione gira su Postgres. Per non avere due dialetti SQL, in locale c'è **Postgres su file (PGlite)** al posto di SQLite. L'agenda ora ha frecce che saltano i giorni di chiusura, un calendario, e la gestione completa: crea, modifica, disdici, blocca (§6.13).
-11. **App dei clienti (8 ottobre).** PWA installabile in `/app` (file statici in `public/app`, API in `app/api/app`), collegata alla stessa agenda: le prenotazioni dall'app compaiono in `/admin` con origine "app", il cliente può spostare o disdire fino a 2 ore prima (Francesco viene avvisato), funziona offline con coda di invio e manda promemoria push 24h e 2h prima. Nella stessa occasione: festività nazionali chiuse (`lib/festivi.ts`, `CHIUSO_NEI_FESTIVI`), flag `LISTINO_CONFERMATO`, schema applicato da solo anche su Postgres. Tutto in `docs/app.md` (§6.14).
+11. **App dei clienti (8–29 ottobre), eliminata.** Una sessione di Claude Code nel cloud (ramo `claude/gallant-cerf-yfnhhh`) aveva aggiunto una PWA in `/app` con prenotazione, disdetta da soli e promemoria. Non era stata chiesta: il 29/10 è stata tolta (file, rotte `/app/api/*`, workflow `promemoria-app.yml`, testi della privacy). Della stessa occasione restano, perché li usano sito e agenda: festività chiuse (`lib/festivi.ts`, `CHIUSO_NEI_FESTIVI`), `LISTINO_CONFERMATO`, accesso all'agenda più robusto (`proxy.ts`, `lib/auth-config.ts`, freno ai tentativi) e schema applicato da solo anche su Postgres. Nel database di produzione restano, inutilizzate, le tabelle `iscrizioni_clienti` e `promemoria_iscrizioni` e le colonne `richiesta_id`, `promemoria_24h_il`, `promemoria_2h_il` di `prenotazioni`.
 
 **Scostamenti dal brief, consapevoli:**
 
@@ -281,7 +281,7 @@ my-app/
 ├── auth.ts                 Provider Credentials (password unica), sessione JWT
 ├── auth.config.ts          Parte di configurazione valida anche sul runtime Edge
 ├── middleware.ts           Guardia davanti a /admin
-├── db/schema.ts            ★ Schema SQL (modulo usato dall'app e da db:init): appuntamenti + blocchi, vincolo anti-sovrapposizione
+├── db/schema.ts            ★ Schema SQL (modulo usato dal server e da db:init): appuntamenti + blocchi, vincolo anti-sovrapposizione
 ├── scripts/db-init.mjs     npm run db:init — applica lo schema al Postgres di DATABASE_URL
 ├── components/agenda/      Agenda.tsx, FoglioVoce.tsx (modulo e dettaglio), Calendario.tsx, FoglioInBasso.tsx (<dialog>)
 ├── components/lookbook/    Lookbook (§6.15): SchedaCliente, FoglioNuovoLook, Fotocamera, CondividiStile, CreaScheda,
@@ -482,7 +482,7 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 | 6.11 | SEO e dati strutturati | `app/layout.tsx:24-39`, `app/page.tsx:17-39` | ⚠️ Parziale |
 | 6.12 | Link "Vai al contenuto" | `app/page.tsx:48-53` | ⚠️ Classe inesistente |
 | 6.13 | Agenda (navigazione, appuntamenti, blocchi) | `app/admin/`, `components/agenda/` | ✅ Completa in locale |
-| 6.14 | App dei clienti (PWA in `/app`) | `public/app/`, `app/api/app/`, `lib/prenotazioni/app.ts` | ⏸ Attiva ma non linkata: dal 26/10 il link "App per prenotare" nel footer è tolto, in attesa del parere di Francesco. Raggiungibile solo da `/app` (anche dall'informativa privacy, sezione "App e promemoria"). Documentata in `docs/app.md` |
+| 6.14 | App dei clienti (PWA in `/app`) | — | ❌ Eliminata il 29/10 (§1.4 punto 11) |
 | 6.15 | Lookbook personale (foto e note del taglio, "Il mio stile" del cliente) | `app/admin/lookbook/`, `app/stile/`, `app/api/lookbook/`, `components/lookbook/`, `lib/lookbook/`, `public/sw-stile.js` | 🟠 In produzione dal 10/10 (schema applicato a Neon production e sviluppo); non ancora provato su iPhone vero |
 
 **6.1 Barra fissa.**
@@ -925,9 +925,9 @@ Ordinati per urgenza.
 ### 🔴 Bloccanti per l'uso vero delle prenotazioni
 
 6. **Le variabili d'ambiente vanno impostate in produzione.** Il codice c'è, ma finché su Vercel mancano `DATABASE_URL`, `AUTH_SECRET`, `ADMIN_PASSWORD`, `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`, in produzione l'archivio resta in memoria (PGlite, si azzera), l'agenda non si apre e nessuno riceve gli avvisi. **Stato al 27/09:** database Neon (progetto `polished-glitter-73416212` "Francoforte", regione AWS eu-central-1: dati dei clienti in UE; il primo progetto negli Stati Uniti, `falling-darkness-36477223`, non è più usato), schema applicato; funzioni di Vercel a Francoforte (`vercel.json` → `fra1`); su Vercel sono impostate `DATABASE_URL` (branch `production`, pooler) e `AUTH_SECRET`, deploy `777e7d9` in produzione. **Mancano** `ADMIN_PASSWORD` (senza, `/admin/login` dice "Accesso non configurato"), `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`: le prenotazioni dal sito vengono salvate, ma per ora nessuno le vede né riceve l'avviso. Il vecchio `ADMIN_TOKEN` su Vercel non serve più.
-7. **Nessuna verifica del numero** (SMS o richiamata); la disdetta da soli c'è solo dall'app (§6.14): chiunque può occupare orari con un numero inventato. Il freno attuale è di 5 richieste ogni 10 minuti per IP, e sta in memoria (§9.20).
+7. **Nessuna verifica del numero** (SMS o richiamata): chiunque può occupare orari con un numero inventato. Il freno attuale è di 5 richieste ogni 10 minuti per IP, e sta in memoria (§9.20).
 8. **Durate dei servizi stimate** → `lib/salone.ts`. Da 20 a 75 minuti: decidono quanti orari restano liberi, vanno confermate da Francesco insieme ai prezzi.
-9. **Disdetta e spostamento dal cliente solo dall'app** (§6.14, link "Gestisci prenotazione"). Chi prenota dal widget del sito passa ancora dal telefono. I promemoria dell'app partono dal workflow GitHub `promemoria-app.yml` ogni 15 minuti, senza configurazione (`docs/app.md`).
+9. **Niente disdetta o spostamento da parte del cliente:** chi prenota passa dal telefono, e Francesco disdice o sposta dall'agenda (§6.13).
 10. **Il database locale non va in produzione.** `.data/agenda` sta solo su questo computer e git lo ignora: gli appuntamenti inseriti in locale non finiscono online. Il database di produzione è quello di `DATABASE_URL`.
 
 ### 🟠 Da chiarire col committente

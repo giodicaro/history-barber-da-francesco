@@ -12,8 +12,6 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // App clienti in JavaScript semplice, senza build (vedi docs/app.md).
-    "public/app/**",
   ]),
 ]);
 

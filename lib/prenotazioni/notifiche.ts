@@ -110,7 +110,7 @@ export async function inviaAIscrizioni(
         return true;
       } catch (e) {
         const stato = (e as { statusCode?: number }).statusCode;
-        // 404/410: il telefono ha tolto il permesso o disinstallato l'app.
+        // 404/410: il telefono ha tolto il permesso o disinstallato l'agenda.
         // L'iscrizione non vale più: si cancella, così non si riprova ogni volta.
         if (stato === 404 || stato === 410) await scaduta(r.endpoint).catch(() => {});
         else console.error("[notifiche] invio non riuscito", stato ?? e);

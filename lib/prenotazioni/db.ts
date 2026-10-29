@@ -66,7 +66,7 @@ async function apri(): Promise<Database> {
     const sql = postgres(URL_DB, { max: 1, idle_timeout: 20, connect_timeout: 10, prepare: false });
     // Lo schema è rieseguibile: applicarlo alla prima connessione di ogni
     // istanza tiene il database allineato quando il codice aggiunge colonne o
-    // tabelle (es. quelle dell'app), senza dipendere da un `npm run db:init`
+    // tabelle (es. quelle del lookbook), senza dipendere da un `npm run db:init`
     // lanciato a mano prima del deploy. Se fallisce (due istanze che migrano
     // insieme, permessi) si va avanti: il resto dello schema c'è già.
     await sql.unsafe(SCHEMA).catch((e) => console.error("[db] aggiornamento schema non riuscito", e));

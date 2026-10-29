@@ -222,8 +222,8 @@ export function Notifiche({ chiave, posto }: { chiave: string | null; posto: "ba
         <>
           <p className="mt-3 max-w-[52ch] text-base">
             {stato.tipo === "attive"
-              ? "Attive su questo dispositivo: arriva una notifica a ogni prenotazione dal sito o dall'app, e quando un cliente sposta o disdice dall'app."
-              : "Ricevi una notifica su questo dispositivo a ogni prenotazione dal sito o dall'app, e quando un cliente sposta o disdice dall'app."}
+              ? "Attive su questo dispositivo: arriva una notifica a ogni prenotazione dal sito."
+              : "Ricevi una notifica su questo dispositivo a ogni prenotazione dal sito."}
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             {stato.tipo === "spente" ? (

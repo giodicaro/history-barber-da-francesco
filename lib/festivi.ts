@@ -2,8 +2,7 @@
    anno. Mestre è nel Comune di Venezia, il cui patrono (San Marco, 25 aprile)
    coincide con la Liberazione.
 
-   Modulo senza import, come lib/salone.ts: lo legge anche lo script che
-   genera i dati dell'app (scripts/genera-dati-app.mjs) con Node, senza build. */
+   Modulo senza import, come lib/salone.ts. */
 
 /** Domenica di Pasqua (calendario gregoriano, algoritmo di Meeus/Jones/Butcher). */
 function pasqua(anno: number): { mese: number; giorno: number } {

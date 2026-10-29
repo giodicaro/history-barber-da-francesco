@@ -1,7 +1,7 @@
 // Validazione della configurazione dell'accesso all'agenda (lib/auth-config.ts).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { configAccesso, rispostaNonDisponibile } from "../../lib/auth-config.ts";
+import { configAccesso, rispostaNonDisponibile } from "../lib/auth-config.ts";
 
 const con = (vars, fn) => {
   const prima = { ADMIN_PASSWORD: process.env.ADMIN_PASSWORD, AUTH_SECRET: process.env.AUTH_SECRET };

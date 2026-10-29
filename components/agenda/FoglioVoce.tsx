@@ -15,7 +15,7 @@ import {
 } from "@/lib/prenotazioni/agenda";
 import { telefonoLeggibile } from "@/lib/prenotazioni/telefono";
 import type { EsitoAzione, VoceAgenda } from "@/lib/prenotazioni/tipi";
-import { listino, MODIFICABILE_FINO_A_MINUTI } from "@/lib/salone";
+import { listino } from "@/lib/salone";
 import { cn, formatoPrezzo } from "@/lib/utils";
 import { FoglioInBasso, Rotella } from "./FoglioInBasso";
 import { bottonePieno, bottoneVuoto, campo } from "./stili";
@@ -186,9 +186,7 @@ function Dettaglio({
           <RigaDettaglio etichetta="Arrivato da">
             {!appuntamento.origine || appuntamento.origine === "agenda"
               ? "Inserito in agenda"
-              : appuntamento.origine === "app"
-                ? `App del cliente (può spostarla o disdirla fino a ${MODIFICABILE_FINO_A_MINUTI / 60} ore prima)`
-                : `Sito · bottone “${appuntamento.origine}”`}
+              : `Sito · bottone “${appuntamento.origine}”`}
           </RigaDettaglio>
         </dl>
       ) : (
