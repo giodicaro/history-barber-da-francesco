@@ -3,6 +3,8 @@ import { formatoOra, giornoDellaData, oraDiRoma, turniDellaGiornata } from "@/li
 import { avvisaTitolare } from "@/lib/prenotazioni/avvisi";
 import { notificaPrenotazione } from "@/lib/prenotazioni/notifiche";
 import { ConflittoOrario, occupatiDelGiorno, salvaPrenotazione } from "@/lib/prenotazioni/archivio";
+import { formatoCodice } from "@/lib/prenotazioni/codice";
+import { nuoveCredenziali } from "@/lib/prenotazioni/gestione";
 import { generaSlot } from "@/lib/prenotazioni/slot";
 import type { RispostaSlot } from "@/lib/prenotazioni/tipi";
 import { analizzaRichiesta, servizioPerId, servizioPrenotabile } from "@/lib/prenotazioni/validazione";
@@ -13,7 +15,8 @@ import { listino, operatori, orari } from "@/lib/salone";
    GET  /api/bookings?date=YYYY-MM-DD&servizio=<id>[&operatore=<id>]
         → orari proposti per quel giorno e quel servizio.
    POST /api/bookings
-        → salva l'appuntamento e avvisa il titolare.
+        → salva l'appuntamento, avvisa il titolare e restituisce (una volta
+          sola) link e codice per gestirlo: vedi app/api/appuntamento.
 
    Le Route Handler non sono in cache: ogni richiesta rilegge l'agenda. */
 
@@ -106,7 +109,10 @@ export async function POST(request: Request) {
   if (!esito.ok) return json({ errore: "Dati non validi", campi: esito.errori }, 400);
 
   try {
-    const prenotazione = await salvaPrenotazione(esito.dati);
+    // Link e codice personali per spostare o disdire da soli: in chiaro solo
+    // in questa risposta, nel database solo le loro impronte.
+    const credenziali = nuoveCredenziali(esito.dati.cliente.telefono!);
+    const prenotazione = await salvaPrenotazione(esito.dati, credenziali);
     // L'avviso parte DOPO aver risposto al cliente: "after" tiene viva la
     // funzione quel tanto che basta, senza far aspettare chi ha prenotato.
     // Due canali in parallelo: Telegram e la notifica sul telefono di chi
@@ -128,6 +134,7 @@ export async function POST(request: Request) {
           servizio: prenotazione.servizioNome,
           prezzo: prenotazione.prezzo,
         },
+        gestione: { token: credenziali.token, codice: formatoCodice(credenziali.codice) },
       },
       201,
     );

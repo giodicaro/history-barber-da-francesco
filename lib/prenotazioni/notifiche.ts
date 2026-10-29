@@ -154,3 +154,15 @@ export async function notificaPrenotazione(p: Prenotazione) {
     return { inviate: 0, fallite: 0 };
   }
 }
+
+/** Notifica a chi usa l'agenda di una disdetta o di uno spostamento fatto
+    dal cliente. Al tocco apre l'agenda sul giorno che conta adesso (quello
+    nuovo, per uno spostamento). Non lancia mai. */
+export async function notificaModifica(titolo: string, testo: string, data: string, tag: string) {
+  try {
+    return await inviaATutti({ titolo, testo, url: `/admin?data=${data}`, tag });
+  } catch (e) {
+    console.error("[notifiche] errore inatteso", e);
+    return { inviate: 0, fallite: 0 };
+  }
+}

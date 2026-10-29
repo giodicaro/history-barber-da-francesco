@@ -94,6 +94,36 @@ export async function avvisaTitolare(p: Prenotazione): Promise<EsitoAvviso> {
   return esito;
 }
 
+/* ── Disdette e spostamenti del cliente ("Gestisci il tuo appuntamento") ──
+   Testi brevi, riconoscibili a colpo d'occhio nella lista delle notifiche:
+   DISDETTA · Mario R. · mer 4/11 10:00 · Taglio uomo
+   SPOSTATO · Mario R. · da mer 4/11 10:00 a gio 5/11 17:30 */
+
+const giornoCorto = new Intl.DateTimeFormat("it-IT", { weekday: "short", timeZone: "UTC" });
+export const quandoBreve = (data: string, minuti: number) =>
+  `${giornoCorto.format(new Date(`${data}T12:00:00Z`)).replace(".", "")} ${Number(data.slice(8, 10))}/${Number(data.slice(5, 7))} ${formatoOra(minuti)}`;
+
+export type ModificaCliente =
+  | { tipo: "disdetta"; nome: string; data: string; inizio: number; servizio: string }
+  | { tipo: "spostamento"; nome: string; da: { data: string; inizio: number }; a: { data: string; inizio: number } };
+
+export function testoModifica(m: ModificaCliente): string {
+  return m.tipo === "disdetta"
+    ? `DISDETTA · ${m.nome} · ${quandoBreve(m.data, m.inizio)} · ${m.servizio}`
+    : `SPOSTATO · ${m.nome} · da ${quandoBreve(m.da.data, m.da.inizio)} a ${quandoBreve(m.a.data, m.a.inizio)}`;
+}
+
+/** Avviso su Telegram di una disdetta o di uno spostamento. Non lancia mai. */
+export async function avvisaModifica(m: ModificaCliente): Promise<EsitoAvviso> {
+  const messaggio = testoModifica(m);
+  const esito = await inviaSuTelegram(messaggio);
+  if (esito.inviato) console.info(`[gestione] avviso Telegram inviato · ${m.tipo}`);
+  else if (esito.motivo === "non-configurato") console.info(`[gestione] (Telegram non configurato)
+${messaggio}`);
+  else console.error(`[gestione] avviso Telegram non riuscito (${esito.motivo}): ${esito.dettaglio}`);
+  return esito;
+}
+
 /* ── Alternativa: email con Resend ────────────────────────────────────────
    Serve `npm i resend`, una chiave API e un dominio verificato (senza dominio
    si può usare onboarding@resend.dev, ma solo verso il proprio indirizzo).
