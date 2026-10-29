@@ -1,6 +1,5 @@
-/* Classi dei campi e dei bottoni dei fogli dell'agenda, condivise con il
-   lookbook (components/lookbook/): stessi bordi, stesse altezze, stessi
-   stati. Spostate qui da FoglioVoce.tsx senza cambiare una classe. */
+/* Classi dei campi e dei bottoni dei fogli dell'agenda: stessi bordi,
+   stesse altezze, stessi stati in tutti i moduli. */
 
 export const campo =
   "mt-2 block min-h-12 w-full appearance-none rounded-none border border-ink/30 bg-paper px-3 text-base text-ink outline-none transition-colors duration-150 focus:border-ink aria-invalid:border-ink aria-invalid:border-2";

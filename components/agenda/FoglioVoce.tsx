@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useTransition, type ComponentProps, type FormEvent, type ReactNode } from "react";
 import { elimina, salvaAppuntamento, salvaBlocco } from "@/app/admin/azioni";
 import { formatoOra } from "@/lib/orari";
@@ -194,18 +193,6 @@ function Dettaglio({
           In questa fascia il sito non propone orari ai clienti. Il blocco non conta nella percentuale
           della poltrona.
         </p>
-      )}
-      {appuntamento && (
-        // Al lookbook del cliente: la pagina cerca la scheda per telefono e,
-        // se non c'è, propone di crearla con nome e telefono di questo
-        // appuntamento. Nell'indirizzo c'è solo l'id, mai nome o numero.
-        <Link href={`/admin/lookbook?da=${voce.id}`} className={`${bottoneVuoto} mt-5 w-full`}>
-          <svg viewBox="0 0 24 24" aria-hidden className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 7h4l2-3h6l2 3h4v13H3z" />
-            <circle cx="12" cy="13" r="4" />
-          </svg>
-          Lookbook del cliente
-        </Link>
       )}
     </FoglioInBasso>
   );
