@@ -174,6 +174,15 @@ export const PASSO_SLOT_MINUTI = 30;
 // Fin dove si può prenotare, in giorni.
 export const GIORNI_PRENOTABILI = 21;
 
+// "Gestisci il tuo appuntamento": il cliente può spostare o disdire da solo
+// fino a quanti minuti prima dell'inizio. Dopo, deve telefonare.
+// ⚠️ Da confermare con Francesco.
+export const MARGINE_GESTIONE_MINUTI = 120;
+
+// Quante volte il cliente può spostare da solo lo stesso appuntamento; poi
+// resta la disdetta o il telefono. ⚠️ Da confermare con Francesco.
+export const SPOSTAMENTI_MAX = 2;
+
 // Chiuso nelle festività nazionali (calcolate in lib/festivi.ts: Capodanno,
 // Pasquetta, 25 aprile, Natale…). Nessuna fonte dice se il salone lavora nei
 // festivi: chiuso è l'ipotesi prudente, e vale per il sito e lo stato

@@ -76,6 +76,20 @@ begin
   end if;
 end $$;
 
+-- ── Gestione dell'appuntamento da parte del cliente ────────────────────────
+-- Alla prenotazione dal sito il cliente riceve un link personale e un codice
+-- di 6 caratteri. Qui ne finiscono solo le impronte (SHA-256): chi legge il
+-- database non può risalire né al link né al codice. Il codice è legato al
+-- telefono (sha256(telefono + ':' + codice)), così da solo non vale niente.
+-- Le righe inserite dall'agenda e quelle precedenti restano senza: niente
+-- gestione online per loro.
+alter table prenotazioni add column if not exists gestione_hash text;
+alter table prenotazioni add column if not exists codice_hash text;
+-- Quante volte il cliente l'ha spostato da solo (c'è un massimo).
+alter table prenotazioni add column if not exists spostamenti smallint not null default 0;
+create unique index if not exists prenotazioni_gestione on prenotazioni (gestione_hash) where gestione_hash is not null;
+create index if not exists prenotazioni_codice on prenotazioni (codice_hash) where codice_hash is not null;
+
 -- L'agenda e il calcolo degli slot leggono sempre "tutto un giorno, in
 -- ordine di orario".
 create index if not exists prenotazioni_giorno on prenotazioni (data, inizio);

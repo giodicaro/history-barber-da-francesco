@@ -3,13 +3,15 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLenis } from "lenis/react";
-import { giornoDellaData, oraDiRoma, sommaGiorni, turniDellaGiornata } from "@/lib/orari";
-import { ascoltaPrenotazione, type OrigineCta } from "@/lib/prenotazione";
+import { minutiDaOra } from "@/lib/orari";
+import { apriPrenotazione, ascoltaPrenotazione, type OrigineCta } from "@/lib/prenotazione";
 import { normalizzaTelefono } from "@/lib/prenotazioni/telefono";
 import type { RispostaSlot, ServiceOption } from "@/lib/prenotazioni/tipi";
-import { CONSERVAZIONE_MESI, GIORNI_PRENOTABILI, listino, operatori, salone } from "@/lib/salone";
+import { CONSERVAZIONE_MESI, listino, MARGINE_GESTIONE_MINUTI, operatori, salone } from "@/lib/salone";
 import { cn, formatoPrezzo } from "@/lib/utils";
 import { ArrowRight } from "./icons";
+import { GIORNI_BREVI, giorniProposti, GrigliaOrari, StrisciaGiorni } from "./prenotazione/GiorniEOrari";
+import { SalvaAppuntamento } from "./prenotazione/SalvaAppuntamento";
 
 /* Widget di prenotazione: tre passi in un foglio a tutto schermo.
 
@@ -42,10 +44,18 @@ const SERVIZI: ServiceOption[] = listino.flatMap((g) =>
     })),
 );
 
-const GIORNI_BREVI = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
-const MESI = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"];
-
 type StatoInvio = "fermo" | "invio" | "fatto";
+
+type Conferma = {
+  id: string;
+  data: string;
+  ora: string;
+  servizio: string;
+  inizio: number;
+  fine: number;
+  /** Link e codice personali: arrivano una volta sola, nella risposta 201. */
+  gestione?: { token: string; codice: string };
+};
 
 export function BookingWidget() {
   const [aperto, setAperto] = useState(false);
@@ -62,37 +72,33 @@ export function BookingWidget() {
   const [toccato, setToccato] = useState<{ nome?: boolean; telefono?: boolean }>({});
   const [invio, setInvio] = useState<StatoInvio>("fermo");
   const [erroreServer, setErroreServer] = useState<string | null>(null);
-  const [conferma, setConferma] = useState<{ data: string; ora: string; servizio: string } | null>(null);
+  const [conferma, setConferma] = useState<Conferma | null>(null);
 
   const foglioRef = useRef<HTMLDivElement>(null);
   const titoloId = useId();
   const lenis = useLenis();
 
-  // Giorni proposti: da oggi (ora di Roma) in avanti. I giorni di chiusura
-  // restano nella striscia, spenti: vedere "LUN CHIUSO" spiega più di un buco.
-  const giorni = useMemo(() => {
-    const oggi = oraDiRoma().data;
-    return Array.from({ length: GIORNI_PRENOTABILI + 1 }, (_, i) => {
-      const iso = sommaGiorni(oggi, i);
-      const settimana = giornoDellaData(iso);
-      return {
-        iso,
-        settimana,
-        aperto: turniDellaGiornata(iso).length > 0,
-        giorno: Number(iso.slice(8, 10)),
-        mese: MESI[Number(iso.slice(5, 7)) - 1],
-        oggi: i === 0,
-      };
-    });
-  }, []);
+  // Giorni proposti: da oggi (ora di Roma) in avanti, chiusi compresi (spenti).
+  const giorni = useMemo(() => giorniProposti(), []);
 
   const chiudi = useCallback(() => setAperto(false), []);
 
-  // Apertura da qualsiasi bottone "Prenota" del sito.
-  useEffect(() => ascoltaPrenotazione((da) => {
-    setOrigine(da);
-    setAperto(true);
-  }), []);
+  // Apertura da qualsiasi bottone "Prenota" del sito, e da /?prenota=gestione
+  // (chi ha appena disdetto da "Gestisci il tuo appuntamento" e vuole un
+  // orario nuovo): il parametro si toglie dall'indirizzo subito.
+  useEffect(() => {
+    const smetti = ascoltaPrenotazione((da) => {
+      setOrigine(da);
+      setAperto(true);
+    });
+    const indirizzo = new URL(window.location.href);
+    if (indirizzo.searchParams.get("prenota") === "gestione") {
+      indirizzo.searchParams.delete("prenota");
+      window.history.replaceState(null, "", indirizzo.pathname + indirizzo.search + indirizzo.hash);
+      apriPrenotazione("gestione");
+    }
+    return smetti;
+  }, []);
 
   // Alla chiusura si ricomincia da capo: una prenotazione conclusa non deve
   // riaprirsi sulla schermata di conferma.
@@ -215,7 +221,16 @@ export function BookingWidget() {
       });
       const corpo = await risposta.json();
       if (risposta.ok) {
-        setConferma({ data, ora, servizio: servizio.nome });
+        const inizio = minutiDaOra(ora);
+        setConferma({
+          id: corpo.prenotazione?.id ?? "",
+          data,
+          ora,
+          servizio: servizio.nome,
+          inizio,
+          fine: inizio + servizio.durata,
+          ...(corpo.gestione ? { gestione: corpo.gestione } : {}),
+        });
         setInvio("fatto");
         return;
       }
@@ -303,15 +318,21 @@ export function BookingWidget() {
                   </p>
                   <p className="mt-3 text-2xl font-extrabold tracking-[-0.02em]">{conferma.servizio}</p>
                   <p className="mt-6 max-w-[42ch] leading-relaxed text-steel">
-                    Ti aspettiamo in {salone.via}. Se hai un imprevisto, chiama il{" "}
+                    Ti aspettiamo in {salone.via}.{" "}
+                    {conferma.gestione
+                      ? `Se hai un imprevisto puoi spostarlo o disdirlo da solo, fino a ${MARGINE_GESTIONE_MINUTI / 60} ore prima; dopo, chiama il `
+                      : "Se hai un imprevisto, chiama il "}
                     <a href={salone.telefonoHref} className="text-ink underline underline-offset-4">
                       {salone.telefono}
                     </a>
-                    : l&apos;appuntamento si sposta in un attimo.
+                    .
                   </p>
-                  <p className="info mt-8 text-steel">
+                  <p className="info mt-6 text-steel">
                     Nome: {nome.trim()} · Tel: {telefonoPulito}
                   </p>
+                  {conferma.gestione && (
+                    <RiquadroGestione conferma={conferma as Conferma & { gestione: { token: string; codice: string } }} />
+                  )}
                 </div>
               ) : passo === 0 ? (
                 <ul className="flex flex-col gap-3">
@@ -354,34 +375,7 @@ export function BookingWidget() {
                 </ul>
               ) : passo === 1 ? (
                 <div>
-                  {/* Striscia dei giorni: scorre in orizzontale, si tocca con il pollice. */}
-                  <div className="-mx-5 overflow-x-auto px-5 md:-mx-8 md:px-8" data-lenis-prevent>
-                    <ul className="flex gap-2 pb-2">
-                      {giorni.map((g) => (
-                        <li key={g.iso}>
-                          <button
-                            type="button"
-                            disabled={!g.aperto}
-                            onClick={() => scegliGiorno(g.iso)}
-                            aria-pressed={data === g.iso}
-                            className={cn(
-                              "flex min-h-[4.5rem] w-16 cursor-pointer flex-col items-center justify-center border px-1",
-                              data === g.iso
-                                ? "border-ink bg-ink text-paper"
-                                : "border-ink/15 hover:border-ink",
-                              !g.aperto && "cursor-not-allowed border-dashed text-ink/25 hover:border-ink/15",
-                            )}
-                          >
-                            <span className="info text-[0.625rem] opacity-70">
-                              {g.oggi ? "Oggi" : GIORNI_BREVI[g.settimana]}
-                            </span>
-                            <span className="mt-1 text-lg font-bold leading-none tabular-nums">{g.giorno}</span>
-                            <span className="info text-[0.625rem] opacity-70">{g.mese}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  <StrisciaGiorni giorni={giorni} scelto={data} onScegli={scegliGiorno} />
 
                   <div className="mt-6 flex items-baseline justify-between gap-4">
                     <p className="eyebrow text-steel">Orari liberi</p>
@@ -410,35 +404,7 @@ export function BookingWidget() {
                       </p>
                     ) : (
                       <>
-                        <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                          {slot.slot.map((s) => (
-                            <li key={s.ora}>
-                              <button
-                                type="button"
-                                disabled={!s.disponibile}
-                                onClick={() => setOra(s.ora)}
-                                aria-pressed={ora === s.ora}
-                                className={cn(
-                                  "info min-h-12 w-full cursor-pointer border text-center tabular-nums transition-colors duration-200",
-                                  ora === s.ora ? "border-ink bg-ink text-paper" : "border-ink/15 hover:border-ink",
-                                  !s.disponibile &&
-                                    "cursor-not-allowed border-ink/10 text-ink/25 line-through hover:border-ink/10",
-                                )}
-                                title={
-                                  s.motivo === "occupato"
-                                    ? "Già prenotato"
-                                    : s.motivo === "passato"
-                                      ? "Troppo tardi per oggi"
-                                      : s.motivo === "chiusura"
-                                        ? "Non ci sta prima della chiusura"
-                                        : undefined
-                                }
-                              >
-                                {s.ora}
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
+                        <GrigliaOrari slot={slot.slot} scelto={ora} onScegli={setOra} />
                         {slot.liberi <= 3 && (
                           <p className="info mt-4 text-steel">Ultimi {slot.liberi} orari per questo giorno</p>
                         )}
@@ -562,6 +528,31 @@ export function BookingWidget() {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+/* Dopo la prenotazione: codice e link personali per spostare o disdire. Si
+   vedono solo qui, una volta: nel database ci sono solo le loro impronte, e
+   il link non va in localStorage né in altre richieste. */
+function RiquadroGestione({ conferma }: { conferma: Conferma & { gestione: { token: string; codice: string } } }) {
+  const link = `${window.location.origin}/appuntamento/${conferma.gestione.token}`;
+  return (
+    <section aria-labelledby="titolo-gestione" className="mt-8 border border-ink p-4 md:p-5">
+      <h3 id="titolo-gestione" className="eyebrow">
+        Per spostare o disdire
+      </h3>
+      <p className="mt-4 text-sm text-steel">Il tuo codice</p>
+      <p className="mt-1 font-mono text-3xl font-semibold tracking-[0.12em] tabular-nums">{conferma.gestione.codice}</p>
+      <p className="mt-4 text-sm text-steel">Il tuo link personale</p>
+      <p className="info mt-1 break-all normal-case">{link}</p>
+      <div className="mt-5">
+        <SalvaAppuntamento link={link} codice={conferma.gestione.codice} appuntamento={conferma} />
+      </div>
+      <p className="mt-2 text-sm font-semibold">Salvalo adesso: non potremo mostrartelo di nuovo.</p>
+      <p className="mt-1 text-sm text-steel">
+        Con il link, oppure con telefono e codice da &ldquo;Gestisci il tuo appuntamento&rdquo; in fondo al sito.
+      </p>
+    </section>
   );
 }
 

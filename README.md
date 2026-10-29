@@ -73,6 +73,8 @@ npm run db:init    # applica lo schema al database di DATABASE_URL; è rieseguib
 | `lib/prenotazioni/` | Tipi, algoritmo degli orari, validazione, archivio, avvisi |
 | `app/api/bookings/` | `GET` orari liberi · `POST` nuova prenotazione |
 | `app/admin/` | Agenda protetta da Auth.js: pagina server + Server Action (`azioni.ts`) |
+| `app/appuntamento/`, `app/api/appuntamento/` | "Gestisci il tuo appuntamento": il cliente sposta o disdice con link personale o telefono + codice |
+| `lib/prenotazioni/gestione.ts`, `gestione-dati.ts`, `codice.ts`, `calendario.ts` | Regole della gestione (credenziali, termine, limite), lato server, codice e file .ics |
 | `components/agenda/` | Agenda interattiva: navigazione fra i giorni, calendario, fogli per creare, modificare, disdire e bloccare |
 | `auth.ts`, `auth.config.ts`, `middleware.ts` | Accesso all'agenda |
 

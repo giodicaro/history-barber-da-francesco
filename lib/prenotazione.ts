@@ -7,7 +7,7 @@
    Per scelta del committente non ci sono piattaforme esterne: il sistema è
    qui dentro (components/BookingWidget.tsx + app/api/bookings). */
 
-export type OrigineCta = "navbar" | "menu" | "hero" | "listino" | "footer";
+export type OrigineCta = "navbar" | "menu" | "hero" | "listino" | "footer" | "gestione";
 
 const EVENTO = "prenotazione:apri";
 
