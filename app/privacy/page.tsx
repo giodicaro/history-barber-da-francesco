@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   description: "Come History Barber da Francesco tratta i dati di chi prenota dal sito.",
 };
 
-const AGGIORNATA = "29 ottobre 2026";
+const AGGIORNATA = "30 ottobre 2026";
 
 export default function Privacy() {
   const indirizzo = `${salone.via}, ${salone.cap} ${salone.citta} (${salone.provincia})`;
@@ -53,6 +53,11 @@ export default function Privacy() {
               all&apos;orario scelti. Li usiamo solo per gestire il tuo appuntamento: riservarti la poltrona e, se
               serve, chiamarti per confermarlo o spostarlo. La base giuridica è l&apos;esecuzione della tua richiesta
               (art. 6.1.b GDPR): senza nome e telefono non possiamo fissare l&apos;appuntamento.
+            </p>
+            <p className="mt-3">
+              Alla prenotazione ricevi un <b>link personale</b> e un <b>codice</b> per spostare o disdire da solo
+              l&apos;appuntamento. Li vedi una volta sola: noi conserviamo solo una loro impronta cifrata, da cui non si
+              può risalire al link né al codice, e la cancelliamo insieme all&apos;appuntamento.
             </p>
             <p className="mt-3">
               Non usiamo i tuoi dati per pubblicità, non li vendiamo e non li cediamo a nessuno. Per evitare

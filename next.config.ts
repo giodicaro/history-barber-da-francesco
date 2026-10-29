@@ -23,6 +23,28 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@electric-sql/pglite"],
   // Vale solo in sviluppo: la build di produzione non ha risorse di sviluppo.
   allowedDevOrigins: indirizziDiRete,
+  async headers() {
+    return [
+      {
+        // "Gestisci il tuo appuntamento": il link contiene la chiave
+        // d'accesso del cliente. Mai nella cache, mai nei motori di ricerca,
+        // mai nel Referer delle pagine aperte da qui.
+        source: "/appuntamento/:percorso*",
+        headers: [
+          { key: "Cache-Control", value: "private, no-store" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
+      {
+        source: "/appuntamento",
+        headers: [
+          { key: "Cache-Control", value: "private, no-store" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

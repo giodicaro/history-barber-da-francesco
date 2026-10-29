@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { salone } from "@/lib/salone";
 import { BookButton } from "./BookButton";
 import { GridLines } from "./GridLines";
@@ -81,6 +82,9 @@ export function Footer() {
               <br />
               <span className="text-smoke">Si riceve solo su appuntamento</span>
             </p>
+            <Link href="/appuntamento" className="info mt-3 inline-flex min-h-11 items-center underline-offset-4 hover:underline">
+              Gestisci il tuo appuntamento →
+            </Link>
             <a
               href={salone.instagramHref}
               target="_blank"
