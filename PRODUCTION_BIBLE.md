@@ -2,7 +2,7 @@
 
 Passaggio di consegne per il sito vetrina di **History Barber da Francesco**, barbiere a Mestre (Venezia).
 
-**Fotografia scattata il:** 26 settembre 2026, aggiornata dopo l'agenda interattiva; next 16.4.3 (26/10); 29 ottobre: eliminati app clienti (/app) e Lookbook, restano sito e agenda
+**Fotografia scattata il:** 26 settembre 2026, aggiornata dopo l'agenda interattiva; next 16.4.3 (26/10); 29 ottobre: eliminati app clienti (/app) e Lookbook, restano sito e agenda; 30 ottobre: "Gestisci il tuo appuntamento" (§6.16) sul ramo `feature/gestione-appuntamenti`, non ancora in produzione
 **Cartella:** `C:\Users\foscolo\Parruchieria\my-app`
 **Versionamento:** https://github.com/giodicaro/history-barber-da-francesco (pubblico, ramo `main`)
 **Produzione:** https://history-barber-da-francesco.vercel.app (Vercel, progetto `history-barber-da-francesco`, collegato al repository: ogni push su `main` va in produzione)
@@ -284,6 +284,10 @@ my-app/
 ├── scripts/db-init.mjs     npm run db:init — applica lo schema al Postgres di DATABASE_URL
 ├── components/agenda/      Agenda.tsx, FoglioVoce.tsx (modulo e dettaglio), Calendario.tsx, FoglioInBasso.tsx (<dialog>)
 ├── .env.example            Le sei variabili, commentate
+├── app/appuntamento/      "Gestisci il tuo appuntamento": telefono + codice (page.tsx), link personale ([token]/)
+├── app/api/appuntamento/  POST leggi · orari · sposta · disdici (§6.16)
+├── components/gestione/   GestioneAppuntamento (riepilogo, disdetta, spostamento), CercaAppuntamento, Pagina
+├── components/prenotazione/ GiorniEOrari (striscia e griglia, in comune col widget), SalvaAppuntamento (copia, WhatsApp, .ics)
 ├── lib/
 │   ├── prenotazioni/
 │   │   ├── tipi.ts         Interfacce condivise (ServiceOption, BookingSlot, Prenotazione…)
@@ -294,7 +298,11 @@ my-app/
 │   │   ├── agenda.ts       Regole pure dell'agenda: timeline, statistiche, giorni aperti
 │   │   ├── validazione-agenda.ts  Controlli sui moduli dell'agenda
 │   │   ├── avvisi.ts       Avviso al titolare (Telegram/Resend pronti da scommentare)
-│   │   └── telefono.ts     Normalizzazione del numero, condivisa client/server
+│   │   ├── telefono.ts     Normalizzazione del numero, condivisa client/server
+│   │   ├── codice.ts       Codice personale: alfabeto, normalizza, formatta (browser e server)
+│   │   ├── calendario.ts   Ora di Roma ⇄ istante, file .ics
+│   │   ├── gestione.ts     Regole pure: credenziali e impronte, termine, limite, occupati senza sé stessi
+│   │   └── gestione-dati.ts  Dalla credenziale all'appuntamento, riepilogo, orari per spostare
 │   ├── salone.ts           ★ SORGENTE UNICA: dati salone, orari, listino, portfolio, menu
 │   ├── orari.ts            Ora di Roma, stato di apertura, formattazione dei turni
 │   ├── gsap.ts             Registrazione ScrollTrigger, EASE, prendiInCarico()
@@ -476,6 +484,7 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 | 6.13 | Agenda (navigazione, appuntamenti, blocchi) | `app/admin/`, `components/agenda/` | ✅ Completa in locale |
 | 6.14 | App dei clienti (PWA in `/app`) | — | ❌ Eliminata il 29/10 (§1.4 punto 11) |
 | 6.15 | Lookbook personale (foto e note del taglio) | — | ❌ Eliminato il 29/10 su richiesta: restano solo sito e agenda |
+| 6.16 | Gestione dell'appuntamento da parte del cliente (sposta, disdici) | `app/appuntamento/`, `app/api/appuntamento/`, `components/gestione/`, `components/prenotazione/`, `lib/prenotazioni/gestione*.ts`, `codice.ts`, `calendario.ts` | 🟠 Completa e verificata in locale; non in produzione, non provata su iPhone vero |
 
 **6.1 Barra fissa.**
 - **Trasparente** solo con la pagina ferma in cima alla hero (sentinella `data-cima`, `Hero.tsx:107`).
@@ -538,7 +547,7 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 - passo 1: una scheda per servizio, con categoria, durata e prezzo presi dal listino; i supplementi (`prenotabile: false`) non compaiono;
 - passo 2: striscia orizzontale di 22 giorni (i chiusi restano, spenti) e griglia di orari a 3 colonne (4 da `sm`). Gli orari non disponibili restano visibili barrati, con il motivo nel `title`: una giornata piena si vede;
 - passo 3: nome, telefono e note, con riepilogo. Il telefono è validato mentre si scrive, con la **stessa funzione del server** (`lib/prenotazioni/telefono.ts`);
-- conferma: riepilogo con data, ora, servizio e il telefono del salone per spostare l'appuntamento;
+- conferma: riepilogo con data, ora, servizio, e il riquadro "Per spostare o disdire" con codice e link personali (copia, WhatsApp, calendario), mostrati una volta sola (§6.16);
 - stati: rotella durante il caricamento degli orari e durante l'invio; messaggi in chiaro per ogni errore;
 - accessibilità: `role="dialog"`, `aria-modal`, Esc chiude, Tab gira dentro il foglio, la pagina sotto diventa `inert` e Lenis si ferma (come il menu, §6.2);
 - gli orari **non si calcolano nel browser**: arrivano dall'API, che è l'unica a decidere cosa è libero.
@@ -548,7 +557,7 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 | | `GET /api/bookings` | `POST /api/bookings` |
 |---|---|---|
 | Parametri | `date=YYYY-MM-DD` (default: oggi), `servizio=<id>`, `operatore=<id>` | corpo JSON: `servizioId`, `data`, `ora`, `operatoreId?`, `origine?`, `cliente: { nome, telefono, note? }` |
-| Risposta | `{ data, giorno, giornoNome, aperto, servizio, slot[], liberi }` | 201 `{ ok, prenotazione }` |
+| Risposta | `{ data, giorno, giornoNome, aperto, servizio, slot[], liberi }` | 201 `{ ok, prenotazione, gestione: { token, codice } }` (in chiaro solo qui; nel database le impronte, §6.16) |
 | Errori | 400 data non valida | 400 dati non validi (`campi`), 409 orario appena occupato, 429 troppe richieste, 500 |
 
 - **Algoritmo degli slot** (`lib/prenotazioni/slot.ts`, funzioni pure): dai turni del giorno (`lib/salone.ts`) si generano gli inizi ogni 30 minuti; si scarta chi si sovrappone a un appuntamento, chi è già passato (con 60 minuti di preavviso) e chi non ci starebbe prima della chiusura. Esempio verificato: servizio da 75 minuti di martedì → ultimo orario utile 18:30, 19:00 e 19:30 spenti con motivo `chiusura`.
@@ -597,6 +606,57 @@ Senza `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` il messaggio finisce comunque ne
   - testo in `mix-blend-difference`, che si inverte pixel per pixel.
 - Da tastiera il focus attiva il riempimento.
 - `data-prenota` riporta l'origine, utile per un futuro tracciamento.
+
+**6.16 Gestione dell'appuntamento da parte del cliente** (30/10/2026, ramo `feature/gestione-appuntamenti`).
+
+*Cosa fa.* Chi prenota dal sito riceve, nella conferma del widget, un **link personale** (`/appuntamento/<token>`) e un **codice** di 6 caratteri (`K7M-4QX`). Con il link, oppure da `/appuntamento` con telefono + codice, vede l'appuntamento e lo **disdice** (due tocchi) o lo **sposta** su un orario che il server proporrebbe. Francesco riceve un avviso per ogni modifica e l'agenda è già aggiornata. Dal footer: "Gestisci il tuo appuntamento".
+
+*Decisioni (D1–D7).*
+- **D1 Segreto, mai il solo telefono.** Token `randomBytes(32)` in base64url, codice da un alfabeto senza caratteri ambigui (`23456789ABCDEFGHJKMNPQRSTUVWXYZ`, niente 0 O 1 I L). Nel database solo impronte SHA-256: `gestione_hash` = sha256("gestione:" + token), `codice_hash` = sha256(telefono + ":" + codice). Si cerca sempre per impronta.
+- **D2 Come il cliente conserva l'accesso.** Il sito non manda email né SMS, quindi la conferma del widget offre **Copia link**, **Invia su WhatsApp** (`wa.me/?text=`, il cliente sceglie a chi) e **Aggiungi al calendario**. Il `.ics` è generato nel browser, con orari in UTC calcolati dall'ora di Roma, il link nella descrizione e un promemoria 2 ore prima. Codice e link si vedono **una volta sola** e non vanno in `localStorage`.
+- **D3 Termine.** Disdetta e spostamento fino a `MARGINE_GESTIONE_MINUTI` = 120 minuti prima (`lib/salone.ts`, **da confermare**). Il termine si misura sugli istanti veri (ora di Roma → UTC), quindi la notte del cambio d'ora non lo sposta. Oltre il termine la pagina è in sola lettura, con il telefono del salone.
+- **D4 Spostamento.** Stesso servizio, stessa durata, stesso operatore.
+  - Il nuovo orario lo decide `generaSlot()`: turni, festivi, preavviso e giorni prenotabili.
+  - **Gli occupati escludono l'appuntamento stesso** (`occupatiSenza`), altrimenti spostarlo di mezz'ora sopra il suo orario risulterebbe "occupato". C'è un test.
+  - Al massimo `SPOSTAMENTI_MAX` = 2 spostamenti (**da confermare**), controllati nella condizione stessa dell'`update`.
+  - Sull'orario decide il vincolo di esclusione: `ConflittoOrario` → 409 con gli orari ancora liberi e i primi 3 giorni con posto.
+- **D5 Disdetta = cancellazione della riga** (`delete … returning`), come in agenda: lo slot torna libero subito. Un secondo tentativo dà 404 "non c'è più".
+- **D6 Avvisi** su Telegram e push, dopo la risposta (`after()`), che non fanno mai fallire l'operazione. Testi: `DISDETTA · Mario R. · mer 4/11 10:00 · Taglio uomo` e `SPOSTATO · Mario R. · da mer 4/11 10:00 a gio 5/11 17:30`. La notifica apre `/admin?data=<giorno nuovo>`.
+- **D7 Senza credenziali** restano gli appuntamenti inseriti dall'agenda e quelli precedenti alla funzione: la ricerca risponde "non trovato" con il telefono del salone, e non c'è generazione retroattiva.
+
+*Dati* (`db/schema.ts`, migrazione solo additiva, che parte da sola alla prima connessione): colonne `gestione_hash`, `codice_hash`, `spostamenti smallint default 0`; indice unico parziale `prenotazioni_gestione` e indice `prenotazioni_codice`. `aggiornaVoce()` (agenda) non le tocca: uno spostamento fatto da Francesco lascia valido il link del cliente (verificato).
+
+*API* `POST /api/appuntamento`, un solo POST anche per leggere, perché le credenziali non devono stare in un URL. Corpo `{ azione, credenziale: { token } | { telefono, codice }, data?, ora? }`.
+
+| azione | Risposte |
+|---|---|
+| `leggi` | 200 `{ appuntamento: { data, ora, finisceAlle, servizio, prezzo, nome, disdicibile, spostabile, motivoBlocco?, spostamentiRimasti, termine } }` · 404 |
+| `orari` | 200 come `GET /api/bookings` + `proprio` (l'orario attuale) e, se il giorno è pieno, `prossimiGiorni` · 403 · 400 |
+| `sposta` | 200 riepilogo nuovo · 409 `{ errore, alternative, prossimiGiorni }` · 403 fuori termine o limite · 400 orario fuori dai turni, giorno chiuso, fuori dai giorni prenotabili |
+| `disdici` | 200 · 404 già disdetto · 403 fuori termine |
+
+- Credenziale sbagliata, numero sbagliato, codice malformato e appuntamento inesistente danno **la stessa risposta** (404, stesso testo). La ricerca per impronta si fa comunque, così anche i tempi non tradiscono niente.
+- Freno: 10 tentativi ogni 10 minuti per IP con telefono + codice, in memoria.
+- `Cache-Control: no-store`. Nei log niente token, codici o telefoni: solo codici d'errore e testi degli avvisi.
+
+*Pagine.* `/appuntamento` (telefono + codice; il codice si scrive in maiuscolo e prende il trattino da solo) e `/appuntamento/[token]`, che è un Server Component e risponde 404 con `not-found.tsx` se il link non vale più. Intestazioni in `next.config.ts`: `private, no-store`, `Referrer-Policy: no-referrer` (link), `X-Robots-Tag: noindex`. Il componente client `components/gestione/GestioneAppuntamento.tsx` ha queste schermate:
+- riepilogo, con "Puoi spostarlo o disdirlo fino alle HH:MM di …";
+- conferma della disdetta nella pagina, ed esito con **Prenota un nuovo orario**;
+- spostamento: striscia dei giorni e griglia, con "Il tuo orario" segnato; giorno pieno con i primi 3 giorni liberi; gara 409 con avviso e griglia aggiornata;
+- esito dello spostamento, con il calendario da aggiornare;
+- sola lettura oltre il termine.
+Ogni nuova schermata porta il focus sul titolo, senza anello visibile.
+
+*Riuso.* Striscia dei giorni e griglia degli orari sono state estratte dal widget in `components/prenotazione/GiorniEOrari.tsx`. L'HTML del widget (passo 2) prima e dopo l'estrazione è **identico byte per byte** (verificato). "Prenota un nuovo orario" porta a `/?prenota=gestione`: il widget si apre da solo nella home, con origine `gestione`. Così le pagine di gestione non caricano framer-motion, GSAP né Lenis, anche questo verificato sui loro 9 chunk.
+
+*Verificato il 30/10* (build di produzione, server isolato con PGlite, Chrome headless): tutti e 10 gli scenari del brief, 31 controlli. Comprendono:
+- `.ics` con orario e link giusti;
+- risposte indistinguibili e 429 all'11° tentativo;
+- spostamento di 30 minuti sopra sé stessi, limite, gara, giorno pieno, termine (403 anche su richieste costruite a mano), pausa pranzo, giorno chiuso e oltre i giorni prenotabili (400);
+- regressione di widget e agenda;
+- avvisi nei log, senza segreti.
+
+La matrice visiva copre 10 schermate a 375, 390, 768 e 1440 px, senza scorrimento orizzontale, bersagli sotto i 44 px o titoli che sporgono. **Non verificato su un iPhone vero:** Copia link, WhatsApp e apertura del `.ics` nel Calendario di iOS.
 
 **6.10 Scorrimento morbido e ancore.**
 - Lenis `lerp` 0,1 e `scrollTo` con `force` e `duration` 1,4 (`SmoothScroll.tsx:45`).
@@ -858,7 +918,7 @@ Ordinati per urgenza.
 6. **Le variabili d'ambiente vanno impostate in produzione.** Il codice c'è, ma finché su Vercel mancano `DATABASE_URL`, `AUTH_SECRET`, `ADMIN_PASSWORD`, `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`, in produzione l'archivio resta in memoria (PGlite, si azzera), l'agenda non si apre e nessuno riceve gli avvisi. **Stato al 27/09:** database Neon (progetto `polished-glitter-73416212` "Francoforte", regione AWS eu-central-1: dati dei clienti in UE; il primo progetto negli Stati Uniti, `falling-darkness-36477223`, non è più usato), schema applicato; funzioni di Vercel a Francoforte (`vercel.json` → `fra1`); su Vercel sono impostate `DATABASE_URL` (branch `production`, pooler) e `AUTH_SECRET`, deploy `777e7d9` in produzione. **Mancano** `ADMIN_PASSWORD` (senza, `/admin/login` dice "Accesso non configurato"), `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`: le prenotazioni dal sito vengono salvate, ma per ora nessuno le vede né riceve l'avviso. Il vecchio `ADMIN_TOKEN` su Vercel non serve più.
 7. **Nessuna verifica del numero** (SMS o richiamata): chiunque può occupare orari con un numero inventato. Il freno attuale è di 5 richieste ogni 10 minuti per IP, e sta in memoria (§9.20).
 8. **Durate dei servizi stimate** → `lib/salone.ts`. Da 20 a 75 minuti: decidono quanti orari restano liberi, vanno confermate da Francesco insieme ai prezzi.
-9. **Niente disdetta o spostamento da parte del cliente:** chi prenota passa dal telefono, e Francesco disdice o sposta dall'agenda (§6.13).
+9. **Gestione dell'appuntamento (§6.16), da confermare con Francesco:** termine di `MARGINE_GESTIONE_MINUTI` (120) e massimo `SPOSTAMENTI_MAX` (2) spostamenti in `lib/salone.ts`; testi degli avvisi DISDETTA/SPOSTATO. Il freno ai tentativi con telefono + codice (10 ogni 10 minuti per IP) sta **in memoria**, come quello delle prenotazioni: ogni istanza di Vercel ha il suo contatore. Per un limite serio serve un contatore condiviso (§9.20). L'avviso di una *nuova* prenotazione, senza Telegram configurato, scrive nei log il messaggio intero, telefono compreso (`avvisaTitolare`, comportamento precedente).
 10. **Il database locale non va in produzione.** `.data/agenda` sta solo su questo computer e git lo ignora: gli appuntamenti inseriti in locale non finiscono online. Il database di produzione è quello di `DATABASE_URL`.
 
 ### 🟠 Da chiarire col committente
@@ -944,3 +1004,4 @@ npm run start -- -p 3200      # prova della build di produzione
 10. **Dominio** e **hosting** di destinazione?
 11. Serve un'**informativa privacy**, adesso o insieme alla prenotazione?
 12. Il file di riferimento **`image_299467.png`** citato nel brief: dove si trova?
+13. **Gestisci il tuo appuntamento:** vanno bene 2 ore di termine per spostare o disdire da soli, e al massimo 2 spostamenti? Testi degli avvisi DISDETTA e SPOSTATO chiari?
