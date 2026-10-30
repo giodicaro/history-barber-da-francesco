@@ -202,7 +202,9 @@ export function Navbar() {
               )}
             />
           </span>
-          <span className="eyebrow hidden sm:inline">{aperto ? "Chiudi" : "Menu"}</span>
+          {/* Sotto sm la scritta non si vede: resta per i lettori di schermo,
+              che altrimenti sentirebbero un bottone senza nome. */}
+          <span className="eyebrow sr-only sm:not-sr-only">{aperto ? "Chiudi" : "Menu"}</span>
         </button>
 
         <a

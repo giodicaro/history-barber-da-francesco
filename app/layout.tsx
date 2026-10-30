@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Syne } from "next/font/google";
+import { salone } from "@/lib/salone";
 import "./globals.css";
 
 // Tre voci, tre ruoli: Syne per i titoli giganti (è il tratto riconoscibile
@@ -22,6 +23,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  // Base degli indirizzi assoluti (canonical, Open Graph).
+  metadataBase: new URL(salone.sito),
   title: "History Barber da Francesco — Barbiere a Mestre",
   description:
     "Barbiere in Via Ca' Rossa 47/A-B a Mestre (VE). Tagli, sfumature e barba, solo su appuntamento. Da martedì a sabato.",

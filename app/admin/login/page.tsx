@@ -13,6 +13,7 @@ import { salone } from "@/lib/salone";
 
 export const metadata: Metadata = {
   title: "Accesso agenda — History Barber",
+  description: "Accesso riservato all'agenda del salone History Barber da Francesco.",
   robots: { index: false, follow: false },
 };
 

@@ -131,11 +131,15 @@ export function SpazioCliente({ onPrenota }: { onPrenota?: () => void }) {
     await Promise.all([carica(), aggiornaMiei()]);
   };
 
+  // Anche mentre carica la pagina ha il suo titolo (è già nell'HTML servito).
   if (elenco.stato === "caricamento") {
     return (
-      <p className="info flex items-center gap-3 py-10 text-steel" role="status">
-        <Rotella /> Un attimo…
-      </p>
+      <div>
+        <Intestazione />
+        <p className="info flex items-center gap-3 py-10 text-steel" role="status">
+          <Rotella /> Un attimo…
+        </p>
+      </div>
     );
   }
 
@@ -167,8 +171,7 @@ export function SpazioCliente({ onPrenota }: { onPrenota?: () => void }) {
 
   return (
     <div>
-      <p className="eyebrow text-steel">{salone.nomeCompleto}</p>
-      <h1 className="display mt-3 text-[clamp(min(2rem,calc(100cqi/9.8)),9.6cqi,4rem)]">Il mio appuntamento</h1>
+      <Intestazione />
 
       {elenco.stato === "riconosciuto" && dimentica && (
         <div className="mt-6 border border-ink p-5">
@@ -257,6 +260,15 @@ export function SpazioCliente({ onPrenota }: { onPrenota?: () => void }) {
         </>
       )}
     </div>
+  );
+}
+
+function Intestazione() {
+  return (
+    <>
+      <p className="eyebrow text-steel">{salone.nomeCompleto}</p>
+      <h1 className="display mt-3 text-[clamp(min(2rem,calc(100cqi/9.8)),9.6cqi,4rem)]">Il mio appuntamento</h1>
+    </>
   );
 }
 

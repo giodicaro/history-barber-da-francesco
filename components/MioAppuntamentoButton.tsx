@@ -106,7 +106,6 @@ export function MioAppuntamentoButton({ origine, variante = "coppia", suScuro = 
   return (
     <button
       {...comune}
-      aria-label={prossimo ? `Il mio appuntamento: ${prossimo}` : "Il mio appuntamento: sposta o disdici"}
       className={cn(
         "relative isolate inline-flex h-14 cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden border px-6 text-paper",
         suScuro ? "border-paper" : "border-ink",

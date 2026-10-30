@@ -10,17 +10,33 @@ import { useSyncExternalStore } from "react";
 
 export type OrigineGestione = "hero" | "navbar" | "menu" | "footer" | "prenotazione" | "link";
 
-const EVENTO = "gestione:apri";
+export const EVENTO_GESTIONE = "gestione:apri";
+const EVENTO = EVENTO_GESTIONE;
+
+// Come in lib/prenotazione.ts: il foglio si carica dopo la pagina, e una
+// richiesta arrivata prima resta qui finché non ascolta.
+let inAttesa: OrigineGestione | null = null;
+let inAscolto = 0;
 
 export function apriGestione(origine: OrigineGestione) {
   if (typeof window === "undefined") return;
+  if (inAscolto === 0) inAttesa = origine;
   window.dispatchEvent(new CustomEvent<OrigineGestione>(EVENTO, { detail: origine }));
 }
 
 export function ascoltaGestione(reagisci: (origine: OrigineGestione) => void) {
   const gestore = (e: Event) => reagisci((e as CustomEvent<OrigineGestione>).detail ?? "hero");
   window.addEventListener(EVENTO, gestore);
-  return () => window.removeEventListener(EVENTO, gestore);
+  inAscolto++;
+  if (inAttesa) {
+    const origine = inAttesa;
+    inAttesa = null;
+    setTimeout(() => reagisci(origine), 0);
+  }
+  return () => {
+    inAscolto--;
+    window.removeEventListener(EVENTO, gestore);
+  };
 }
 
 /* ── Stato del cliente per i bottoni ──────────────────────────────────── */
