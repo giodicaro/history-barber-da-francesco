@@ -175,6 +175,67 @@ html.lenis body {
   animation: comparsa-di-riserva 0.6s ease-out 3s forwards;
 }
 
+/* ── Entrata della hero (31/10) ───────────────────────────────────────────
+   In CSS e non in GSAP: parte al primo disegno, senza aspettare JavaScript.
+   Stessa sequenza, stessi tempi e stessa curva di prima (expo.out =
+   --ease-crisp): linee della griglia in 1,6 s (0,08 s l'una dall'altra), foto
+   da 1,18 a 1 in 2,4 s, righe del titolo da 0,25 s (0,12 s l'una), blocchi da
+   0,75 s (0,08 s l'uno). L'ordine è in --i, scritto in Hero.tsx. */
+@keyframes hero-linea {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes hero-zoom {
+  from {
+    transform: scale(1.18);
+  }
+}
+
+@keyframes hero-riga {
+  from {
+    transform: translateY(105%);
+  }
+}
+
+/* Solo la salita, senza dissolvenza: un testo che parte invisibile viene
+   contato come "dipinto" (LCP) solo dopo JavaScript, oltre 6 s su un telefono
+   lento. Così indirizzo, orari, testo e bottoni si leggono dal primo
+   disegno; il titolo gigante tiene la sua entrata a maschera. */
+@keyframes hero-comparsa {
+  from {
+    transform: translateY(30px);
+  }
+}
+
+[data-hero] [data-grid-line] {
+  transform-origin: top;
+  animation: hero-linea 1.6s var(--ease-crisp) both;
+}
+[data-hero] [data-grid-line]:nth-child(2) {
+  animation-delay: 0.08s;
+}
+[data-hero] [data-grid-line]:nth-child(3) {
+  animation-delay: 0.16s;
+}
+[data-hero] [data-grid-line]:nth-child(4) {
+  animation-delay: 0.24s;
+}
+
+[data-hero-media] {
+  animation: hero-zoom 2.4s var(--ease-crisp) both;
+}
+
+[data-entrata-riga] > span {
+  display: block;
+  animation: hero-riga 1.3s var(--ease-crisp) calc(0.25s + var(--i) * 0.12s) both;
+}
+
+[data-entrata] {
+  animation: hero-comparsa 1s var(--ease-crisp) calc(0.75s + var(--i) * 0.08s) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-reveal],
   [data-slide] {
@@ -184,6 +245,14 @@ html.lenis body {
 
   [data-mask-line] > span {
     transform: none !important;
+  }
+
+  /* Entrata della hero: niente, tutto già al suo posto. */
+  [data-hero] [data-grid-line],
+  [data-hero-media],
+  [data-entrata-riga] > span,
+  [data-entrata] {
+    animation: none !important;
   }
 
   *,
