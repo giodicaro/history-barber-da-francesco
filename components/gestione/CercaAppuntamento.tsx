@@ -60,7 +60,7 @@ export function CercaAppuntamento({ compatta = false }: { compatta?: boolean }) 
       {!compatta && (
         <>
           <p className="eyebrow text-steel">{salone.nomeCompleto}</p>
-          <h1 className="display mt-3 text-[clamp(2rem,9.6cqi,4rem)]">Il tuo appuntamento</h1>
+          <h1 className="display mt-3 text-[clamp(min(2rem,calc(100cqi/9.8)),9.6cqi,4rem)]">Il tuo appuntamento</h1>
         </>
       )}
       <p className="mt-4 max-w-[46ch] text-base text-steel">

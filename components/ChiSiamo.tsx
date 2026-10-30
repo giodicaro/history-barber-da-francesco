@@ -51,12 +51,14 @@ export function ChiSiamo() {
               data-reveal
               className={
                 i === 0
-                  ? "border-t border-ink py-6 pl-3 pr-6 md:col-start-2"
-                  : "border-t border-ink py-6 pl-3 pr-6"
+                  ? "border-t border-ink py-6 pl-3 pr-6 md:col-start-2 md:pr-3 lg:pr-6"
+                  : "border-t border-ink py-6 pl-3 pr-6 md:pr-3 lg:pr-6"
               }
             >
               <p className="info text-steel">{p.sigla} /</p>
-              <h3 className="mt-6 text-xl font-extrabold tracking-[-0.02em] md:mt-10 md:text-2xl">
+              {/* text-2xl solo da lg: fra 768 e 1023 px "appuntamento" non sta in
+                  un quarto di riga. */}
+              <h3 className="mt-6 text-xl font-extrabold tracking-[-0.02em] md:mt-10 lg:text-2xl">
                 {p.titolo}
               </h3>
               <p className="mt-3 max-w-[34ch] text-base leading-relaxed text-steel">{p.testo}</p>

@@ -60,7 +60,7 @@ export default async function Login(props: PageProps<"/admin/login">) {
     <main className="flex min-h-svh items-center bg-ink text-paper">
       <div className="shell">
         <p className="eyebrow text-smoke">{salone.nomeCompleto}</p>
-        <h1 className="display mt-4 text-[clamp(2.5rem,9vw,6rem)]">Agenda</h1>
+        <h1 className="display mt-4 text-[clamp(min(2.5rem,calc(100cqi/4.9)),9cqi,6rem)]">Agenda</h1>
 
         {configurato ? (
           <form action={entra} className="mt-10 max-w-sm">

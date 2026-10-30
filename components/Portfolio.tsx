@@ -25,7 +25,7 @@ export function Portfolio() {
         <ul className="mt-16 grid grid-cols-2 md:mt-24 md:grid-cols-4">
           {portfolio.map((lavoro, i) => (
             <li key={lavoro.titolo} data-reveal>
-              <figure className="group relative aspect-square overflow-hidden bg-fog text-ink">
+              <figure className="@container group relative aspect-square overflow-hidden bg-fog text-ink">
                 <Photo
                   src={lavoro.src}
                   alt={lavoro.alt}
@@ -34,8 +34,10 @@ export function Portfolio() {
                   className="transition-transform duration-700 ease-crisp group-hover:scale-105"
                 />
                 {/* Didascalia sulla foto. Con il mouse sale al passaggio; su
-                    touch, dove l'hover non esiste, resta sempre visibile. */}
-                <figcaption className="absolute inset-x-0 bottom-0 flex items-end gap-3 bg-linear-to-t from-ink/80 via-ink/40 to-transparent p-3 pt-10 text-paper transition-transform duration-500 ease-crisp md:p-4 md:pt-14 [@media(hover:hover)]:translate-y-full [@media(hover:hover)]:group-hover:translate-y-0">
+                    touch, dove l'hover non esiste, resta sempre visibile.
+                    Sulle tessere strette (sotto 9,5 rem, cioè a 320 px) il numero
+                    va sopra il titolo: accanto, "Panno caldo ·" non ci starebbe. */}
+                <figcaption className="absolute inset-x-0 bottom-0 flex flex-col items-start gap-1 @[9.5rem]:flex-row @[9.5rem]:items-end @[9.5rem]:gap-3 bg-linear-to-t from-ink/80 via-ink/40 to-transparent p-3 pt-10 text-paper transition-transform duration-500 ease-crisp md:p-4 md:pt-14 [@media(hover:hover)]:translate-y-full [@media(hover:hover)]:group-hover:translate-y-0">
                   <span className="info text-paper/60">{String(i + 1).padStart(2, "0")}</span>
                   <span className="flex min-w-0 flex-col gap-1">
                     <span className="text-sm font-bold leading-tight tracking-[-0.01em] md:text-lg">

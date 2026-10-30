@@ -164,7 +164,7 @@ export function FoglioInBasso({
       }}
       className={[
         // Chiuso il <dialog> ha display:none dal browser: "flex" solo da aperto.
-        "m-0 mt-auto w-full max-w-none flex-col overflow-hidden bg-paper p-0 text-ink",
+        "m-0 mt-auto w-full max-w-none flex-col overflow-hidden bg-paper p-0 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-ink",
         "backdrop:bg-ink/70 open:flex",
         // Altezza massima: 100vh dove dvh non c'è (iOS < 15.4), altrimenti il
         // viewport dinamico, che segue la barra del browser che entra ed esce.

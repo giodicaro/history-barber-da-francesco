@@ -285,11 +285,16 @@ function PrenotaDiNuovo({ onPrenota }: { onPrenota?: () => void }) {
   );
 }
 
+/* Titoli delle pagine di gestione: "APPUNTAMENTO", la parola più lunga, è
+   9,55 em in Syne Bold. Il minimo è il più piccolo fra 2 rem e 100cqi / 9,8,
+   così la parola sta nella shell anche a 320 px e con il testo di sistema
+   ingrandito (prima a 320 px sporgeva di 26 px). Stessa formula in
+   SpazioCliente, CercaAppuntamento e nella pagina "non c'è più". */
 function Titolo({ rif, sopra, children }: { rif: React.RefObject<HTMLHeadingElement | null>; sopra: string; children: ReactNode }) {
   return (
     <>
       <p className="eyebrow text-steel">{sopra}</p>
-      <h1 ref={rif} tabIndex={-1} style={SENZA_ANELLO} className="display mt-3 text-[clamp(2rem,9.6cqi,4rem)]">
+      <h1 ref={rif} tabIndex={-1} style={SENZA_ANELLO} className="display mt-3 text-[clamp(min(2rem,calc(100cqi/9.8)),9.6cqi,4rem)]">
         {children}
       </h1>
     </>

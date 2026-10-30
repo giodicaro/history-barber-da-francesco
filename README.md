@@ -63,6 +63,7 @@ npm run db:init    # applica lo schema al database di DATABASE_URL; è rieseguib
 | `npm start` | Serve la build |
 | `npm run lint` | ESLint (config flat) |
 | `npm run db:init` | Applica `db/schema.ts` al Postgres di `DATABASE_URL` |
+| `node scripts/controllo-responsive.mjs` | Controllo responsive di tutto il sito, Chromium e WebKit, 13 misure (Playwright fuori dal progetto: vedi l'intestazione dello script e la Bible §7). Prenota davvero: solo su un database di prova |
 
 ## Mappa veloce
 

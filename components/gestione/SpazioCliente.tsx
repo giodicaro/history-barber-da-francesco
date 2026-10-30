@@ -168,7 +168,7 @@ export function SpazioCliente({ onPrenota }: { onPrenota?: () => void }) {
   return (
     <div>
       <p className="eyebrow text-steel">{salone.nomeCompleto}</p>
-      <h1 className="display mt-3 text-[clamp(2rem,9.6cqi,4rem)]">Il mio appuntamento</h1>
+      <h1 className="display mt-3 text-[clamp(min(2rem,calc(100cqi/9.8)),9.6cqi,4rem)]">Il mio appuntamento</h1>
 
       {elenco.stato === "riconosciuto" && dimentica && (
         <div className="mt-6 border border-ink p-5">

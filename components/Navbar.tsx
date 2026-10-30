@@ -118,7 +118,11 @@ export function Navbar() {
       }
       if (e.key !== "Tab") return;
       // Il focus gira fra barra e tenda, che vivono nello stesso <header>.
-      const focusabili = barra.querySelectorAll<HTMLElement>("a[href], button:not([disabled])");
+      // Solo quelli visibili: sotto md il link a Instagram del menu è nascosto
+      // (display: none) e, se fosse l'ultimo, il Tab non tornerebbe al primo.
+      const focusabili = [...barra.querySelectorAll<HTMLElement>("a[href], button:not([disabled])")].filter(
+        (el) => el.getClientRects().length > 0,
+      );
       if (focusabili.length === 0) return;
       const primo = focusabili[0];
       const ultimo = focusabili[focusabili.length - 1];
@@ -273,7 +277,7 @@ export function Navbar() {
                         e.preventDefault();
                         chiudiVerso(voce.id);
                       }}
-                      className="display flex items-end justify-between gap-4 pb-[0.12em] pl-3 pt-[0.2em] text-[clamp(2rem,min(calc((100cqi-3.5rem)/6.65),12svh),9rem)] transition-opacity duration-300"
+                      className="display flex min-h-11 items-end justify-between gap-4 pb-[0.12em] pl-3 pt-[0.2em] text-[clamp(2rem,min(calc((100cqi-3.5rem)/6.65),12svh),9rem)] transition-opacity duration-300"
                     >
                       <span>{voce.etichetta}</span>
                       <span className="info mb-[0.5em] pr-3 text-smoke">0{i + 1}</span>
@@ -318,7 +322,7 @@ export function Navbar() {
                     href={salone.instagramHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="underline-offset-4 hover:underline"
+                    className="inline-flex min-h-11 items-center underline-offset-4 hover:underline"
                   >
                     Instagram
                   </a>
