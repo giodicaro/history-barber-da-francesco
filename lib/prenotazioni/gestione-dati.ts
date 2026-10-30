@@ -1,9 +1,9 @@
 import "server-only";
 import { formatoOra, giornoDellaData, oraDiRoma, sommaGiorni, turniDellaGiornata } from "@/lib/orari";
-import { GIORNI_PRENOTABILI, MARGINE_GESTIONE_MINUTI, orari, SPOSTAMENTI_MAX } from "@/lib/salone";
+import { GIORNI_PRENOTABILI, MARGINE_GESTIONE_MINUTI, orari, RIPENSAMENTO_MINUTI, SPOSTAMENTI_MAX, ULTIMO_AVVISO_MINUTI } from "@/lib/salone";
 import { appuntamentoDelCliente, appuntamentoDelCodice, appuntamentoDelToken, occupatiConId, type AppuntamentoGestito } from "./archivio";
 import { codiceCompleto } from "./codice";
-import { impronta, improntaCodice, puoGestire, slotPerSpostamento, TOKEN_GESTIONE, type StatoGestione } from "./gestione";
+import { impronta, improntaCodice, puoGestire, slotPerSpostamento, TOKEN_GESTIONE, type RegoleGestione, type StatoGestione } from "./gestione";
 import { normalizzaTelefono } from "./telefono";
 import type { RispostaSlot } from "./tipi";
 import { servizioPerId } from "./validazione";
@@ -17,7 +17,12 @@ import { servizioPerId } from "./validazione";
    valgono finché i loro appuntamenti non sono passati (bible §11). */
 export type Credenziale = { prenotazioneId: string } | { token: string } | { telefono: string; codice: string };
 
-export const REGOLE = { margineMinuti: MARGINE_GESTIONE_MINUTI, spostamentiMax: SPOSTAMENTI_MAX };
+export const REGOLE: RegoleGestione = {
+  margineMinuti: MARGINE_GESTIONE_MINUTI,
+  spostamentiMax: SPOSTAMENTI_MAX,
+  ripensamentoMinuti: RIPENSAMENTO_MINUTI,
+  ultimoAvvisoMinuti: ULTIMO_AVVISO_MINUTI,
+};
 
 export function leggiCredenziale(v: unknown): Credenziale | null {
   const c = v as Record<string, unknown> | null;
@@ -64,6 +69,10 @@ export function riepilogo(a: AppuntamentoGestito, adessoIstante = Date.now()) {
     ...(stato.motivoBlocco ? { motivoBlocco: stato.motivoBlocco } : {}),
     spostamentiRimasti: stato.spostamentiRimasti,
     termine: { data: stato.termine.data, ora: formatoOra(stato.termine.minuti) },
+    ...(stato.fineRipensamento
+      ? { fineRipensamento: { data: stato.fineRipensamento.data, ora: formatoOra(stato.fineRipensamento.minuti) } }
+      : {}),
+    inRipensamento: stato.inRipensamento,
   };
 }
 
