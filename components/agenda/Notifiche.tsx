@@ -1,19 +1,21 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useSyncExternalStore, useTransition } from "react";
 import { attivaNotifiche, disattivaNotifiche, notificaDiProva } from "@/app/admin/azioni";
 import { Rotella } from "./FoglioInBasso";
 
 /* Notifiche delle prenotazioni sul telefono (Web Push, vedi
-   lib/prenotazioni/notifiche.ts). Il componente compare in due punti
-   dell'agenda (app/admin/page.tsx):
-   - posto="banner", in cima: finché le notifiche non sono attive su questo
-     dispositivo, un banner ben visibile con il bottone per attivarle;
-   - posto="gestione", in fondo: quando sono attive, una riga con "prova" e
-     "disattiva", che non ruba spazio alla giornata.
+   lib/prenotazioni/notifiche.ts). Due pezzi, con uno stato solo:
+   - <Notifiche>, in fondo all'agenda (app/admin/page.tsx), sopra "Esci":
+     una riga di stato e l'azione (attiva, prova, disattiva) o le istruzioni;
+   - <PromemoriaNotifiche>, in testata accanto al titoletto: una campanella
+     barrata da 44 px, solo quando le notifiche non sono attive; porta al
+     blocco in fondo.
+   Fino al 30/10 c'era un riquadro nero in cima che spingeva la giornata
+   sotto la piega: tolto, la giornata viene prima.
 
    Sull'iPhone Apple le permette solo all'agenda aggiunta alla schermata Home
-   (iOS 16.4+): in Safari normale il banner spiega come installarla. */
+   (iOS 16.4+): in Safari normale il blocco spiega come fare. */
 
 type Stato =
   | { tipo: "verifica" }
@@ -24,6 +26,7 @@ type Stato =
   | { tipo: "attive" };
 
 const SCOPE = "/admin";
+const ID_BLOCCO = "notifiche";
 
 // La chiave VAPID arriva in base64 "url-safe"; il browser la vuole in byte.
 function chiaveInByte(base64: string) {
@@ -53,50 +56,83 @@ async function leggiStato(): Promise<Stato> {
   return iscrizione && Notification.permission === "granted" ? { tipo: "attive" } : { tipo: "spente" };
 }
 
-export function Notifiche({ chiave, posto }: { chiave: string | null; posto: "banner" | "gestione" }) {
-  const [stato, setStato] = useState<Stato>({ tipo: "verifica" });
+/* ── Lo stato, uno per pagina ────────────────────────────────────────────
+   Lo leggono testata e blocco in fondo: lo si legge una volta sola, al primo
+   che lo chiede. */
+
+let stato: Stato = { tipo: "verifica" };
+let letto = false;
+const ascoltatori = new Set<() => void>();
+const imposta = (s: Stato) => {
+  stato = s;
+  ascoltatori.forEach((f) => f());
+};
+
+function leggiUnaVolta() {
+  if (letto) return;
+  letto = true;
+  leggiStato()
+    .then(async (s) => {
+      imposta(s);
+      // Notifiche attive sul telefono: si ricorda al server l'iscrizione a
+      // ogni apertura, così torna a funzionare da sola se il server l'aveva
+      // persa (chiavi cambiate, database nuovo). Una volta sola per apertura.
+      if (s.tipo === "attive") {
+        const iscrizione = await (await navigator.serviceWorker.getRegistration(SCOPE))?.pushManager.getSubscription();
+        if (iscrizione) await attivaNotifiche(iscrizione.toJSON(), nomeDispositivo()).catch(() => {});
+      }
+    })
+    .catch(() => imposta({ tipo: "non-supportato" }));
+}
+
+function iscrivi(f: () => void) {
+  ascoltatori.add(f);
+  leggiUnaVolta();
+  return () => ascoltatori.delete(f);
+}
+
+const VERIFICA: Stato = { tipo: "verifica" };
+const useStato = () => useSyncExternalStore(iscrivi, () => stato, () => VERIFICA);
+
+/* ── In testata: la campanella barrata ─────────────────────────────────── */
+
+export function PromemoriaNotifiche({ chiave }: { chiave: string | null }) {
+  const s = useStato();
+  if (!chiave || !["spente", "installa-ios", "negato"].includes(s.tipo)) return null;
+  const vai = () => {
+    const blocco = document.getElementById(ID_BLOCCO);
+    if (!blocco) return;
+    const ridotto = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    blocco.scrollIntoView({ behavior: ridotto ? "auto" : "smooth", block: "center" });
+    blocco.focus({ preventScroll: true });
+  };
+  return (
+    <button
+      type="button"
+      onClick={vai}
+      aria-label="Notifiche spente: vai alle impostazioni"
+      title="Notifiche spente"
+      className="-my-2 flex size-11 shrink-0 cursor-pointer items-center justify-center text-steel transition-colors duration-150 hover:text-ink"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path d="M6 16V11a6 6 0 0 1 9.5-4.9M18 11v5l1.5 2h-15" />
+        <path d="M10 20.5a2 2 0 0 0 4 0M3.5 3.5l17 17" />
+      </svg>
+    </button>
+  );
+}
+
+/* ── In fondo: il blocco ─────────────────────────────────────────────────── */
+
+export function Notifiche({ chiave }: { chiave: string | null }) {
+  const s = useStato();
   const [messaggio, setMessaggio] = useState("");
   const [inCorso, avvia] = useTransition();
 
-  useEffect(() => {
-    let vivo = true;
-    leggiStato()
-      .then(async (s) => {
-        if (!vivo) return;
-        setStato(s);
-        // Notifiche attive sul telefono: si ricorda al server l'iscrizione a
-        // ogni apertura, così torna a funzionare da sola se il server l'aveva
-        // persa (chiavi cambiate, database nuovo). Una volta sola: in fondo.
-        if (s.tipo === "attive" && posto === "gestione") {
-          const iscrizione = await (await navigator.serviceWorker.getRegistration(SCOPE))?.pushManager.getSubscription();
-          if (iscrizione) await attivaNotifiche(iscrizione.toJSON(), nomeDispositivo()).catch(() => {});
-        }
-      })
-      .catch(() => vivo && setStato({ tipo: "non-supportato" }));
-    return () => {
-      vivo = false;
-    };
-  }, [posto]);
-
-  if (stato.tipo === "verifica") return null;
-
-  // Senza chiavi VAPID sul server il bottone non può funzionare: lo si dice
-  // chiaramente (lo vede solo chi è entrato nell'agenda).
-  if (!chiave) {
-    return posto === "banner" ? (
-      <p role="status" className="info mb-6 border border-ink/20 px-4 py-3 text-steel">
-        Notifiche sul telefono non disponibili: sul server mancano le chiavi VAPID (vedi .env.example).
-      </p>
-    ) : null;
-  }
-
-  // Ognuno dei due posti mostra solo la sua parte. Il banner resta visibile
-  // dopo l'attivazione finché c'è il messaggio di conferma.
-  if (posto === "banner" && (stato.tipo === "non-supportato" || (stato.tipo === "attive" && !messaggio))) return null;
-  // In fondo: quando sono attive, e dopo un "Disattiva" per poterle riattivare.
-  if (posto === "gestione" && stato.tipo !== "attive" && !messaggio) return null;
+  if (s.tipo === "verifica") return null;
 
   const attiva = () => {
+    if (!chiave) return;
     setMessaggio("");
     // Il permesso va chiesto subito, dentro il tocco: Safari lo nega se prima
     // c'è un'attesa.
@@ -104,7 +140,7 @@ export function Notifiche({ chiave, posto }: { chiave: string | null; posto: "ba
     avvia(async () => {
       try {
         if ((await permesso) !== "granted") {
-          setStato({ tipo: "negato" });
+          imposta({ tipo: "negato" });
           return;
         }
         const registrazione = await navigator.serviceWorker.register("/sw-agenda.js", { scope: SCOPE });
@@ -117,7 +153,7 @@ export function Notifiche({ chiave, posto }: { chiave: string | null; posto: "ba
           setMessaggio(esito.errore);
           return;
         }
-        setStato({ tipo: "attive" });
+        imposta({ tipo: "attive" });
         // Subito una notifica di prova: si vede che funziona, qui e ora.
         const prova = await notificaDiProva();
         setMessaggio(prova.ok ? "Fatto: dovresti aver ricevuto una notifica di prova." : prova.errore);
@@ -149,7 +185,7 @@ export function Notifiche({ chiave, posto }: { chiave: string | null; posto: "ba
           await disattivaNotifiche(iscrizione.endpoint);
           await iscrizione.unsubscribe();
         }
-        setStato({ tipo: "spente" });
+        imposta({ tipo: "spente" });
         setMessaggio("Notifiche disattivate su questo dispositivo.");
       } catch {
         setMessaggio("Connessione assente: riprova.");
@@ -159,83 +195,73 @@ export function Notifiche({ chiave, posto }: { chiave: string | null; posto: "ba
 
   const bottone =
     "eyebrow flex min-h-12 cursor-pointer items-center justify-center gap-3 border border-ink px-5 transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50";
+  const comeFare = "eyebrow inline-flex min-h-11 cursor-pointer items-center text-steel underline-offset-4 hover:text-ink hover:underline";
 
-  if (posto === "banner") {
-    const bottoneBanner =
-      "eyebrow flex min-h-12 w-full cursor-pointer items-center justify-center gap-3 bg-paper px-5 text-ink transition-opacity duration-150 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto";
-    return (
-      <section aria-labelledby="titolo-banner-notifiche" className="mb-6 bg-ink px-5 py-5 text-paper">
-        <h2 id="titolo-banner-notifiche" className="eyebrow text-smoke">
-          Notifiche sul telefono
-        </h2>
-        {stato.tipo === "spente" && (
-          <>
-            <p className="mt-2 max-w-[52ch] text-base">
-              Ricevi un avviso su questo telefono a ogni prenotazione dal sito o dall&apos;app, e quando un cliente
-              sposta o disdice.
-            </p>
-            <button type="button" onClick={attiva} disabled={inCorso} className={`${bottoneBanner} mt-4`}>
-              {inCorso && <Rotella />}
-              {inCorso ? "Attivazione…" : "Attiva le notifiche"}
-            </button>
-          </>
-        )}
-        {stato.tipo === "installa-ios" && (
-          <div className="mt-2 max-w-[52ch] text-base">
-            <p>Sull&apos;iPhone le notifiche arrivano solo all&apos;agenda installata come app:</p>
-            <ol className="mt-3 list-decimal space-y-1 pl-5 text-smoke">
+  return (
+    <section
+      id={ID_BLOCCO}
+      tabIndex={-1}
+      aria-labelledby="titolo-notifiche"
+      // Il focus arriva qui dalla campanella in testata: niente anello, si
+      // vede già dove si è arrivati.
+      style={{ outline: "none" }}
+      className="mt-10 scroll-mt-6 border border-ink/15 bg-paper px-4 py-4 sm:px-5"
+    >
+      <h2 id="titolo-notifiche" className="eyebrow text-steel">
+        Notifiche
+      </h2>
+
+      {!chiave ? (
+        <p className="info mt-2 text-steel">Non disponibili: sul server mancano le chiavi VAPID (vedi .env.example).</p>
+      ) : s.tipo === "non-supportato" ? (
+        <p className="info mt-2 text-steel">Questo browser non riceve notifiche.</p>
+      ) : s.tipo === "installa-ios" ? (
+        <>
+          <p className="mt-2 text-base">Su iPhone le notifiche funzionano con l&apos;agenda aggiunta alla Home.</p>
+          <details className="mt-1">
+            <summary className={comeFare}>Come fare</summary>
+            <ol className="mb-1 mt-1 list-decimal space-y-1 pl-5 text-base text-steel">
               <li>in Safari tocca il pulsante Condividi (il quadrato con la freccia);</li>
               <li>scegli &ldquo;Aggiungi alla schermata Home&rdquo;;</li>
               <li>apri l&apos;agenda dalla nuova icona HB: qui comparirà il bottone per attivarle.</li>
             </ol>
-          </div>
-        )}
-        {stato.tipo === "negato" && (
-          <p className="mt-2 max-w-[52ch] text-base">
-            Le notifiche sono bloccate per l&apos;agenda. Sull&apos;iPhone: Impostazioni → Notifiche → Agenda HB →
-            Consenti notifiche. Su Android: tieni premuta l&apos;icona → Info app → Notifiche. Poi riapri l&apos;agenda.
-          </p>
-        )}
-        {messaggio && (
-          <p role="status" className="info mt-3 text-smoke">
-            {messaggio}
-          </p>
-        )}
-      </section>
-    );
-  }
-
-  return (
-    <section aria-labelledby="titolo-notifiche" className="mt-10 border-t border-ink/15 pt-6">
-      <h2 id="titolo-notifiche" className="eyebrow text-steel">
-        Notifiche delle prenotazioni
-      </h2>
-
-      {stato.tipo === "negato" && (
-        <p className="mt-3 max-w-[52ch] text-base text-steel">
-          Le notifiche sono bloccate per l&apos;agenda. Sull&apos;iPhone: Impostazioni → Notifiche → Agenda HB → Consenti.
-          Su computer: il lucchetto accanto all&apos;indirizzo → Notifiche → Consenti. Poi ricarica la pagina.
-        </p>
-      )}
-
-      {(stato.tipo === "spente" || stato.tipo === "attive") && (
+          </details>
+        </>
+      ) : s.tipo === "negato" ? (
         <>
-          <p className="mt-3 max-w-[52ch] text-base">
-            {stato.tipo === "attive"
-              ? "Attive su questo dispositivo: arriva una notifica a ogni prenotazione dal sito."
-              : "Ricevi una notifica su questo dispositivo a ogni prenotazione dal sito."}
+          <p className="mt-2 text-base">Notifiche bloccate.</p>
+          <details className="mt-1">
+            <summary className={comeFare}>Come sbloccarle</summary>
+            <ul className="mb-1 mt-1 space-y-2 text-base text-steel">
+              <li>
+                <b className="text-ink">iPhone:</b> Impostazioni → Notifiche → Agenda HB → Consenti notifiche.
+              </li>
+              <li>
+                <b className="text-ink">Android:</b> tieni premuta l&apos;icona dell&apos;agenda → Info app → Notifiche → Consenti.
+              </li>
+              <li>
+                <b className="text-ink">Computer:</b> il lucchetto accanto all&apos;indirizzo → Notifiche → Consenti.
+              </li>
+            </ul>
+            <p className="text-base text-steel">Poi riapri l&apos;agenda.</p>
+          </details>
+        </>
+      ) : (
+        <>
+          <p className="mt-2 text-base">
+            {s.tipo === "attive" ? "Notifiche attive su questo telefono" : "Notifiche spente su questo telefono"}
           </p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {stato.tipo === "spente" ? (
+          <div className="mt-3 flex flex-wrap gap-3">
+            {s.tipo === "spente" ? (
               <button type="button" onClick={attiva} disabled={inCorso} className={`${bottone} bg-ink text-paper hover:bg-paper hover:text-ink`}>
                 {inCorso && <Rotella />}
-                {inCorso ? "Attivazione…" : "Attiva notifiche"}
+                {inCorso ? "Attivazione…" : "Attiva"}
               </button>
             ) : (
               <>
                 <button type="button" onClick={prova} disabled={inCorso} className={`${bottone} hover:bg-ink hover:text-paper`}>
                   {inCorso && <Rotella />}
-                  Invia una prova
+                  Prova
                 </button>
                 <button type="button" onClick={disattiva} disabled={inCorso} className={`${bottone} border-ink/30 text-steel hover:border-ink hover:text-ink`}>
                   Disattiva

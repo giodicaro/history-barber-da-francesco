@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useOptimistic, useState, useTransition, type MouseEvent } from "react";
+import { useEffect, useOptimistic, useState, useTransition, type MouseEvent, type ReactNode } from "react";
 import { formatoOra } from "@/lib/orari";
 import {
   costruisciTimeline,
@@ -46,6 +46,7 @@ export function Agenda({
   adesso,
   voci,
   archivio,
+  promemoria,
 }: {
   data: string;
   oggi: string;
@@ -53,6 +54,8 @@ export function Agenda({
   adesso: number;
   voci: VoceAgenda[];
   archivio: TipoArchivio;
+  /** In testata, accanto al titoletto: la campanella delle notifiche spente. */
+  promemoria?: ReactNode;
 }) {
   const router = useRouter();
   const [navigando, avviaNavigazione] = useTransition();
@@ -105,198 +108,235 @@ export function Agenda({
     <>
       {archivio === "memoria" && (
         <p className="info mb-6 border border-ink bg-ink px-4 py-3 text-paper">
-          Archivio in memoria: manca DATABASE_URL, quindi queste voci spariscono al prossimo riavvio.
-          Vedi .env.example e <b>npm run db:init</b>.
+          Archivio in memoria: manca DATABASE_URL, quindi queste voci spariscono al prossimo riavvio. Vedi .env.example
+          e <b>npm run db:init</b>.
         </p>
       )}
 
-      <header className="border-b border-ink pb-5">
-        <p className="eyebrow text-steel">{salone.nomeCompleto} · agenda</p>
+      {/* Da lg testata e timeline affiancate: su iPad orizzontale e computer
+          la giornata non resta una colonna stretta in mezzo al vuoto, e il
+          giorno con i numeri resta fermo mentre la timeline scorre. */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:items-start lg:gap-12">
+        {/* @container: il nome del giorno si dimensiona sulla larghezza della
+          testata (100cqi), non della finestra. */}
+        <header className="@container border-b border-ink pb-5 lg:sticky lg:top-6">
+          <div className="flex min-h-11 items-center justify-between gap-3">
+            {/* Sotto sm solo "Agenda": il nome intero e la campanella non stanno su
+              una riga a 320 px. */}
+            <p className="eyebrow text-steel">
+              <span className="hidden sm:inline">{salone.nomeCompleto} · </span>
+              <span className="sm:hidden">Agenda</span>
+              <span className="hidden sm:inline">agenda</span>
+            </p>
+            {promemoria}
+          </div>
 
-        {/* Navigazione: freccia, giorno (apre il calendario), freccia. */}
-        <div className="mt-4 flex items-stretch gap-2">
-          <FrecciaGiorno
-            verso={-1}
-            href={indirizzo(giornoApertoVicino(dataMostrata, -1), oggi)}
-            onClick={clicLink(giornoApertoVicino(dataMostrata, -1))}
-          />
-          <button
-            type="button"
-            onClick={() => setFoglio({ tipo: "calendario" })}
-            aria-label={`${etichettaGiorno(dataMostrata)}: scegli un altro giorno`}
-            className="group flex min-h-14 min-w-0 flex-1 cursor-pointer items-center justify-between gap-3 border border-ink px-3 text-left transition-colors duration-150 hover:bg-fog sm:px-4"
-          >
-            <span className="min-w-0">
-              <span className="display block truncate text-[clamp(1.5rem,7.2vw,3.25rem)] leading-none">
-                {giornoNome}
+          {/* Navigazione: freccia, giorno (apre il calendario), freccia. */}
+          <div className="mt-4 flex items-stretch gap-2">
+            <FrecciaGiorno
+              verso={-1}
+              href={indirizzo(giornoApertoVicino(dataMostrata, -1), oggi)}
+              onClick={clicLink(giornoApertoVicino(dataMostrata, -1))}
+            />
+            <button
+              type="button"
+              onClick={() => setFoglio({ tipo: "calendario" })}
+              aria-label={`${etichettaGiorno(dataMostrata)}: scegli un altro giorno`}
+              className="group flex min-h-14 min-w-0 flex-1 cursor-pointer items-center justify-between gap-3 border border-ink px-3 text-left transition-colors duration-150 hover:bg-fog sm:px-4"
+            >
+              <span className="min-w-0">
+                {/* "MERCOLEDÌ", il più largo, misura fino a 6,9 em in Syne Bold
+                  (WebKit lo disegna un po' più largo): divisore 7,2. Lo spazio è la
+                  testata meno frecce, spazi e margini del bottone: 8,5 rem sotto sm,
+                  12 rem da sm (frecce più larghe e icona del calendario). */}
+                <span className="display block truncate text-[clamp(1.25rem,calc((100cqi-8.5rem)/7.2),3.25rem)] sm:text-[clamp(1.25rem,calc((100cqi-12rem)/7.2),3.25rem)] leading-none">
+                  {giornoNome}
+                </span>
+                <span className="info mt-1.5 block text-steel">
+                  {etichettaGiorno(dataMostrata).replace(/^\S+\s/, "")}
+                  {dataMostrata === oggi && ` · oggi · ${formatoOra(adesso)}`}
+                </span>
               </span>
-              <span className="info mt-1.5 block text-steel">
-                {etichettaGiorno(dataMostrata).replace(/^\S+\s/, "")}
-                {dataMostrata === oggi && ` · oggi · ${formatoOra(adesso)}`}
-              </span>
-            </span>
-            {navigando ? (
-              <Rotella className="size-5" />
-            ) : (
-              <svg viewBox="0 0 24 24" aria-hidden className="hidden size-5 shrink-0 sm:block" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3.5" y="5" width="17" height="15.5" />
-                <path d="M3.5 10h17M8 3v4M16 3v4" />
-              </svg>
+              {navigando ? (
+                <Rotella className="size-5" />
+              ) : (
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden
+                  className="hidden size-5 shrink-0 sm:block"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <rect x="3.5" y="5" width="17" height="15.5" />
+                  <path d="M3.5 10h17M8 3v4M16 3v4" />
+                </svg>
+              )}
+            </button>
+            <FrecciaGiorno
+              verso={1}
+              href={indirizzo(giornoApertoVicino(dataMostrata, 1), oggi)}
+              onClick={clicLink(giornoApertoVicino(dataMostrata, 1))}
+            />
+          </div>
+
+          {dataMostrata !== oggi && (
+            <a
+              href="/admin"
+              onClick={clicLink(oggi)}
+              className="eyebrow mt-3 inline-flex min-h-11 cursor-pointer items-center text-steel underline-offset-4 hover:text-ink hover:underline"
+            >
+              ← Torna a oggi
+            </a>
+          )}
+
+          <dl
+            className={cn(
+              // Colonne larghe quanto il contenuto: a 320 px "APPUNTAMENTI" non sta
+              // in un terzo di riga.
+              "mt-5 grid grid-cols-[auto_auto_auto] justify-between gap-x-4 border-t border-ink/15 pt-4 transition-opacity duration-200",
+              navigando && "opacity-40",
             )}
-          </button>
-          <FrecciaGiorno
-            verso={1}
-            href={indirizzo(giornoApertoVicino(dataMostrata, 1), oggi)}
-            onClick={clicLink(giornoApertoVicino(dataMostrata, 1))}
-          />
-        </div>
-
-        {dataMostrata !== oggi && (
-          <a
-            href="/admin"
-            onClick={clicLink(oggi)}
-            className="eyebrow mt-3 inline-flex min-h-11 cursor-pointer items-center text-steel underline-offset-4 hover:text-ink hover:underline"
           >
-            ← Torna a oggi
-          </a>
-        )}
+            <Numero etichetta="Appuntamenti" valore={String(numeri.appuntamenti)} />
+            <Numero
+              etichetta="Poltrona"
+              valore={`${numeri.poltrona}%`}
+              nota={turni.length ? `${durataLeggibile(numeri.minutiLiberi)} libere` : undefined}
+            />
+            <Numero etichetta="Previsto" valore={formatoPrezzo(numeri.previsto)} />
+          </dl>
+        </header>
 
-        <dl
-          className={cn(
-            "mt-5 grid grid-cols-3 border-t border-ink/15 pt-4 transition-opacity duration-200",
-            navigando && "opacity-40",
-          )}
-        >
-          <Numero etichetta="Appuntamenti" valore={String(numeri.appuntamenti)} />
-          <Numero
-            etichetta="Poltrona"
-            valore={`${numeri.poltrona}%`}
-            nota={turni.length ? `${durataLeggibile(numeri.minutiLiberi)} libere` : undefined}
-          />
-          <Numero etichetta="Previsto" valore={formatoPrezzo(numeri.previsto)} />
-        </dl>
-      </header>
-
-      {/* inert durante il cambio di giorno: la timeline vecchia si vede ma
+        {/* inert durante il cambio di giorno: la timeline vecchia si vede ma
           non si tocca, così non si crea un appuntamento nel giorno sbagliato. */}
-      <section aria-busy={navigando} inert={navigando} className="relative">
-        {navigando && (
-          <p className="info sticky top-4 z-10 mx-auto mt-6 flex w-fit items-center gap-3 border border-ink bg-paper px-4 py-3">
-            <Rotella /> Carico {etichettaGiorno(dataMostrata)}…
-          </p>
-        )}
-
-        <div className={cn("transition-opacity duration-200", navigando && "opacity-30")}>
-          {turni.length === 0 && (
-            <div className="py-12">
-              <p className="display text-3xl">Salone chiuso</p>
-              <button
-                type="button"
-                onClick={() => vai(giornoApertoVicino(data, 1))}
-                className="eyebrow mt-6 min-h-12 cursor-pointer border border-ink px-5 hover:bg-ink hover:text-paper"
-              >
-                {etichettaGiorno(giornoApertoVicino(data, 1))} →
-              </button>
-            </div>
+        <section aria-busy={navigando} inert={navigando} className="relative">
+          {navigando && (
+            <p className="info sticky top-4 z-10 mx-auto mt-6 flex w-fit items-center gap-3 border border-ink bg-paper px-4 py-3">
+              <Rotella /> Carico {etichettaGiorno(dataMostrata)}…
+            </p>
           )}
 
-          <ol className="mt-6">
-            {righe.map((riga) => {
-              if (riga.tipo === "pausa") {
-                return (
-                  <li key={`p${riga.inizio}`} className="info border-t border-dashed border-ink/30 py-3 pl-[4.5rem] text-steel md:pl-24">
-                    Pausa pranzo · {formatoOra(riga.inizio)}–{formatoOra(riga.fine)}
-                  </li>
-                );
-              }
+          <div className={cn("transition-opacity duration-200", navigando && "opacity-30")}>
+            {turni.length === 0 && (
+              <div className="py-12">
+                <p className="display text-3xl">Salone chiuso</p>
+                <button
+                  type="button"
+                  onClick={() => vai(giornoApertoVicino(data, 1))}
+                  className="eyebrow mt-6 min-h-12 cursor-pointer border border-ink px-5 hover:bg-ink hover:text-paper"
+                >
+                  {etichettaGiorno(giornoApertoVicino(data, 1))} →
+                </button>
+              </div>
+            )}
 
-              if (riga.tipo === "libero") {
-                const trascorso = passato || (eOggi && riga.fine <= adesso);
-                const ora = eOggi && adesso >= riga.inizio && adesso < riga.fine;
+            <ol className="mt-6 lg:mt-0">
+              {righe.map((riga) => {
+                if (riga.tipo === "pausa") {
+                  return (
+                    <li
+                      key={`p${riga.inizio}`}
+                      className="info border-t border-dashed border-ink/30 py-3 pl-[4.5rem] text-steel md:pl-24"
+                    >
+                      Pausa pranzo · {formatoOra(riga.inizio)}–{formatoOra(riga.fine)}
+                    </li>
+                  );
+                }
+
+                if (riga.tipo === "libero") {
+                  const trascorso = passato || (eOggi && riga.fine <= adesso);
+                  const ora = eOggi && adesso >= riga.inizio && adesso < riga.fine;
+                  return (
+                    <li key={`l${riga.inizio}`} className="border-t border-ink/10">
+                      <button
+                        type="button"
+                        onClick={() => setFoglio({ tipo: "nuovo", inizio: riga.inizio })}
+                        aria-label={`Libero dalle ${formatoOra(riga.inizio)} alle ${formatoOra(riga.fine)}: aggiungi`}
+                        style={{
+                          minHeight: `${Math.max(3, (REM_MEZZORA * (riga.fine - riga.inizio)) / MINUTI_RIGA)}rem`,
+                        }}
+                        className={cn(
+                          "group grid w-full cursor-pointer grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center text-left transition-colors duration-150 hover:bg-fog active:bg-fog md:grid-cols-[6rem_minmax(0,1fr)_auto]",
+                          ora && "bg-fog",
+                        )}
+                      >
+                        <span className={cn("info tabular-nums", trascorso ? "text-smoke" : "text-steel")}>
+                          {formatoOra(riga.inizio)}
+                        </span>
+                        <span className={cn("info pl-4", trascorso ? "text-smoke" : "text-steel")}>
+                          {ora ? "Adesso · libero" : "Libero"}
+                          {riga.fine - riga.inizio < MINUTI_RIGA && ` · ${riga.fine - riga.inizio} min`}
+                        </span>
+                        <span
+                          aria-hidden
+                          className="mr-2 flex size-10 items-center justify-center border border-transparent text-steel transition-colors group-hover:border-ink group-hover:text-ink"
+                        >
+                          <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M12 5v14M5 12h14" />
+                          </svg>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                }
+
+                const v = riga.voce;
+                const durata = v.fine - v.inizio;
+                const inCorso = eOggi && adesso >= v.inizio && adesso < v.fine;
                 return (
-                  <li key={`l${riga.inizio}`} className="border-t border-ink/10">
+                  <li key={v.id} className="border-t border-ink/10 py-1">
                     <button
                       type="button"
-                      onClick={() => setFoglio({ tipo: "nuovo", inizio: riga.inizio })}
-                      aria-label={`Libero dalle ${formatoOra(riga.inizio)} alle ${formatoOra(riga.fine)}: aggiungi`}
-                      style={{ minHeight: `${Math.max(3, (REM_MEZZORA * (riga.fine - riga.inizio)) / MINUTI_RIGA)}rem` }}
-                      className={cn(
-                        "group grid w-full cursor-pointer grid-cols-[4.5rem_1fr_auto] items-center text-left transition-colors duration-150 hover:bg-fog active:bg-fog md:grid-cols-[6rem_1fr_auto]",
-                        ora && "bg-fog",
-                      )}
+                      onClick={() => setFoglio({ tipo: "voce", id: v.id })}
+                      style={{ minHeight: `${Math.max(3.5, (REM_MEZZORA * durata) / MINUTI_RIGA) - 0.5}rem` }}
+                      className="grid w-full cursor-pointer grid-cols-[4.5rem_minmax(0,1fr)] items-stretch text-left md:grid-cols-[6rem_minmax(0,1fr)]"
                     >
-                      <span className={cn("info tabular-nums", trascorso ? "text-smoke" : "text-steel")}>
-                        {formatoOra(riga.inizio)}
+                      <span className="info flex flex-col justify-between py-2 tabular-nums text-ink">
+                        <span>{formatoOra(v.inizio)}</span>
+                        {durata > MINUTI_RIGA && <span className="text-smoke">{formatoOra(v.fine)}</span>}
                       </span>
-                      <span className={cn("info pl-4", trascorso ? "text-smoke" : "text-steel")}>
-                        {ora ? "Adesso · libero" : "Libero"}
-                        {riga.fine - riga.inizio < MINUTI_RIGA && ` · ${riga.fine - riga.inizio} min`}
-                      </span>
-                      <span
-                        aria-hidden
-                        className="mr-2 flex size-10 items-center justify-center border border-transparent text-steel transition-colors group-hover:border-ink group-hover:text-ink"
-                      >
-                        <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M12 5v14M5 12h14" />
-                        </svg>
-                      </span>
+                      {v.tipo === "appuntamento" ? (
+                        <span className="flex min-w-0 flex-col justify-center border-l-4 border-ink bg-ink px-4 py-3 text-paper transition-opacity duration-150 hover:opacity-90">
+                          <span className="flex items-baseline justify-between gap-3">
+                            {/* Il nome intero, anche a 320 px: va a capo, non si taglia. */}
+                            <span className="min-w-0 break-words text-lg font-extrabold leading-tight tracking-[-0.02em] md:text-xl">
+                              {v.cliente.nome}
+                            </span>
+                            <span className="info shrink-0 tabular-nums text-smoke">{formatoPrezzo(v.prezzo)}</span>
+                          </span>
+                          <span className="mt-1 text-sm text-smoke">
+                            {v.servizioNome} · {durataLeggibile(durata)}
+                            {v.cliente.note && " · con nota"}
+                          </span>
+                          {inCorso && <span className="info mt-2 w-fit bg-paper px-2 py-0.5 text-ink">In corso</span>}
+                        </span>
+                      ) : (
+                        <span
+                          className="flex flex-col justify-center border border-ink px-4 py-3 text-ink"
+                          style={{
+                            // Tratteggio diagonale: "qui non si prenota", senza colori.
+                            backgroundImage:
+                              "repeating-linear-gradient(135deg, transparent 0 9px, rgb(10 10 10 / 0.09) 9px 11px)",
+                          }}
+                        >
+                          <span className="info">Bloccato · {durataLeggibile(durata)}</span>
+                          {v.motivo && <span className="mt-1 text-base font-bold">{v.motivo}</span>}
+                        </span>
+                      )}
                     </button>
                   </li>
                 );
-              }
-
-              const v = riga.voce;
-              const durata = v.fine - v.inizio;
-              const inCorso = eOggi && adesso >= v.inizio && adesso < v.fine;
-              return (
-                <li key={v.id} className="border-t border-ink/10 py-1">
-                  <button
-                    type="button"
-                    onClick={() => setFoglio({ tipo: "voce", id: v.id })}
-                    style={{ minHeight: `${Math.max(3.5, (REM_MEZZORA * durata) / MINUTI_RIGA) - 0.5}rem` }}
-                    className="grid w-full cursor-pointer grid-cols-[4.5rem_1fr] items-stretch text-left md:grid-cols-[6rem_1fr]"
-                  >
-                    <span className="info flex flex-col justify-between py-2 tabular-nums text-ink">
-                      <span>{formatoOra(v.inizio)}</span>
-                      {durata > MINUTI_RIGA && <span className="text-smoke">{formatoOra(v.fine)}</span>}
-                    </span>
-                    {v.tipo === "appuntamento" ? (
-                      <span className="flex flex-col justify-center border-l-4 border-ink bg-ink px-4 py-3 text-paper transition-opacity duration-150 hover:opacity-90">
-                        <span className="flex items-baseline justify-between gap-3">
-                          <span className="truncate text-lg font-extrabold tracking-[-0.02em] md:text-xl">
-                            {v.cliente.nome}
-                          </span>
-                          <span className="info shrink-0 tabular-nums text-smoke">{formatoPrezzo(v.prezzo)}</span>
-                        </span>
-                        <span className="mt-1 truncate text-sm text-smoke">
-                          {v.servizioNome} · {durataLeggibile(durata)}
-                          {v.cliente.note && " · con nota"}
-                        </span>
-                        {inCorso && <span className="info mt-2 w-fit bg-paper px-2 py-0.5 text-ink">In corso</span>}
-                      </span>
-                    ) : (
-                      <span
-                        className="flex flex-col justify-center border border-ink px-4 py-3 text-ink"
-                        style={{
-                          // Tratteggio diagonale: "qui non si prenota", senza colori.
-                          backgroundImage:
-                            "repeating-linear-gradient(135deg, transparent 0 9px, rgb(10 10 10 / 0.09) 9px 11px)",
-                        }}
-                      >
-                        <span className="info">Bloccato · {durataLeggibile(durata)}</span>
-                        {v.motivo && <span className="mt-1 text-base font-bold">{v.motivo}</span>}
-                      </span>
-                    )}
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      </section>
+              })}
+            </ol>
+          </div>
+        </section>
+      </div>
 
       {archivio === "file" && (
-        <p className="info mt-10 text-steel">Archivio locale su file (.data/agenda): i dati restano fra un riavvio e l&apos;altro.</p>
+        <p className="info mt-10 text-steel">
+          Archivio locale su file (.data/agenda): i dati restano fra un riavvio e l&apos;altro.
+        </p>
       )}
 
       <FoglioInBasso
@@ -347,9 +387,9 @@ function FrecciaGiorno({
 function Numero({ etichetta, valore, nota }: { etichetta: string; valore: string; nota?: string }) {
   return (
     <div className="min-w-0">
-      <dt className="info truncate text-steel">{etichetta}</dt>
+      <dt className="info whitespace-nowrap text-steel">{etichetta}</dt>
       <dd className="mt-1.5 text-2xl font-extrabold tabular-nums md:text-3xl">{valore}</dd>
-      {nota && <dd className="info mt-1 truncate text-steel">{nota}</dd>}
+      {nota && <dd className="info mt-1 text-steel">{nota}</dd>}
     </div>
   );
 }

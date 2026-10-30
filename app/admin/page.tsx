@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { auth, signOut } from "@/auth";
 import { Agenda } from "@/components/agenda/Agenda";
-import { Notifiche } from "@/components/agenda/Notifiche";
+import { Notifiche, PromemoriaNotifiche } from "@/components/agenda/Notifiche";
 import { oraDiRoma } from "@/lib/orari";
 import { eliminaScadute, tipoArchivio, vociDelGiorno } from "@/lib/prenotazioni/archivio";
 import { chiavePubblica } from "@/lib/prenotazioni/notifiche";
@@ -47,10 +47,18 @@ export default async function PaginaAgenda(props: PageProps<"/admin">) {
 
   return (
     <main className="min-h-svh bg-paper pb-[env(safe-area-inset-bottom)] text-ink">
-      <div className="shell max-w-3xl py-6 md:py-10">
-        <Notifiche chiave={chiavePubblica()} posto="banner" />
-        <Agenda data={data} oggi={adesso.data} adesso={adesso.minuti} voci={voci} archivio={tipoArchivio} />
-        <Notifiche chiave={chiavePubblica()} posto="gestione" />
+      {/* Da lg l'agenda si allarga: testata e timeline affiancate (Agenda.tsx). */}
+      <div className="shell max-w-3xl py-6 md:py-10 lg:max-w-6xl">
+        <Agenda
+          data={data}
+          oggi={adesso.data}
+          adesso={adesso.minuti}
+          voci={voci}
+          archivio={tipoArchivio}
+          promemoria={<PromemoriaNotifiche chiave={chiavePubblica()} />}
+        />
+        {/* Le notifiche in fondo: la prima cosa che si vede è la giornata. */}
+        <Notifiche chiave={chiavePubblica()} />
 
         <form
           action={async () => {
