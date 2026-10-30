@@ -45,3 +45,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .neon
+
+# controllo responsive (scripts/controllo-responsive.mjs)
+/.controllo-responsive/
