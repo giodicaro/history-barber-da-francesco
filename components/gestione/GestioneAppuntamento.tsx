@@ -6,7 +6,8 @@ import { Rotella } from "@/components/agenda/FoglioInBasso";
 import { giorniProposti, GrigliaOrari, StrisciaGiorni } from "@/components/prenotazione/GiorniEOrari";
 import { giornoLungo, SalvaAppuntamento } from "@/components/prenotazione/SalvaAppuntamento";
 import type { BookingSlot } from "@/lib/prenotazioni/tipi";
-import { salone, SPOSTAMENTI_MAX } from "@/lib/salone";
+import { oraDiRoma } from "@/lib/orari";
+import { MARGINE_GESTIONE_MINUTI, salone, SPOSTAMENTI_MAX } from "@/lib/salone";
 import { cn, formatoPrezzo } from "@/lib/utils";
 
 /* "Gestisci il tuo appuntamento", lato cliente: riepilogo, disdetta in due
@@ -34,6 +35,9 @@ export type Riepilogo = {
   motivoBlocco?: "termine" | "spostamenti";
   spostamentiRimasti: number;
   termine: { data: string; ora: string };
+  fineRipensamento?: { data: string; ora: string };
+  /** Oltre il termine normale, ma ancora nel ripensamento (C2). */
+  inRipensamento?: boolean;
 };
 
 type Orari = {
@@ -46,7 +50,7 @@ type Orari = {
   prossimiGiorni?: { data: string; liberi: number }[];
 };
 
-type Schermata = "riepilogo" | "disdici" | "disdetto" | "sposta" | "spostato" | "sparito";
+type Schermata = "riepilogo" | "disdici" | "disdetto" | "spostato" | "sparito";
 
 const bottonePieno =
   "eyebrow inline-flex min-h-14 w-full cursor-pointer items-center justify-center gap-3 border border-ink bg-ink px-6 text-paper transition-colors duration-200 hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:border-ink/20 disabled:bg-ink/20 disabled:text-paper";
@@ -82,6 +86,7 @@ export function GestioneAppuntamento({
   onPrenota,
   onIndietro,
   onCambiato,
+  piede,
 }: {
   credenziale: Credenziale;
   iniziale: Riepilogo;
@@ -94,6 +99,8 @@ export function GestioneAppuntamento({
   onIndietro?: () => void;
   /** Dopo una disdetta o uno spostamento (per aggiornare i bottoni). */
   onCambiato?: () => void;
+  /** Sotto Disdici, sopra il calendario: Face ID / impronta (SpazioCliente). */
+  piede?: ReactNode;
 }) {
   const [app, setApp] = useState(iniziale);
   const [schermata, setSchermata] = useState<Schermata>("riepilogo");
@@ -147,47 +154,41 @@ export function GestioneAppuntamento({
           <Titolo rif={titolo} sopra={modo === "cliente" ? "Il mio appuntamento" : "Gestisci il tuo appuntamento"}>
             {app.nome ? `Ciao ${app.nome}` : "Il tuo appuntamento"}
           </Titolo>
+          {/* 1. Riepilogo. */}
           <Scheda app={app} />
-          {app.disdicibile ? (
-            <p className="mt-5 text-base">
-              Puoi {app.spostabile ? "spostarlo o disdirlo" : "disdirlo"} fino alle <b>{app.termine.ora}</b> di{" "}
-              {giornoLungo(app.termine.data)}.
-              {app.spostabile && app.spostamentiRimasti < SPOSTAMENTI_MAX && (
-                <span className="text-steel">
-                  {" "}
-                  {app.spostamentiRimasti === 1 ? "Puoi spostarlo ancora una volta." : `Spostamenti rimasti: ${app.spostamentiRimasti}.`}
-                </span>
-              )}
-            </p>
-          ) : null}
-          {app.motivoBlocco && (
-            <p className="mt-5 border-2 border-dashed border-ink px-4 py-3 text-base">
-              {app.motivoBlocco === "termine"
-                ? "Ormai non si può più modificare online. "
-                : `Hai già spostato questo appuntamento ${SPOSTAMENTI_MAX} volte: puoi ancora disdirlo. `}
-              Per modifiche chiama il salone:{" "}
-              <a href={salone.telefonoHref} className="font-semibold underline underline-offset-4">
-                {salone.telefono}
-              </a>
-              .
-            </p>
-          )}
+          {/* 2. Fino a quando si può fare cosa (C2), o perché non più (C4). */}
+          <RigaTermine app={app} />
           <Errore testo={errore} />
-          {(app.spostabile || app.disdicibile) && (
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              {app.spostabile && (
-                <button type="button" onClick={() => vai("sposta")} className={bottonePieno}>
-                  Sposta
-                </button>
-              )}
-              {app.disdicibile && (
-                <button type="button" onClick={() => vai("disdici")} className={bottoneVuoto}>
-                  Disdici
-                </button>
-              )}
+          {/* 3. "Scegli un altro orario", aperto da subito (C3). */}
+          {app.spostabile && (
+            <SceltaOrario
+              key={`${app.data}-${app.ora}`}
+              app={app}
+              credenziale={credenziale}
+              onSpostato={(nuovo, vecchio) => {
+                setDa(vecchio);
+                setApp(nuovo);
+                onCambiato?.();
+                vai("spostato");
+              }}
+              onSparito={() => vai("sparito")}
+              onBloccato={async (messaggio) => {
+                await rileggi();
+                setErrore(messaggio);
+              }}
+            />
+          )}
+          {/* 4. Disdici, secondario, con conferma nella pagina. */}
+          {app.disdicibile && (
+            <div className="mt-8 border-t border-ink/15 pt-6">
+              <button type="button" onClick={() => vai("disdici")} className={bottoneVuoto}>
+                Disdici
+              </button>
+              {app.spostabile && <p className="info mt-3 text-steel">Per cambiare servizio, disdici e prenota di nuovo.</p>}
             </div>
           )}
-          {app.spostabile && <p className="info mt-3 text-steel">Per cambiare servizio, disdici e prenota di nuovo.</p>}
+          {/* 5. Face ID / impronta (da SpazioCliente), 6. calendario. */}
+          {piede}
           <div className="mt-8 border-t border-ink/15 pt-5">
             <SalvaAppuntamento appuntamento={app} soloCalendario />
           </div>
@@ -226,27 +227,6 @@ export function GestioneAppuntamento({
           </p>
           <PrenotaDiNuovo onPrenota={onPrenota} />
         </>
-      )}
-
-      {schermata === "sposta" && (
-        <Spostamento
-          rif={titolo}
-          app={app}
-          credenziale={credenziale}
-          onIndietro={() => vai("riepilogo")}
-          onSpostato={(nuovo, vecchio) => {
-            setDa(vecchio);
-            setApp(nuovo);
-            onCambiato?.();
-            vai("spostato");
-          }}
-          onSparito={() => vai("sparito")}
-          onBloccato={async (messaggio) => {
-            await rileggi();
-            vai("riepilogo");
-            setErrore(messaggio);
-          }}
-        />
       )}
 
       {schermata === "spostato" && (
@@ -331,6 +311,72 @@ function Scheda({ app }: { app: Riepilogo }) {
   );
 }
 
+/* Fino a quando si può modificare (C1, C2), o perché non più (C4). Ore e
+   giorni arrivano già calcolati dal server in ora di Roma (C6): qui non si
+   usa l'ora del dispositivo, se non per dire "oggi". */
+function RigaTermine({ app }: { app: Riepilogo }) {
+  if (app.motivoBlocco === "termine") {
+    return (
+      <div className="mt-5 border-2 border-dashed border-ink px-4 py-4">
+        <p className="text-base">
+          Mancano meno di {MARGINE_GESTIONE_MINUTI} minuti: ora le modifiche si fanno solo per telefono.
+        </p>
+        <Contatti app={app} />
+      </div>
+    );
+  }
+  const fino = (
+    <>
+      fino alle <b>{app.termine.ora}</b>
+      {app.termine.data !== oraDiRoma().data && <> di {giornoLungo(app.termine.data)}</>}
+    </>
+  );
+  if (app.motivoBlocco === "spostamenti") {
+    return (
+      <div className="mt-5 border-2 border-dashed border-ink px-4 py-4">
+        <p className="text-base">
+          Hai già spostato questo appuntamento {SPOSTAMENTI_MAX} volte. Puoi disdirlo, oppure chiamarci.
+        </p>
+        {app.disdicibile && <p className="mt-2 text-base text-steel">Puoi disdirlo {fino}.</p>}
+        <Contatti app={app} />
+      </div>
+    );
+  }
+  if (!app.disdicibile) return null;
+  return (
+    <p className="mt-5 text-base">
+      {app.inRipensamento ? "Hai cambiato idea? Puoi modificarlo " : "Puoi modificarlo "}
+      {fino}.
+      {app.spostabile && app.spostamentiRimasti < SPOSTAMENTI_MAX && (
+        <span className="text-steel">
+          {" "}
+          {app.spostamentiRimasti === 1 ? "Puoi spostarlo ancora una volta." : `Spostamenti rimasti: ${app.spostamentiRimasti}.`}
+        </span>
+      )}
+    </p>
+  );
+}
+
+/** Chiama e WhatsApp al salone, con il messaggio già avviato. */
+function Contatti({ app }: { app: Riepilogo }) {
+  const messaggio = `Ciao Francesco, vorrei modificare il mio appuntamento di ${giornoLungo(app.data)} alle ${app.ora}.`;
+  return (
+    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <a href={salone.telefonoHref} className={bottonePieno}>
+        Chiama · {salone.telefono}
+      </a>
+      <a
+        href={`https://wa.me/${salone.telefonoHref.replace(/\D/g, "")}?text=${encodeURIComponent(messaggio)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={bottoneVuoto}
+      >
+        Scrivi su WhatsApp
+      </a>
+    </div>
+  );
+}
+
 function Errore({ testo }: { testo: string }) {
   return (
     <div aria-live="polite">
@@ -343,21 +389,21 @@ function Errore({ testo }: { testo: string }) {
   );
 }
 
-/* ── Spostamento ────────────────────────────────────────────────────────── */
+/* ── Scegli un altro orario (C3) ────────────────────────────────────────────
+   Dentro il riepilogo, aperto da subito: striscia dei giorni e griglia del
+   widget, "Il tuo orario" segnato, conferma sotto la griglia. Le regole
+   sono quelle di sempre, decise dal server: slotPerSpostamento, occupati
+   senza sé stesso, 409 con le alternative, SPOSTAMENTI_MAX. */
 
-function Spostamento({
-  rif,
+function SceltaOrario({
   app,
   credenziale,
-  onIndietro,
   onSpostato,
   onSparito,
   onBloccato,
 }: {
-  rif: React.RefObject<HTMLHeadingElement | null>;
   app: Riepilogo;
   credenziale: Credenziale;
-  onIndietro: () => void;
   onSpostato: (nuovo: Riepilogo, da: { data: string; ora: string }) => void;
   onSparito: () => void;
   onBloccato: (messaggio: string) => void;
@@ -388,8 +434,8 @@ function Spostamento({
     setErrore(corpo?.errore ?? "Non riusciamo a leggere gli orari. Riprova.");
   };
 
-  // Primo giorno: si carica al montaggio, da un tocco ("Sposta") e non da un
-  // effetto che aggiorna lo stato; il giorno resta quello dell'appuntamento.
+  // Primo giorno, quello dell'appuntamento: si carica al montaggio (rinviato
+  // con setTimeout, non dentro l'effetto, per il React Compiler).
   const avviato = useRef(false);
   useEffect(() => {
     if (avviato.current) return;
@@ -424,13 +470,12 @@ function Spostamento({
   const pieno = orari && orari.aperto && orari.liberi === 0;
 
   return (
-    <div className="pb-40">
-      <p className="eyebrow text-steel">Sposta l&apos;appuntamento</p>
-      <h1 ref={rif} tabIndex={-1} style={SENZA_ANELLO} className="display mt-3 text-[clamp(2rem,9.6cqi,4rem)]">
-        Scegli il nuovo orario
-      </h1>
-      <p className="info mt-4 text-steel">
-        Ora: {giornoCorto(app.data)} {app.ora} · {app.servizio} · {app.fine - app.inizio} min
+    <section aria-labelledby="titolo-scelta" className="mt-8 border-t border-ink/15 pt-6">
+      <h2 id="titolo-scelta" className="text-xl font-extrabold tracking-[-0.02em]">
+        Scegli un altro orario
+      </h2>
+      <p className="info mt-2 text-steel">
+        {app.servizio} · {app.fine - app.inizio} min · stesso prezzo
       </p>
 
       <div className="mt-6">
@@ -441,7 +486,7 @@ function Spostamento({
         <Errore testo={errore} />
       </div>
 
-      <div className="mt-6 min-h-40">
+      <div className="mt-6 min-h-24">
         {carica ? (
           <p className="info flex items-center gap-3 py-8 text-steel" role="status">
             <Rotella /> Cerco gli orari…
@@ -479,24 +524,17 @@ function Spostamento({
         )}
       </div>
 
-      {/* Barra delle azioni: sempre a portata di pollice. */}
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-ink bg-paper pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        {/* Stessa colonna della pagina (shell max-w-2xl), anche su desktop. */}
-        <div className="shell max-w-2xl">
-          <p className="info min-h-5 text-steel" aria-live="polite">
-            {ora ? `Da ${giornoCorto(app.data)} ${app.ora} → a ${giornoCorto(data)} ${ora}` : "Scegli un giorno e un orario"}
-          </p>
-          <div className="mt-2 grid grid-cols-[auto_1fr] gap-3">
-            <button type="button" onClick={onIndietro} disabled={inVolo} className={cn(bottoneVuoto, "min-h-12 px-5")}>
-              Indietro
-            </button>
-            <button type="button" onClick={conferma} disabled={!ora || inVolo} aria-busy={inVolo} className={cn(bottonePieno, "min-h-12")}>
-              {inVolo && <Rotella />}
-              {inVolo ? "Sposto…" : "Conferma spostamento"}
-            </button>
-          </div>
-        </div>
+      {/* Conferma sotto la griglia, non in una barra fissa: dentro il foglio
+          della home una barra fissa finirebbe sotto il bordo del foglio. */}
+      <div className="mt-5 border border-ink p-4">
+        <p className="info min-h-5 text-steel" aria-live="polite">
+          {ora ? `Da ${giornoCorto(app.data)} ${app.ora} → a ${giornoCorto(data)} ${ora}` : "Scegli un giorno e un orario"}
+        </p>
+        <button type="button" onClick={conferma} disabled={!ora || inVolo} aria-busy={inVolo} className={cn(bottonePieno, "mt-3")}>
+          {inVolo && <Rotella />}
+          {inVolo ? "Sposto…" : "Conferma spostamento"}
+        </button>
       </div>
-    </div>
+    </section>
   );
 }
