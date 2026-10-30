@@ -369,7 +369,7 @@ Non c'è stato globale applicativo: niente Context propri, niente store.
 | Motore | Responsabilità | Dove |
 |---|---|---|
 | **Lenis** | Scorrimento morbido, `scrollTo` alle ancore, `stop()`/`start()` col menu | `SmoothScroll.tsx`, `Navbar.tsx:100-105` |
-| **GSAP + ScrollTrigger** | Sequenza d'entrata della hero, parallasse della foto, entrate allo scroll, cascata del listino | `Hero.tsx`, `RevealOnScroll.tsx` |
+| **GSAP + ScrollTrigger** | Parallasse della foto della hero, entrate allo scroll, cascata del listino | `Hero.tsx`, `RevealOnScroll.tsx` |
 | **framer-motion** | Tenda e voci del menu (varianti + `staggerChildren`), riempimento del bottone, apertura del foglio di prenotazione | `Navbar.tsx`, `BookButton.tsx`, `BookingWidget.tsx` |
 
 **Regola 1: un solo `requestAnimationFrame`.** Lenis avanza dal ticker di GSAP (`SmoothScroll.tsx:13-18`, `autoRaf: false`) e ogni scroll aggiorna ScrollTrigger (`SmoothScroll.tsx:20`).
@@ -381,6 +381,8 @@ Non c'è stato globale applicativo: niente Context propri, niente store.
 **Regola 3: niente classi `translate-*` di Tailwind su nodi animati da JS.** In Tailwind v4 generano la proprietà CSS `translate`, che **si somma** al `transform` scritto da GSAP o framer (§9.1).
 
 ### 4.6 Il sistema delle entrate (leggere prima di toccare qualsiasi animazione)
+
+> **Hero, dal 31/10: entrata in CSS, non più in GSAP.** Con GSAP il testo della hero restava nascosto fino a idratazione finita: su un telefono lento oltre 5 secondi (LCP misurato con Lighthouse). Ora la sequenza è in `app/globals.css` ("Entrata della hero"), con gli stessi tempi e la stessa curva (`expo.out` = `--ease-crisp`): linee della griglia (`[data-hero] [data-grid-line]`), zoom della foto (`[data-hero-media]`), righe del titolo (`[data-entrata-riga]`, sempre a maschera) e blocchi (`[data-entrata]`, ordine in `--i` scritto in `Hero.tsx`). Unica differenza visibile: i blocchi (indirizzo, orari, testo, bottoni) **salgono di 30 px senza dissolvenza**, perché un testo che parte da `opacity: 0` conta come dipinto solo dopo JavaScript. In `Hero.tsx` GSAP fa solo la parallasse. Con `prefers-reduced-motion` le animazioni della hero sono spente. I marcatori `data-reveal` / `data-mask-line="hero"` non si usano più nella hero.
 
 Gli elementi animati partono **nascosti dal CSS**, non da JavaScript, così non compaiono per un istante prima dell'idratazione:
 
@@ -519,7 +521,7 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
   - Disposizione: sotto `sm` uno sopra l'altro a tutta larghezza (il brief diceva sotto 380 px, ma a 390 due bottoni affiancati da 163 px non contengono "IL MIO APPUNTAMENTO"); da `sm` affiancati; fra `md` e `lg` di nuovo uno sopra l'altro nella metà destra, perché il testo resti su tre righe; da `lg` affiancati nella metà destra.
   - Entrano nella stessa sequenza del CTA di prima (un solo `data-reveal` per la coppia).
   - **Il titolo si alza** dove i bottoni sono uno sopra l'altro: 34 px a 375/390 (lo spazio libero resta diviso in due fasce uguali, solo più strette), 50 px a 768, 0 a 1440. Larghezza e corpo del titolo non cambiano. Confronto in `hero-prima/` e `hero-dopo/` delle prove.
-- Sequenza d'entrata: linee della griglia, zoom della foto, righe, blocchi (`Hero.tsx:46-62`).
+- Sequenza d'entrata: linee della griglia, zoom della foto, righe, blocchi, in CSS dal 31/10 (§4.6).
 - Parallasse del 12% allo scroll (`Hero.tsx:14, 64-68`).
 - **Foto:** immagine generata, una nuca con sfumatura netta e vapore da un panno caldo (bianco e nero). ⚠️ **Non ritrae un cliente del salone**: da sostituire con una foto vera, o da far approvare a Francesco, prima della pubblicazione.
 - **Velo:** gradiente dall'alto `ink/80 → ink/45 → ink/90`. L'eyebrow "Barbiere a Mestre" è bianco pieno, non al 70% (§9.17).
@@ -799,6 +801,13 @@ La matrice visiva copre 10 schermate a 375, 390, 768 e 1440 px, senza scorriment
   - griglia a una colonna su smartphone;
   - titoli su `clamp()` + `cqi`;
   - listino a due colonne (servizio | prezzo) leggibile in verticale; prezzi `whitespace-nowrap`.
+- **Prima della consegna (31/10), checklist `consegna-sito-checklist`** (verbale in `consegna/06-Verbale-controllo-pre-consegna.md`):
+  - `app/robots.ts` (fuori `/admin`, `/api/`, `/appuntamento`) e `app/sitemap.ts` (home e privacy); `metadataBase` e canonical da `salone.sito` (`lib/salone.ts`, da cambiare insieme al dominio);
+  - descrizione propria per `/admin/login`; `/appuntamento` ha il titolo anche mentre carica;
+  - link "Cookie" nel footer verso `/privacy#cookie` (solo cookie tecnici: niente consensi da rivedere);
+  - dati strutturati `HairSalon` con `url`, `image` (il logo, finché la foto è generata), `priceRange`, telefono da `salone`;
+  - accessibilità: nome per l'hamburger anche sotto `sm`; "Il mio appuntamento" senza `aria-label` (il nome è il testo visibile);
+  - velocità: entrata della hero in CSS (§4.6); widget e "Il mio appuntamento" caricati dopo la pagina e montati al primo tocco (`components/FogliDifferiti.tsx`; la richiesta d'apertura arrivata prima aspetta in `lib/prenotazione.ts` / `lib/gestione.ts`). Lighthouse mobile in locale: LCP 2,3 s con limitazione applicata (prima 6,4 s), stima simulata ancora sopra i 5 s per il JavaScript della home (TBT 0,7–1,1 s: React, GSAP, framer-motion, Lenis). Per scendere: `LazyMotion` al posto di framer completo, GSAP e Lenis caricati dopo (§11.20).
 - **Controllo automatico (31/10):** `scripts/controllo-responsive.mjs`, con Playwright **fuori** dal progetto (`npm i playwright@1.64.1 && npx playwright install chromium webkit` in una cartella qualsiasi, poi `PLAYWRIGHT_DIR=<cartella>`).
   - Misure: 320, 360, 375, 390, 412, 430, 768, 1024, 1280, 1440, 1920 e il telefono in orizzontale 844×390 e 915×412; motori Chromium (Android) e WebKit (iPhone).
   - Viste: home in cima, a metà e in fondo; menu; widget ai passi 1–3 e conferma; "Il mio appuntamento" non riconosciuto, riconosciuto e a pagina intera; `/privacy`; `/admin/login`; agenda, foglio Nuovo, foglio Dettaglio, calendario.
@@ -1073,7 +1082,7 @@ Cookie `hb_cliente` e passkey sono legati al dominio, oggi `history-barber-da-fr
 15. **Classe inesistente `label`** nel link "Vai al contenuto" → `app/page.tsx:50`.
 16. **Telefono duplicato a mano nel JSON-LD** → `app/page.tsx:21`. Anche la formattazione dell'ora è duplicata (`app/page.tsx:12-13` rispetto a `lib/orari.ts:9-10`).
 17. ~~**Trappola del focus su mobile.**~~ Risolta il 31/10: la trappola del menu (e quelle dei fogli) conta solo gli elementi visibili.
-18. **Favicon, README e nome del pacchetto** (`my-app`) sono quelli di `create-next-app`. **Mancano** immagine Open Graph e `metadataBase`.
+18. **Favicon, README e nome del pacchetto** (`my-app`) sono quelli di `create-next-app`. (31/10: `metadataBase`, canonical, `robots.txt` e `sitemap.xml` ci sono, §7.) **Mancano** immagine Open Graph e `metadataBase`.
 19. **`public/` contiene 5 SVG del template non usati** (accanto a `images/hero-sfumatura.webp`, che invece è usato).
 20. **Peso di framer-motion.** È nel blocco da 107 KB gzip: `LazyMotion` + `m` ridurrebbe il costo, perché si usano solo animazioni semplici.
 21. **Avviso in sviluppo** "You have Reduced Motion enabled" di framer-motion: compare solo se il sistema ha il movimento ridotto attivo. È informativo.
