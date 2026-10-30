@@ -8,7 +8,7 @@ export default function AppuntamentoNonTrovato() {
   return (
     <PaginaGestione>
       <p className="eyebrow text-steel">Gestisci il tuo appuntamento</p>
-      <h1 className="display mt-3 text-[clamp(2rem,9.6cqi,4rem)]">Questo appuntamento non c&apos;è più</h1>
+      <h1 className="display mt-3 text-[clamp(min(2rem,calc(100cqi/9.8)),9.6cqi,4rem)]">Questo appuntamento non c&apos;è più</h1>
       <p className="mt-5 max-w-[46ch] text-base">
         Forse è già stato disdetto, o il link non è completo. Per qualsiasi dubbio chiama il salone al{" "}
         <a href={salone.telefonoHref} className="font-semibold underline underline-offset-4">
