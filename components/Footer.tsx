@@ -113,6 +113,11 @@ export function Footer() {
           <a href="/privacy" className="inline-flex min-h-11 items-center hover:text-paper">
             Privacy
           </a>
+          {/* Solo cookie tecnici, niente consensi da rivedere: il link porta alla
+              loro informativa. */}
+          <a href="/privacy#cookie" className="inline-flex min-h-11 items-center hover:text-paper">
+            Cookie
+          </a>
           <SectionLink id="top" className="inline-flex min-h-11 items-center hover:text-paper">
             Torna su ↑
           </SectionLink>

@@ -18,6 +18,7 @@ import { CONSERVAZIONE_MESI, salone } from "@/lib/salone";
 export const metadata: Metadata = {
   title: "Informativa privacy — History Barber da Francesco",
   description: "Come History Barber da Francesco tratta i dati di chi prenota dal sito.",
+  alternates: { canonical: "/privacy" },
 };
 
 const AGGIORNATA = "30 ottobre 2026";
@@ -101,7 +102,8 @@ export default function Privacy() {
             </p>
           </section>
 
-          <section>
+          {/* id: il link "Cookie" del footer porta qui. */}
+          <section id="cookie" className="scroll-mt-6">
             <h2>Cookie</h2>
             <p>
               Il sito non usa cookie di profilazione né strumenti di statistica. Usa solo cookie tecnici:

@@ -1,14 +1,17 @@
+import type { Metadata } from "next";
 import { ChiSiamo } from "@/components/ChiSiamo";
 import { Footer } from "@/components/Footer";
 import { Hero } from "@/components/Hero";
 import { Navbar } from "@/components/Navbar";
 import { Portfolio } from "@/components/Portfolio";
 import { PriceList } from "@/components/PriceList";
-import { BookingWidget } from "@/components/BookingWidget";
-import { GestioneWidget } from "@/components/GestioneWidget";
+import { FogliDifferiti } from "@/components/FogliDifferiti";
 import { RevealOnScroll } from "@/components/RevealOnScroll";
 import { SmoothScroll } from "@/components/SmoothScroll";
 import { orari, salone } from "@/lib/salone";
+
+// Canonical della home: una pagina, un indirizzo.
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 const giorniSchema = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const orarioSchema = (minuti: number) =>
@@ -18,8 +21,13 @@ const orarioSchema = (minuti: number) =>
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "HairSalon",
+  "@id": `${salone.sito}/#salone`,
   name: salone.nomeCompleto,
-  telephone: "+39 348 697 6353",
+  url: salone.sito,
+  // Il logo, finché la foto della hero è generata e non del salone (bible §11).
+  image: `${salone.sito}/apple-icon.png`,
+  priceRange: "€",
+  telephone: salone.telefonoHref.replace("tel:", ""),
   address: {
     "@type": "PostalAddress",
     streetAddress: salone.via,
@@ -64,10 +72,9 @@ export default function Home() {
         <Footer />
       </div>
       <RevealOnScroll />
-      {/* Foglio di prenotazione: montato una volta, lo aprono i bottoni "Prenota". */}
-      <BookingWidget />
-      {/* "Il mio appuntamento": il foglio gemello, lo aprono i suoi bottoni. */}
-      <GestioneWidget />
+      {/* Foglio di prenotazione e "Il mio appuntamento": montati una volta, li
+          aprono i loro bottoni. Codice scaricato dopo la pagina (FogliDifferiti). */}
+      <FogliDifferiti />
     </SmoothScroll>
   );
 }

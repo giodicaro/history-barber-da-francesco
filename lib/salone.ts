@@ -29,6 +29,10 @@ export const salone = {
   // Titolare del trattamento nell'informativa privacy (es. "Mario Rossi" o la
   // ditta individuale): da farsi dare da Francesco insieme alla P.IVA.
   titolare: "",
+  // Indirizzo pubblico del sito: base di canonical, sitemap, robots.txt e
+  // dati strutturati. Da cambiare insieme al dominio definitivo (bible §11:
+  // il cambio di dominio fa perdere anche cookie e passkey dei clienti).
+  sito: "https://history-barber-da-francesco.vercel.app",
 } as const;
 
 /* Per quanti mesi dopo l'appuntamento restano nome e telefono del cliente.
