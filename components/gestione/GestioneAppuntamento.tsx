@@ -17,7 +17,7 @@ import { cn, formatoPrezzo } from "@/lib/utils";
    l'orario viene preso il server risponde 409 con gli orari rimasti. Niente
    framer-motion, GSAP né Lenis: la pagina resta leggera. */
 
-export type Credenziale = { token: string } | { telefono: string; codice: string };
+export type Credenziale = { prenotazioneId: string } | { token: string } | { telefono: string; codice: string };
 
 export type Riepilogo = {
   id: string;
@@ -78,12 +78,22 @@ async function chiama(azione: string, credenziale: Credenziale, extra: Record<st
 export function GestioneAppuntamento({
   credenziale,
   iniziale,
-  conLink,
+  modo,
+  onPrenota,
+  onIndietro,
+  onCambiato,
 }: {
   credenziale: Credenziale;
   iniziale: Riepilogo;
-  /** Aperta dal link personale (non da telefono + codice). */
-  conLink: boolean;
+  /** "cliente": riconosciuto da questo dispositivo (v2); "link" e "codice":
+      le credenziali della v1, ancora valide per chi le ha. */
+  modo: "cliente" | "link" | "codice";
+  /** Dentro il foglio della home: apre il widget invece di cambiare pagina. */
+  onPrenota?: () => void;
+  /** Torna all'elenco dei propri appuntamenti. */
+  onIndietro?: () => void;
+  /** Dopo una disdetta o uno spostamento (per aggiornare i bottoni). */
+  onCambiato?: () => void;
 }) {
   const [app, setApp] = useState(iniziale);
   const [schermata, setSchermata] = useState<Schermata>("riepilogo");
@@ -114,7 +124,10 @@ export function GestioneAppuntamento({
     setErrore("");
     const { stato, corpo } = await chiama("disdici", credenziale);
     setInVolo(false);
-    if (stato === 200) return vai("disdetto");
+    if (stato === 200) {
+      onCambiato?.();
+      return vai("disdetto");
+    }
     if (stato === 404) return vai("sparito");
     setErrore(corpo?.errore ?? "Non è andata a buon fine. Riprova.");
     if (stato === 403) await rileggi();
@@ -126,7 +139,12 @@ export function GestioneAppuntamento({
     <div>
       {schermata === "riepilogo" && (
         <>
-          <Titolo rif={titolo} sopra="Gestisci il tuo appuntamento">
+          {onIndietro && (
+            <button type="button" onClick={onIndietro} className="eyebrow -mt-2 mb-4 inline-flex min-h-11 cursor-pointer items-center text-steel hover:text-ink">
+              ← Tutti i tuoi appuntamenti
+            </button>
+          )}
+          <Titolo rif={titolo} sopra={modo === "cliente" ? "Il mio appuntamento" : "Gestisci il tuo appuntamento"}>
             {app.nome ? `Ciao ${app.nome}` : "Il tuo appuntamento"}
           </Titolo>
           <Scheda app={app} />
@@ -206,9 +224,7 @@ export function GestioneAppuntamento({
           <p className="mt-5 text-base">
             Abbiamo avvisato Francesco: l&apos;appuntamento di {quando} non c&apos;è più. Grazie di averlo fatto in tempo.
           </p>
-          <Link href="/?prenota=gestione" className={cn(bottonePieno, "mt-6")}>
-            Prenota un nuovo orario
-          </Link>
+          <PrenotaDiNuovo onPrenota={onPrenota} />
         </>
       )}
 
@@ -221,6 +237,7 @@ export function GestioneAppuntamento({
           onSpostato={(nuovo, vecchio) => {
             setDa(vecchio);
             setApp(nuovo);
+            onCambiato?.();
             vai("spostato");
           }}
           onSparito={() => vai("sparito")}
@@ -244,7 +261,8 @@ export function GestioneAppuntamento({
           )}
           <Scheda app={app} />
           <p className="mt-4 text-base">
-            Abbiamo avvisato Francesco. {conLink ? "Il tuo link resta lo stesso." : "Il tuo codice resta lo stesso."}
+            Abbiamo avvisato Francesco.
+            {modo === "link" ? " Il tuo link resta lo stesso." : modo === "codice" ? " Il tuo codice resta lo stesso." : " Lo ritrovi sempre in «Il mio appuntamento»."}
           </p>
           <div className="mt-6">
             <p className="mb-2 text-sm text-steel">Aggiorna il calendario del telefono:</p>
@@ -268,12 +286,22 @@ export function GestioneAppuntamento({
             </a>
             .
           </p>
-          <Link href="/?prenota=gestione" className={cn(bottonePieno, "mt-6")}>
-            Prenota un nuovo orario
-          </Link>
+          <PrenotaDiNuovo onPrenota={onPrenota} />
         </>
       )}
     </div>
+  );
+}
+
+function PrenotaDiNuovo({ onPrenota }: { onPrenota?: () => void }) {
+  return onPrenota ? (
+    <button type="button" onClick={onPrenota} className={cn(bottonePieno, "mt-6")}>
+      Prenota un nuovo orario
+    </button>
+  ) : (
+    <Link href="/?prenota=gestione" prefetch={false} className={cn(bottonePieno, "mt-6")}>
+      Prenota un nuovo orario
+    </Link>
   );
 }
 

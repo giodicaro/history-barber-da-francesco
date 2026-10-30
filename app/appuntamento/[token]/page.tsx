@@ -25,7 +25,7 @@ export default async function PaginaLink(props: PageProps<"/appuntamento/[token]
   if (!a) notFound();
   return (
     <PaginaGestione>
-      <GestioneAppuntamento credenziale={{ token }} iniziale={riepilogo(a)} conLink />
+      <GestioneAppuntamento credenziale={{ token }} iniziale={riepilogo(a)} modo="link" />
     </PaginaGestione>
   );
 }

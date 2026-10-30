@@ -1,7 +1,7 @@
 import "server-only";
 import { formatoOra, giornoDellaData, oraDiRoma, sommaGiorni, turniDellaGiornata } from "@/lib/orari";
 import { GIORNI_PRENOTABILI, MARGINE_GESTIONE_MINUTI, orari, SPOSTAMENTI_MAX } from "@/lib/salone";
-import { appuntamentoDelCodice, appuntamentoDelToken, occupatiConId, type AppuntamentoGestito } from "./archivio";
+import { appuntamentoDelCliente, appuntamentoDelCodice, appuntamentoDelToken, occupatiConId, type AppuntamentoGestito } from "./archivio";
 import { codiceCompleto } from "./codice";
 import { impronta, improntaCodice, puoGestire, slotPerSpostamento, TOKEN_GESTIONE, type StatoGestione } from "./gestione";
 import { normalizzaTelefono } from "./telefono";
@@ -12,12 +12,16 @@ import { servizioPerId } from "./validazione";
    all'appuntamento, e ciò che il cliente vede. Lo usano l'API
    (app/api/appuntamento) e la pagina del link (app/appuntamento/[token]). */
 
-export type Credenziale = { token: string } | { telefono: string; codice: string };
+/* v2: { prenotazioneId } vale solo insieme al cookie del cliente.
+   v1: token del link e telefono + codice, consegnati fino al 30/10/2026,
+   valgono finché i loro appuntamenti non sono passati (bible §11). */
+export type Credenziale = { prenotazioneId: string } | { token: string } | { telefono: string; codice: string };
 
 export const REGOLE = { margineMinuti: MARGINE_GESTIONE_MINUTI, spostamentiMax: SPOSTAMENTI_MAX };
 
 export function leggiCredenziale(v: unknown): Credenziale | null {
   const c = v as Record<string, unknown> | null;
+  if (typeof c?.prenotazioneId === "string") return { prenotazioneId: c.prenotazioneId };
   if (typeof c?.token === "string") return { token: c.token };
   if (typeof c?.telefono === "string" && typeof c?.codice === "string") return { telefono: c.telefono, codice: c.codice };
   return null;
@@ -27,7 +31,8 @@ export function leggiCredenziale(v: unknown): Credenziale | null {
     appuntamento inesistente sono la stessa cosa per chi chiama: si fa
     comunque una ricerca per impronta, anche con dati malformati, perché i
     tempi di risposta non dicano niente. */
-export async function trovaAppuntamento(c: Credenziale): Promise<AppuntamentoGestito | null> {
+export async function trovaAppuntamento(c: Credenziale, clienteId: string | null = null): Promise<AppuntamentoGestito | null> {
+  if ("prenotazioneId" in c) return clienteId ? appuntamentoDelCliente(c.prenotazioneId, clienteId) : null;
   if ("token" in c) {
     const a = await appuntamentoDelToken(impronta(c.token));
     return TOKEN_GESTIONE.test(c.token) ? a : null;

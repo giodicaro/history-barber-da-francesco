@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { salone } from "@/lib/salone";
 import { BookButton } from "./BookButton";
+import { MioAppuntamentoButton } from "./MioAppuntamentoButton";
 import { GridLines } from "./GridLines";
 import { Logo } from "./Logo";
 import { ArrowUpRight, InstagramGlyph } from "./icons";
@@ -82,9 +82,6 @@ export function Footer() {
               <br />
               <span className="text-smoke">Si riceve solo su appuntamento</span>
             </p>
-            <Link href="/appuntamento" className="info mt-3 inline-flex min-h-11 items-center underline-offset-4 hover:underline">
-              Gestisci il tuo appuntamento →
-            </Link>
             <a
               href={salone.instagramHref}
               target="_blank"
@@ -94,9 +91,13 @@ export function Footer() {
               <InstagramGlyph className="size-5" />
               <span>@{salone.instagram}</span>
             </a>
-            <BookButton origine="footer" size="lg" suScuro className="mt-8 w-full">
-              Prenota ora
-            </BookButton>
+            {/* La stessa coppia della hero, uno sopra l'altro. */}
+            <div className="mt-8 grid w-full gap-3">
+              <BookButton origine="footer" size="lg" suScuro className="w-full">
+                Prenota ora
+              </BookButton>
+              <MioAppuntamentoButton origine="footer" className="w-full" />
+            </div>
           </div>
         </div>
 

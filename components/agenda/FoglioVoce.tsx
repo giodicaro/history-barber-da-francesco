@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, type ComponentProps, type FormEvent, type ReactNode } from "react";
-import { elimina, salvaAppuntamento, salvaBlocco } from "@/app/admin/azioni";
+import { accessoWhatsApp, elimina, salvaAppuntamento, salvaBlocco } from "@/app/admin/azioni";
 import { formatoOra } from "@/lib/orari";
 import {
   DURATE,
@@ -194,7 +194,59 @@ function Dettaglio({
           della poltrona.
         </p>
       )}
+      {appuntamento?.cliente.telefono && <AccessoWhatsApp id={voce.id} />}
     </FoglioInBasso>
+  );
+}
+
+/* "Manda accesso su WhatsApp" (N4): per il cliente che non ritrova il suo
+   appuntamento (prenotato al telefono, dispositivo nuovo, cookie cancellato).
+   Il messaggio contiene un accesso monouso valido 48 ore: un tocco e il
+   cliente si ritrova in "Il mio appuntamento", senza codici.
+   La finestra si apre subito, dentro il tocco, e riceve l'indirizzo quando la
+   Server Action risponde: aperta dopo, il browser la bloccherebbe. */
+function AccessoWhatsApp({ id }: { id: string }) {
+  const [stato, setStato] = useState<{ tipo: "fermo" | "invio" } | { tipo: "pronto"; url: string } | { tipo: "errore"; testo: string }>({ tipo: "fermo" });
+
+  const manda = async () => {
+    const finestra = window.open("", "_blank");
+    setStato({ tipo: "invio" });
+    let esito: Awaited<ReturnType<typeof accessoWhatsApp>>;
+    try {
+      esito = await accessoWhatsApp(id);
+    } catch {
+      esito = { ok: false, errore: "Connessione assente: riprova." };
+    }
+    if (!esito.ok || !esito.whatsapp) {
+      finestra?.close();
+      setStato({ tipo: "errore", testo: esito.ok ? "Non è andata a buon fine. Riprova." : esito.errore });
+      return;
+    }
+    if (finestra) finestra.location.href = esito.whatsapp;
+    setStato({ tipo: "pronto", url: esito.whatsapp });
+  };
+
+  return (
+    <div className="mt-5 border-t border-ink/15 pt-4">
+      <button type="button" onClick={manda} disabled={stato.tipo === "invio"} aria-busy={stato.tipo === "invio"} className={cn(bottoneVuoto, "w-full")}>
+        {stato.tipo === "invio" && <Rotella />}
+        Manda accesso su WhatsApp
+      </button>
+      <p aria-live="polite" className="info mt-2 text-steel">
+        {stato.tipo === "pronto" ? (
+          <>
+            Messaggio pronto: vale 48 ore, una volta sola.{" "}
+            <a href={stato.url} target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-4">
+              Riapri WhatsApp
+            </a>
+          </>
+        ) : stato.tipo === "errore" ? (
+          stato.testo
+        ) : (
+          "Per il cliente che non ritrova l'appuntamento: un tocco sul link e lo vede, senza codici."
+        )}
+      </p>
+    </div>
   );
 }
 

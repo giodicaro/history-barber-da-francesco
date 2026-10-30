@@ -15,7 +15,10 @@ import { GestioneAppuntamento, type Riepilogo } from "./GestioneAppuntamento";
 const campo =
   "mt-2 block min-h-12 w-full rounded-none border bg-paper px-4 text-base outline-none transition-colors duration-200";
 
-export function CercaAppuntamento() {
+/** `compatta`: senza titolo, dentro /appuntamento sotto "Hai un codice?".
+    Dal 30/10/2026 i codici non si consegnano più (v2): la ricerca resta per
+    chi ne ha ancora uno, finché il suo appuntamento non è passato. */
+export function CercaAppuntamento({ compatta = false }: { compatta?: boolean }) {
   const [telefono, setTelefono] = useState("");
   const [codice, setCodice] = useState("");
   const [inVolo, setInVolo] = useState(false);
@@ -50,12 +53,16 @@ export function CercaAppuntamento() {
     setInVolo(false);
   };
 
-  if (trovato) return <GestioneAppuntamento credenziale={trovato.credenziale} iniziale={trovato.riepilogo} conLink={false} />;
+  if (trovato) return <GestioneAppuntamento credenziale={trovato.credenziale} iniziale={trovato.riepilogo} modo="codice" />;
 
   return (
     <div>
-      <p className="eyebrow text-steel">{salone.nomeCompleto}</p>
-      <h1 className="display mt-3 text-[clamp(2rem,9.6cqi,4rem)]">Il tuo appuntamento</h1>
+      {!compatta && (
+        <>
+          <p className="eyebrow text-steel">{salone.nomeCompleto}</p>
+          <h1 className="display mt-3 text-[clamp(2rem,9.6cqi,4rem)]">Il tuo appuntamento</h1>
+        </>
+      )}
       <p className="mt-4 max-w-[46ch] text-base text-steel">
         Per spostarlo o disdirlo scrivi il telefono che hai lasciato e il codice di 6 caratteri che hai ricevuto
         prenotando. Se hai il link personale, ti basta aprirlo.

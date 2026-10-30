@@ -2,7 +2,7 @@
 
 Passaggio di consegne per il sito vetrina di **History Barber da Francesco**, barbiere a Mestre (Venezia).
 
-**Fotografia scattata il:** 26 settembre 2026, aggiornata dopo l'agenda interattiva; next 16.4.3 (26/10); 29 ottobre: eliminati app clienti (/app) e Lookbook, restano sito e agenda; 30 ottobre: "Gestisci il tuo appuntamento" (§6.16) sul ramo `feature/gestione-appuntamenti`, non ancora in produzione
+**Fotografia scattata il:** 26 settembre 2026, aggiornata dopo l'agenda interattiva; next 16.4.3 (26/10); 29 ottobre: eliminati app clienti (/app) e Lookbook, restano sito e agenda; 30 ottobre: "Gestisci il tuo appuntamento" v1 (§6.16) in produzione; "Il mio appuntamento" v2 (§6.16) sul ramo `feature/mio-appuntamento-v2`, non ancora in produzione
 **Cartella:** `C:\Users\foscolo\Parruchieria\my-app`
 **Versionamento:** https://github.com/giodicaro/history-barber-da-francesco (pubblico, ramo `main`)
 **Produzione:** https://history-barber-da-francesco.vercel.app (Vercel, progetto `history-barber-da-francesco`, collegato al repository: ogni push su `main` va in produzione)
@@ -119,7 +119,11 @@ Tutto è stato fatto il 16–17 settembre 2026, in una sola sessione.
 | `postgres` 3.4.9 | `lib/prenotazioni/db.ts`, `scripts/db-init.mjs` | Client Postgres delle prenotazioni. **Non** `@vercel/postgres`: è deprecato da Vercel, che ha spostato i database gestiti su Neon. postgres.js parla con qualsiasi Postgres, quindi il progetto non è legato a un fornitore |
 | `next-auth` 5.0.0-beta.32 | `auth.ts`, `auth.config.ts`, `middleware.ts` | Accesso all'agenda: una sola password, sessione in un cookie firmato |
 | `@electric-sql/pglite` 0.5.8 | `lib/prenotazioni/db.ts` | Postgres compilato in WebAssembly, dentro il processo di Next. È il database quando manca `DATABASE_URL`: su file in locale, in memoria su Vercel. Stesso SQL e stessi vincoli della produzione. In `serverExternalPackages` (`next.config.ts`), perché carica da sé i suoi file `.wasm` e l'estensione `btree_gist` |
+| `@simplewebauthn/server` 14.0.3 | `lib/prenotazioni/passkey.ts` | Passkey dei clienti (Face ID, impronta, PIN): opzioni e verifica di registrazione e accesso (§6.16 N3) |
+| `@simplewebauthn/browser` 14.0.0 | `components/gestione/SpazioCliente.tsx`, `components/gestione/AttivaFaceId.tsx` | Lato browser delle passkey: `startRegistration`, `startAuthentication`, controllo dell'autenticatore integrato |
 | `server-only` | `lib/prenotazioni/db.ts`, `lib/prenotazioni/avvisi.ts`, `lib/prenotazioni/archivio.ts` | Fa fallire la build se un modulo con segreti finisce in un componente client |
+
+**`overrides` in `package.json`:** `next-auth` e `@auth/core` dichiarano `@simplewebauthn/*` ^9 come dipendenza facoltativa (per un provider di Auth.js che qui non si usa). Senza gli `overrides`, che li puntano alle versioni 14 del progetto, `npm install` si ferma con ERESOLVE. Non togliere né l'uno né l'altro.
 
 Non ci sono altre dipendenze: niente `clsx`/`tailwind-merge` (l'helper `cn` è un semplice join, `lib/utils.ts:1-3`) e niente librerie di icone (SVG scritti a mano in `components/icons.tsx`).
 
@@ -484,13 +488,18 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 | 6.13 | Agenda (navigazione, appuntamenti, blocchi) | `app/admin/`, `components/agenda/` | ✅ Completa in locale |
 | 6.14 | App dei clienti (PWA in `/app`) | — | ❌ Eliminata il 29/10 (§1.4 punto 11) |
 | 6.15 | Lookbook personale (foto e note del taglio) | — | ❌ Eliminato il 29/10 su richiesta: restano solo sito e agenda |
-| 6.16 | Gestione dell'appuntamento da parte del cliente (sposta, disdici) | `app/appuntamento/`, `app/api/appuntamento/`, `components/gestione/`, `components/prenotazione/`, `lib/prenotazioni/gestione*.ts`, `codice.ts`, `calendario.ts` | 🟠 Completa e verificata in locale; non in produzione, non provata su iPhone vero |
+| 6.16 | "Il mio appuntamento": il cliente ritrova, sposta e disdice senza codici (v2), più link e codici della v1 ancora validi | `app/appuntamento/`, `app/api/appuntamento/`, `components/gestione/`, `components/GestioneWidget.tsx`, `components/MioAppuntamentoButton.tsx`, `lib/gestione.ts`, `lib/prenotazioni/{cliente,riconoscimento,passkey,gestione*}.ts` | 🟠 v2 completa e verificata in locale sul ramo `feature/mio-appuntamento-v2`; non in produzione, passkey non provate su iPhone vero |
 
 **6.1 Barra fissa.**
 - **Trasparente** solo con la pagina ferma in cima alla hero (sentinella `data-cima`, `Hero.tsx:107`).
 - Altrove è **piena**: nera sopra le sezioni `data-nav-scuro` (hero, footer), bianca sulle altre.
 - Il colore dipende da una fascia di 4px a cavallo del bordo inferiore della barra (`Navbar.tsx:77-79`) e si ricalcola al resize.
 - A sinistra hamburger, al centro il logo (solo il monogramma "HB" sotto 640px), a destra "Prenota". Il logo segue il colore della barra.
+- **"Il mio appuntamento"** (§6.16 N5), a sinistra di "Prenota":
+  - da `lg`: bottone testuale a contorno (su fondo scuro riempimento bianco e testo in `difference` come "Prenota"; su fondo chiaro sale il nero e il testo passa al bianco, perché il `difference` darebbe bianco su bianco);
+  - fra `md` e `lg`: icona calendario da 44 px, **solo** se il cliente è riconosciuto e ha un appuntamento in arrivo;
+  - sotto `md`: niente. Con l'icona, a 375 e 390 px il logo usciva di circa 30 px dal centro (`grid-cols-[1fr_auto_1fr]`, la colonna di destra non basta). La data resta nel bottone della hero.
+  - Le due varianti stanno in un `<div>` che le nasconde: `cn()` non fonde le classi, e `hidden` sul bottone perderebbe contro il suo `inline-flex` (§9.25).
 
 **6.2 Menu.**
 - Tenda nera che scende, voci giganti numerate che salgono in sequenza (`staggerChildren` 0,07s dopo 0,3s), blocchi informativi in dissolvenza.
@@ -500,11 +509,15 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
   - Tab gira dentro l'header;
   - Esc chiude e il focus torna all'hamburger.
 - Un clic su una voce chiude il menu e *poi* scorre alla sezione (`onExitComplete`, `Navbar.tsx:140-145`), dando il focus alla sezione.
+- Sotto le voci, un bottone a contorno **"Il mio appuntamento"** (non una voce gigante: non è una sezione della pagina). Chiude la tenda e *poi* apre il foglio (`chiudiVerso("mio-appuntamento")` → `apriGestione("menu")`).
 
 **6.3 Hero.**
 - In alto quattro blocchi informativi in monospazio: indirizzo, giorni, telefono, stato. Da md una colonna ciascuno; su mobile due righe da due (indirizzo e stato sopra, giorni e telefono sotto, con `order`), a 11px sotto i 380px perché "VIA CA' ROSSA 47/A-B" non vada a capo sul trattino (`Hero.tsx:19-22`).
 - **Distribuzione verticale:** su mobile la shell è `justify-between` con `gap-8` minimo, e lo spazio libero si divide in due fasce uguali sopra e sotto il titolo. Da md `justify-start` e il titolo ha `mt-auto`: titolo e CTA ancorati in basso, come prima (`Hero.tsx:116, 147`).
-- Eyebrow, titolo "L'eccellenza / del grooming / maschile" a righe mascherate, testo e CTA "Prenota ora".
+- Eyebrow, titolo "L'eccellenza / del grooming / maschile" a righe mascherate, testo e **coppia di bottoni** "Prenota ora" (pieno) e "Il mio appuntamento" (contorno, §6.16 N5): stessa altezza (56 px), stessa larghezza, stessa `eyebrow`. Il secondo ha sempre due righe: "Il mio appuntamento" e, sotto in `info`, "Sposta o disdici" oppure il prossimo appuntamento ("Mar 10 nov · 10:30", stesso formato del widget). Il riquadro non cambia quando arriva la data (misurato).
+  - Disposizione: sotto `sm` uno sopra l'altro a tutta larghezza (il brief diceva sotto 380 px, ma a 390 due bottoni affiancati da 163 px non contengono "IL MIO APPUNTAMENTO"); da `sm` affiancati; fra `md` e `lg` di nuovo uno sopra l'altro nella metà destra, perché il testo resti su tre righe; da `lg` affiancati nella metà destra.
+  - Entrano nella stessa sequenza del CTA di prima (un solo `data-reveal` per la coppia).
+  - **Il titolo si alza** dove i bottoni sono uno sopra l'altro: 34 px a 375/390 (lo spazio libero resta diviso in due fasce uguali, solo più strette), 50 px a 768, 0 a 1440. Larghezza e corpo del titolo non cambiano. Confronto in `hero-prima/` e `hero-dopo/` delle prove.
 - Sequenza d'entrata: linee della griglia, zoom della foto, righe, blocchi (`Hero.tsx:46-62`).
 - Parallasse del 12% allo scroll (`Hero.tsx:14, 64-68`).
 - **Foto:** immagine generata, una nuca con sfumatura netta e vapore da un panno caldo (bianco e nero). ⚠️ **Non ritrae un cliente del salone**: da sostituire con una foto vera, o da far approvare a Francesco, prima della pubblicazione.
@@ -532,7 +545,7 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 - Nota sui prezzi variabili e CTA in fondo.
 
 **6.8 Contatti / footer.**
-- Indirizzo gigante; blocchi DOVE (con link "Indicazioni stradali" a Google Maps), ORARI (stato + tabella), APPUNTAMENTI ("Tel. …" e nota come nella hero, Instagram, CTA). Tutti i dati sono in `info`; i titoletti restano `eyebrow`.
+- Indirizzo gigante; blocchi DOVE (con link "Indicazioni stradali" a Google Maps), ORARI (stato + tabella), APPUNTAMENTI ("Tel. …" e nota come nella hero, Instagram, e la stessa coppia di bottoni della hero, uno sopra l'altro). Il link "Gestisci il tuo appuntamento" della v1 è stato tolto. Tutti i dati sono in `info`; i titoletti restano `eyebrow`.
 - Barra finale con logo, ©, "Rivenditore autorizzato Depot" e "Torna su" (`Footer.tsx:99-109`), più la firma gigante "HISTORY BARBER" tagliata dal bordo.
 - La P.IVA compare solo se compilata (`Footer.tsx:103`).
 
@@ -547,7 +560,8 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 - passo 1: una scheda per servizio, con categoria, durata e prezzo presi dal listino; i supplementi (`prenotabile: false`) non compaiono;
 - passo 2: striscia orizzontale di 22 giorni (i chiusi restano, spenti) e griglia di orari a 3 colonne (4 da `sm`). Gli orari non disponibili restano visibili barrati, con il motivo nel `title`: una giornata piena si vede;
 - passo 3: nome, telefono e note, con riepilogo. Il telefono è validato mentre si scrive, con la **stessa funzione del server** (`lib/prenotazioni/telefono.ts`);
-- conferma: riepilogo con data, ora, servizio, e il riquadro "Per spostare o disdire" con codice e link personali (copia, WhatsApp, calendario), mostrati una volta sola (§6.16);
+- passo 3 (v2): sotto i campi, il riquadro *"Su questo telefono ritroverai l'appuntamento con un tocco."* con la casella **non spuntata** "Non è il mio telefono" (se spuntata, il corpo porta `ricorda: false` e il server non scrive il cookie);
+- conferma (v2): riepilogo con data, ora, servizio, e il riquadro "Per spostare o disdire": *"Lo ritrovi in home, in «Il mio appuntamento»"*, il bottone facoltativo per Face ID o impronta (solo se il dispositivo ce l'ha) e "Aggiungi al calendario". **Niente codici né link.** Con "Non è il mio telefono" il riquadro dice di chiamare il salone o scrivere su WhatsApp;
 - stati: rotella durante il caricamento degli orari e durante l'invio; messaggi in chiaro per ogni errore;
 - accessibilità: `role="dialog"`, `aria-modal`, Esc chiude, Tab gira dentro il foglio, la pagina sotto diventa `inert` e Lenis si ferma (come il menu, §6.2);
 - gli orari **non si calcolano nel browser**: arrivano dall'API, che è l'unica a decidere cosa è libero.
@@ -557,7 +571,7 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 | | `GET /api/bookings` | `POST /api/bookings` |
 |---|---|---|
 | Parametri | `date=YYYY-MM-DD` (default: oggi), `servizio=<id>`, `operatore=<id>` | corpo JSON: `servizioId`, `data`, `ora`, `operatoreId?`, `origine?`, `cliente: { nome, telefono, note? }` |
-| Risposta | `{ data, giorno, giornoNome, aperto, servizio, slot[], liberi }` | 201 `{ ok, prenotazione, gestione: { token, codice } }` (in chiaro solo qui; nel database le impronte, §6.16) |
+| Risposta | `{ data, giorno, giornoNome, aperto, servizio, slot[], liberi }` | 201 `{ ok, prenotazione, riconosciuto }` + `Set-Cookie: hb_cliente=…` se il cliente va ricordato (§6.16 N1). Dalla v2 non si generano più link né codici |
 | Errori | 400 data non valida | 400 dati non validi (`campi`), 409 orario appena occupato, 429 troppe richieste, 500 |
 
 - **Algoritmo degli slot** (`lib/prenotazioni/slot.ts`, funzioni pure): dai turni del giorno (`lib/salone.ts`) si generano gli inizi ogni 30 minuti; si scarta chi si sovrappone a un appuntamento, chi è già passato (con 60 minuti di preavviso) e chi non ci starebbe prima della chiusura. Esempio verificato: servizio da 75 minuti di martedì → ultimo orario utile 18:30, 19:00 e 19:30 spenti con motivo `chiusura`.
@@ -607,9 +621,77 @@ Senza `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` il messaggio finisce comunque ne
 - Da tastiera il focus attiva il riempimento.
 - `data-prenota` riporta l'origine, utile per un futuro tracciamento.
 
-**6.16 Gestione dell'appuntamento da parte del cliente** (30/10/2026, ramo `feature/gestione-appuntamenti`).
+**6.16 "Il mio appuntamento": il cliente ritrova, sposta e disdice** (v2 del 30/10/2026, ramo `feature/mio-appuntamento-v2`; la v1 con link e codice è più sotto).
 
-*Cosa fa.* Chi prenota dal sito riceve, nella conferma del widget, un **link personale** (`/appuntamento/<token>`) e un **codice** di 6 caratteri (`K7M-4QX`). Con il link, oppure da `/appuntamento` con telefono + codice, vede l'appuntamento e lo **disdice** (due tocchi) o lo **sposta** su un orario che il server proporrebbe. Francesco riceve un avviso per ogni modifica e l'agenda è già aggiornata. Dal footer: "Gestisci il tuo appuntamento".
+*Cosa fa.* Il cliente **non salva niente**: niente codici, niente link. Il telefono con cui ha prenotato lo riconosce da solo; sugli altri suoi dispositivi entra con Face ID o impronta; nei casi rari gli manda un accesso Francesco, dall'agenda, su WhatsApp. In home "Il mio appuntamento" sta accanto a "Prenota ora", con lo stesso peso. Sposta e disdici seguono **le stesse regole della v1** (D3–D6 sotto): cambia solo *chi* è autorizzato.
+
+*Le sei decisioni (N1–N6).*
+- **N1 Il telefono si ricorda del cliente.**
+  - Ogni cliente ha un `cliente_id` (`randomUUID()`), nella colonna `prenotazioni.cliente_id`.
+  - Il browser lo tiene nel cookie **`hb_cliente`** = `<cliente_id>.<firma>`. La firma è un HMAC-SHA256 con una chiave **derivata** da `AUTH_SECRET` (HKDF-SHA256, info `hb-cliente-v1`, 32 byte), non `AUTH_SECRET` così com'è. Si verifica con `timingSafeEqual`; firma sbagliata = cookie assente.
+  - Attributi: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Max-Age` 400 giorni (il massimo di Chrome), `Secure` quando `NODE_ENV=production`. Si rinnova a ogni uso (`/miei`, ogni azione).
+  - **Lo scrive solo il server**, con `Set-Cookie` nella risposta di `POST /api/bookings`, mai `document.cookie`: Safari cancella dopo 7 giorni i cookie scritti da JavaScript.
+  - Se il cookie c'è ed è valido, la prenotazione nuova prende **lo stesso** `cliente_id`: tutto ciò che si prenota da quel telefono (anche per un figlio) sta insieme.
+  - Funzioni pure e testate in `lib/prenotazioni/cliente.ts` (`tests/cliente.test.mjs`); lato server `lib/prenotazioni/riconoscimento.ts`.
+  - Senza `AUTH_SECRET` valido (almeno 32 caratteri) il riconoscimento è **spento**: le prenotazioni funzionano, nessun cookie, lo spazio mostra solo Chiama e WhatsApp.
+- **N2 "Non è il mio telefono".** Casella non spuntata al passo 3 del widget: se la si spunta, niente cookie. Nello spazio c'è sempre **"Dimentica questo dispositivo"**, con conferma nella pagina: cancella il cookie (`azione: "dimentica"`, `Max-Age=0`).
+- **N3 Passkey (Face ID, impronta, PIN) per gli altri dispositivi.**
+  - Si attivano dopo la conferma della prenotazione (`AttivaFaceId.tsx`) e nello spazio, quando il cliente è riconosciuto e non ne ha ancora una. Si usano da un dispositivo non riconosciuto: **"Entra con Face ID o impronta"**.
+  - `residentKey: "required"`, `userVerification: "required"`, nessun `allowCredentials` all'accesso (passkey scopribile).
+  - `user.name` = `"<Nome> · History Barber"`, mai il telefono. `user.id` = 32 byte casuali legati al cliente in tabella, non il `cliente_id`.
+  - La challenge sta in un cookie firmato **`hb_sfida`** di 5 minuti (niente tabella), con scopo, scadenza e cliente; usata una volta (elenco in memoria delle challenge già usate).
+  - `rpID` = hostname della richiesta, **solo** da un elenco: `localhost`, `history-barber-da-francesco.vercel.app`, l'host di `AUTH_URL` se c'è. Anche l'`origin` deve combaciare (https, tranne localhost).
+  - Contatore controllato: un contatore che torna indietro dà 401, e l'aggiornamento è condizionato (`where contatore = $vecchio`).
+  - Il bottone compare solo se il browser ha WebAuthn **e** un autenticatore integrato (`platformAuthenticatorIsAvailable`); altrimenti non compare, senza messaggi.
+- **N4 Ultima rete: persone, non codici.** Per appuntamenti presi al telefono o inseriti da Francesco, dispositivi nuovi senza passkey, cookie cancellati.
+  - Cliente: nello spazio **Chiama** e **Scrivi su WhatsApp** al salone, con il messaggio già avviato.
+  - Francesco: nel foglio Dettaglio dell'agenda, **"Manda accesso su WhatsApp"** (`AccessoWhatsApp` in `FoglioVoce.tsx`, Server Action `accessoWhatsApp` in `app/admin/azioni.ts`, che chiama `auth()` per prima). Apre `wa.me/<telefono del cliente>` con un link `/appuntamento/accesso/<token>`: 32 byte, nel database solo sha256("accesso:" + token), **48 ore**, consumato in modo atomico al primo uso.
+  - Al tocco: il server scrive il cookie (se l'appuntamento non ha un `cliente_id`, gliene dà uno nuovo) e fa 303 a `/?gestione=1`, dove il foglio si apre da solo. Link già usato, scaduto o inventato: 303 a `/appuntamento?scaduto=1`, senza cookie.
+- **N5 In home con lo stesso peso di "Prenota".** Hero (§6.3), barra (§6.1), menu (§6.2), footer (§6.8). **La home resta statica (`○`)**: `app/page.tsx` non legge cookie. Lo stato arriva dopo il caricamento da `GET /api/appuntamento/miei` (`lib/gestione.ts`, `useSyncExternalStore`, una sola richiesta condivisa da tutti i bottoni).
+- **N6 Lo spazio dedicato.** `components/gestione/SpazioCliente.tsx`, lo stesso contenuto in due cornici:
+  - il foglio `GestioneWidget` in home, gemello di `BookingWidget` (`role="dialog"`, `aria-modal`, pagina `inert`, Lenis fermo, Esc, Tab che gira dentro), aperto da `apriGestione(origine)`;
+  - la pagina `/appuntamento`, senza GSAP, Lenis né framer-motion (verificato), con in fondo la riga chiusa "Hai un codice di 6 caratteri?" per i codici della v1.
+  - Stati: caricamento (rotella); riconosciuto con appuntamenti (uno solo: si apre direttamente; più d'uno: elenco per data, poi Sposta/Disdici della v1 con "← Tutti i tuoi appuntamenti"), più "Attiva Face ID" e "Dimentica questo dispositivo"; riconosciuto senza appuntamenti ("Non hai appuntamenti in arrivo" + Prenota ora, che apre il widget); non riconosciuto (Face ID se disponibile, poi Chiama e WhatsApp); spento (solo Chiama e WhatsApp).
+
+*Dati* (`db/schema.ts`, solo aggiunte idempotenti, applicate da sole alla prima connessione):
+- `prenotazioni.cliente_id uuid` + indice parziale `prenotazioni_cliente (cliente_id, data)`;
+- `passkey_clienti` (`id_credenziale` pk, `chiave_pubblica` bytea, `contatore`, `trasporti`, `id_utente`, `cliente_id`, `creata_il`, `usata_il`);
+- `accessi_monouso` (`hash` pk, `prenotazione_id`, `scade_il`, `usato_il`).
+- **L'appartenenza si controlla nello SQL**: `id = $1 and cliente_id = $2 and tipo = 'appuntamento'` in lettura, e `and ($n::uuid is null or cliente_id = $n::uuid)` dentro `spostaAppuntamento` e `disdiciAppuntamento`. `aggiornaVoce()` dell'agenda non tocca `cliente_id` (verificato: uno spostamento fatto da Francesco lascia l'appuntamento al cliente).
+- Pulizia in `eliminaScadute()`: accessi monouso scaduti o orfani; passkey di clienti senza più prenotazioni in archivio e non usate da `CONSERVAZIONE_MESI`.
+- Le colonne della v1 (`gestione_hash`, `codice_hash`, `spostamenti`) **restano** (§11).
+
+*API* (tutte `Cache-Control: no-store`; ogni POST vuole l'intestazione `Origin` uguale all'host, altrimenti 403):
+
+| Rotta | Chi | Risposte |
+|---|---|---|
+| `GET /api/appuntamento/miei` | cookie | 200 `{ attivo, riconosciuto, totale, prossimo?: { data, ora, servizio } }`. Mai un errore |
+| `POST /api/appuntamento` | cookie (o token/codice v1) | come la v1, con `credenziale: { prenotazioneId }`; in più `azione: "elenco"` → `{ attivo, riconosciuto, appuntamenti[], conFaceId }` e `"dimentica"` |
+| `POST /api/appuntamento/passkey/registra` | cookie | `{ fase: "opzioni" }` → opzioni · `{ fase: "verifica", risposta }` → 201 |
+| `POST /api/appuntamento/passkey/accedi` | nessuno | opzioni → verifica → `Set-Cookie` + 200 · 401. Freno: 10 ogni 10 minuti per IP |
+| `GET /appuntamento/accesso/[token]` | token monouso | 303 `/?gestione=1` + `Set-Cookie` · 303 `/appuntamento?scaduto=1` |
+
+- Un `prenotazioneId` di un altro cliente, con qualsiasi azione, dà **404** come un appuntamento inesistente.
+- `POST /api/bookings` da un'altra origine viene salvata come prima, ma **senza** cookie.
+- Mai nei log: cookie, token, `cliente_id`, telefono (verificato sui log del server di prova; resta l'avviso di nuova prenotazione senza Telegram, §11.9).
+
+*Verificato il 30/10* (build di produzione, PGlite isolato, Chrome headless, `scratchpad/lb/pp/mio.mjs` e `mio-b.mjs`): scenari 1–12 del brief, 64 controlli tutti passati. Fra questi:
+- attributi del cookie; conferma senza codici; bottone con la data senza salti (riquadro identico prima e dopo);
+- stesso `cliente_id` alla seconda prenotazione; "Non è il mio telefono" senza cookie;
+- sposta sopra sé stesso, altro giorno, limite (403), gara (409), disdetta, termine in sola lettura;
+- cookie manomesso (id, firma, senza firma), `prenotazioneId` altrui (404 su leggi, sposta, disdici);
+- passkey con l'autenticatore virtuale di Chrome: creazione, cookie cancellati, rientro; firma alterata 401; contatore indietro 401; freno al 10° tentativo;
+- accesso monouso dall'agenda: riconosciuto, riaperto → scaduto, scaduto per data → scaduto, token inventato;
+- Dimentica; Origin estraneo 403; `/` statica; nessuna libreria di animazione in `/appuntamento` (5 pagine controllate);
+- regressione: widget, agenda (crea, modifica, vede), avvisi, link e codice della v1 ancora validi.
+
+Matrice visiva a 375, 390, 768 e 1440 px: hero riconosciuto e no, barra sopra la hero e sopra una sezione chiara (logo al centro, scarto 0 px), menu, tutti gli stati dello spazio, passo 3 e conferma del widget, pagina con "scaduto"; nessuno scorrimento orizzontale.
+
+**Non verificato su iPhone vero:** creazione e uso di una passkey con Face ID e la sua sincronizzazione iCloud su un secondo dispositivo; il cookie in Safari dopo più di 7 giorni; l'apertura del link di WhatsApp dentro l'app. **Sito aggiunto alla Home di iOS:** ha cookie separati da Safari, quindi lì il cliente risulta "non riconosciuto" finché non entra con Face ID (annotato, non risolto).
+
+##### v1 — link e codice (30/10/2026, in produzione; dalla v2 non se ne creano più, ma quelli consegnati valgono)
+
+*Cosa fa.* Chi prenotava dal sito riceveva, nella conferma del widget, un **link personale** (`/appuntamento/<token>`) e un **codice** di 6 caratteri (`K7M-4QX`). Con il link, oppure da `/appuntamento` con telefono + codice, vede l'appuntamento e lo **disdice** (due tocchi) o lo **sposta** su un orario che il server proporrebbe. Francesco riceve un avviso per ogni modifica e l'agenda è già aggiornata. Dal footer: "Gestisci il tuo appuntamento".
 
 *Decisioni (D1–D7).*
 - **D1 Segreto, mai il solo telefono.** Token `randomBytes(32)` in base64url, codice da un alfabeto senza caratteri ambigui (`23456789ABCDEFGHJKMNPQRSTUVWXYZ`, niente 0 O 1 I L). Nel database solo impronte SHA-256: `gestione_hash` = sha256("gestione:" + token), `codice_hash` = sha256(telefono + ":" + codice). Si cerca sempre per impronta.
@@ -647,7 +729,7 @@ Senza `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` il messaggio finisce comunque ne
 - sola lettura oltre il termine.
 Ogni nuova schermata porta il focus sul titolo, senza anello visibile.
 
-*Riuso.* Striscia dei giorni e griglia degli orari sono state estratte dal widget in `components/prenotazione/GiorniEOrari.tsx`. L'HTML del widget (passo 2) prima e dopo l'estrazione è **identico byte per byte** (verificato). "Prenota un nuovo orario" porta a `/?prenota=gestione`: il widget si apre da solo nella home, con origine `gestione`. Così le pagine di gestione non caricano framer-motion, GSAP né Lenis, anche questo verificato sui loro 9 chunk.
+*Riuso.* Striscia dei giorni e griglia degli orari sono state estratte dal widget in `components/prenotazione/GiorniEOrari.tsx`. L'HTML del widget (passo 2) prima e dopo l'estrazione è **identico byte per byte** (verificato). "Prenota un nuovo orario" porta a `/?prenota=gestione`: il widget si apre da solo nella home, con origine `gestione`. Così le pagine di gestione non caricano framer-motion, GSAP né Lenis. ⚠️ La verifica della v1 non bastava: il prefetch di `next/link` verso la home li scaricava dopo il caricamento. Corretto nella v2 con `prefetch={false}` (§9.25).
 
 *Verificato il 30/10* (build di produzione, server isolato con PGlite, Chrome headless): tutti e 10 gli scenari del brief, 31 controlli. Comprendono:
 - `.ics` con orario e link giusti;
@@ -817,6 +899,18 @@ Rispetto alla misura del 17 settembre: +10 KB di HTML, +9 KB di CSS e +6 KB di J
 - Chiavi `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` in `.env.local` e su Vercel (produzione). Cambiarle invalida le iscrizioni esistenti. Un 404/410 dal servizio di notifiche cancella l'iscrizione da solo.
 - Verificato con un finto servizio di notifiche in HTTPS: messaggio cifrato (aes128gcm) e firmato VAPID, decifrato con testo, giorno e link giusti; TTL 24 h, urgenza alta; il 410 cancella l'iscrizione; la prenotazione resta 201 anche quando l'invio fallisce. Non verificato su un iPhone vero.
 
+**9.25 "Il mio appuntamento" (v2): trappole.**
+- **Passkey e cookie sono legati al dominio** (§11, il riquadro sul dominio in testa). Cambiare dominio = tutti i clienti da riconoscere di nuovo, passkey vecchie inutili.
+- **Passkey solo in contesto sicuro**: `localhost` o `https`. Dall'iPhone su `http://192.168.x.x:3200` non esistono, e il bottone semplicemente non compare. In locale si provano con l'autenticatore virtuale di Chrome (DevTools → WebAuthn, o CDP `WebAuthn.addVirtualAuthenticator` come in `mio.mjs`).
+- **Home statica:** niente `cookies()` né `headers()` in `app/page.tsx` o nei suoi Server Component. Lo stato del cliente arriva solo da `/api/appuntamento/miei`. Dopo ogni modifica controllare che `next build` mostri `○ /`.
+- **`Set-Cookie` dalle Route Handler**, con `headers.append` (due cookie nella stessa risposta: cliente e sfida usata). Mai `document.cookie`.
+- **Ogni POST vuole `Origin`.** Le prove con `fetch` da Node o `curl` devono mandare `Origin: http://localhost:<porta>`, altrimenti 403 (per `/api/bookings`: salvata ma senza cookie).
+- **`cn()` non fonde le classi** (`lib/utils.ts`): `hidden` passato a un componente che ha già `inline-flex` non vince, dipende dall'ordine del CSS. Per nascondere un componente per breakpoint, avvolgerlo in un `<div className="hidden lg:block">`.
+- **Il prefetch di `next/link` verso `/` scarica GSAP, Lenis e framer-motion della home** (circa 330 KB) anche da una pagina leggera. I link dalle pagine `/appuntamento/**` verso la home hanno `prefetch={false}`.
+- **`overrides` di `@simplewebauthn/*`** in `package.json`: senza, `npm install` fallisce (§2.2).
+- **`Uint8Array<ArrayBuffer>`**: la chiave pubblica letta da Postgres va copiata con `new Uint8Array(byte)`, altrimenti TypeScript la rifiuta per `verifyAuthenticationResponse`.
+- **Freni in memoria**, come gli altri (§9.20): passkey e codici v1, 10 tentativi ogni 10 minuti per IP **per istanza**.
+
 **9.20 Prenotazioni: le tre trappole del modulo.**
 - **Il freno agli abusi vive ancora in memoria.** L'archivio è passato a Postgres, ma il conteggio dei 5 POST ogni 10 minuti sta nel processo: su Vercel ogni istanza ha il suo, quindi il limite vero è più alto. Per un limite serio serve un contatore condiviso (Vercel KV, Upstash).
 - **L'ora è quella di Roma, non quella del cliente.** Slot, "passato" e giorno corrente passano da `oraDiRoma()` (`lib/orari.ts`). Un cliente a Londra vede gli orari del salone, non i suoi. Il giorno della settimana di una data ISO si ricava a mezzogiorno UTC (`giornoDellaData`), che cade nello stesso giorno sia con l'ora solare sia con quella legale.
@@ -905,6 +999,10 @@ Rispetto alla misura del 17 settembre: +10 KB di HTML, +9 KB di CSS e +6 KB di J
 
 Ordinati per urgenza.
 
+### ⚠️ IL DOMINIO VA SCELTO PRIMA DI ANNUNCIARE «IL MIO APPUNTAMENTO» AI CLIENTI
+
+Cookie `hb_cliente` e passkey sono legati al dominio, oggi `history-barber-da-francesco.vercel.app` (quello definitivo manca, §6.11). **Passando a un dominio nuovo tutti i clienti dovranno farsi riconoscere di nuovo** (prenotando, o con un accesso mandato da Francesco), e **le passkey create sul vecchio dominio non funzioneranno più**. Al cambio: aggiungere il nuovo host a `HOST_PRODUZIONE` in `lib/prenotazioni/riconoscimento.ts` o impostare `AUTH_URL`.
+
 ### 🔴 Bloccanti per la pubblicazione
 
 1. **Prezzi e servizi inventati** → `lib/salone.ts` (`listino`). Da far confermare a Francesco, voce per voce; poi `LISTINO_CONFERMATO = true` toglie la scritta "indicativi" da sito e app. Da chiedergli anche se lavora nei festivi (`CHIUSO_NEI_FESTIVI`, oggi `true`).
@@ -920,10 +1018,14 @@ Ordinati per urgenza.
 8. **Durate dei servizi stimate** → `lib/salone.ts`. Da 20 a 75 minuti: decidono quanti orari restano liberi, vanno confermate da Francesco insieme ai prezzi.
 9. **Gestione dell'appuntamento (§6.16), da confermare con Francesco:** termine di `MARGINE_GESTIONE_MINUTI` (120) e massimo `SPOSTAMENTI_MAX` (2) spostamenti in `lib/salone.ts`; testi degli avvisi DISDETTA/SPOSTATO. Il freno ai tentativi con telefono + codice (10 ogni 10 minuti per IP) sta **in memoria**, come quello delle prenotazioni: ogni istanza di Vercel ha il suo contatore. Per un limite serio serve un contatore condiviso (§9.20). L'avviso di una *nuova* prenotazione, senza Telegram configurato, scrive nei log il messaggio intero, telefono compreso (`avvisaTitolare`, comportamento precedente).
 10. **Il database locale non va in produzione.** `.data/agenda` sta solo su questo computer e git lo ignora: gli appuntamenti inseriti in locale non finiscono online. Il database di produzione è quello di `DATABASE_URL`.
+11. **Rotazione di `AUTH_SECRET`:** cambiarlo fa "dimenticare" tutti i telefoni (la firma dei cookie non torna più) e chiude le sessioni dell'agenda. Le passkey restano valide e fanno rientrare chi le ha. Il riconoscimento richiede `AUTH_SECRET` di almeno 32 caratteri: sotto, è spento (§6.16 N1).
+12. **Colonne della v1 da togliere più avanti.** `gestione_hash`, `codice_hash` (e gli indici `prenotazioni_gestione`, `prenotazioni_codice`) restano nello schema perché link e codici consegnati fino al rilascio della v2 devono funzionare. I codici si generano dal 30/10/2026 **fino al giorno in cui la v2 va in produzione**, e si prenota fino a `GIORNI_PRENOTABILI` = 21 giorni avanti: 21 giorni dopo quel rilascio (per esempio il 21/11/2026 se la v2 uscisse il 31/10) non resta appuntamento futuro con un codice. Da quel giorno si possono togliere API, pagine (`/appuntamento/[token]`, la riga "Hai un codice") e colonne, con una migrazione esplicita. `spostamenti` invece serve anche alla v2: resta.
+13. **Testo privacy della v2 da confermare** col commercialista: paragrafo "Ritrovare l'appuntamento" e sezione Cookie di `/privacy` (cookie tecnico, 400 giorni, Face ID senza dati biometrici, accesso WhatsApp 48 ore).
+14. **Ancora da confermare con Francesco:** `MARGINE_GESTIONE_MINUTI` (120) e `SPOSTAMENTI_MAX` (2), come per la v1 (§11.9); il testo del messaggio "Manda accesso su WhatsApp" (`app/admin/azioni.ts`).
 
 ### 🟠 Da chiarire col committente
 
-6. **Privacy e cookie.** Dal 27/09 c'è l'informativa `/privacy` (`app/privacy/page.tsx`), linkata dal footer e dal passo 3 del modulo di prenotazione. Nome e telefono restano al massimo `CONSERVAZIONE_MESI` (12, in `lib/salone.ts`): la cancellazione la fa `eliminaScadute()` (`lib/prenotazioni/archivio.ts`), lanciata con `after()` all'apertura dell'agenda, una volta al giorno per istanza. Nessun banner dei cookie, perché c'è solo il cookie tecnico della sessione dell'agenda. **Manca** `salone.titolare` (nome del titolare o della ditta), da compilare insieme alla P.IVA. Il testo va fatto rileggere a Francesco o al suo commercialista.
+6. **Privacy e cookie.** Dal 27/09 c'è l'informativa `/privacy` (`app/privacy/page.tsx`), linkata dal footer e dal passo 3 del modulo di prenotazione. Nome e telefono restano al massimo `CONSERVAZIONE_MESI` (12, in `lib/salone.ts`): la cancellazione la fa `eliminaScadute()` (`lib/prenotazioni/archivio.ts`), lanciata con `after()` all'apertura dell'agenda, una volta al giorno per istanza. Nessun banner dei cookie, perché i cookie sono solo tecnici: la sessione dell'agenda e, dalla v2, `hb_cliente` / `hb_sfida` (§6.16). Il paragrafo nuovo dell'informativa ("Ritrovare l'appuntamento" e la sezione Cookie) **va fatto confermare al commercialista**. **Manca** `salone.titolare` (nome del titolare o della ditta), da compilare insieme alla P.IVA. Il testo va fatto rileggere a Francesco o al suo commercialista.
 7. **Font dei titoli.** Syne oppure Clash Display (da scaricare da Fontshare, licenza gratuita) → `app/layout.tsx:9-12`, `app/globals.css:14`.
 8. **Logo ridisegnato, non originale.** `components/Logo.tsx` è ricostruito a occhio da uno screenshot di 209×33px (§3.6). Serve il file vettoriale originale, o almeno un'immagine ad alta risoluzione, per confermare forme e proporzioni. La firma usa il serif di sistema e cambia leggermente fra Windows/Mac/iOS (Georgia) e Android (Noto Serif). Manca anche una favicon col logo (§11.18).
 9. **Link a Google Maps generico** (ricerca per nome). Con il Place ID della scheda Google porterebbe alla scheda esatta → `lib/salone.ts:22-23`.

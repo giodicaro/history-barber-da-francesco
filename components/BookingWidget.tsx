@@ -11,7 +11,9 @@ import { CONSERVAZIONE_MESI, listino, MARGINE_GESTIONE_MINUTI, operatori, salone
 import { cn, formatoPrezzo } from "@/lib/utils";
 import { ArrowRight } from "./icons";
 import { GIORNI_BREVI, giorniProposti, GrigliaOrari, StrisciaGiorni } from "./prenotazione/GiorniEOrari";
+import { AttivaFaceId } from "./gestione/AttivaFaceId";
 import { SalvaAppuntamento } from "./prenotazione/SalvaAppuntamento";
+import { aggiornaMiei } from "@/lib/gestione";
 
 /* Widget di prenotazione: tre passi in un foglio a tutto schermo.
 
@@ -53,8 +55,8 @@ type Conferma = {
   servizio: string;
   inizio: number;
   fine: number;
-  /** Link e codice personali: arrivano una volta sola, nella risposta 201. */
-  gestione?: { token: string; codice: string };
+  /** Questo browser lo ricorda (cookie hb_cliente): lo ritrova in "Il mio appuntamento". */
+  riconosciuto: boolean;
 };
 
 export function BookingWidget() {
@@ -69,6 +71,9 @@ export function BookingWidget() {
   const [nome, setNome] = useState("");
   const [telefono, setTelefono] = useState("");
   const [note, setNote] = useState("");
+  // "Non è il mio telefono": niente cookie, l'appuntamento non resta legato
+  // a questo browser (N2).
+  const [nonMio, setNonMio] = useState(false);
   const [toccato, setToccato] = useState<{ nome?: boolean; telefono?: boolean }>({});
   const [invio, setInvio] = useState<StatoInvio>("fermo");
   const [erroreServer, setErroreServer] = useState<string | null>(null);
@@ -216,6 +221,7 @@ export function BookingWidget() {
           data,
           ora,
           origine,
+          ricorda: !nonMio,
           cliente: { nome: nome.trim(), telefono, note: note.trim() || undefined },
         }),
       });
@@ -229,8 +235,10 @@ export function BookingWidget() {
           servizio: servizio.nome,
           inizio,
           fine: inizio + servizio.durata,
-          ...(corpo.gestione ? { gestione: corpo.gestione } : {}),
+          riconosciuto: Boolean(corpo.riconosciuto),
         });
+        // Il bottone "Il mio appuntamento" mostra subito giorno e ora.
+        void aggiornaMiei();
         setInvio("fatto");
         return;
       }
@@ -319,7 +327,7 @@ export function BookingWidget() {
                   <p className="mt-3 text-2xl font-extrabold tracking-[-0.02em]">{conferma.servizio}</p>
                   <p className="mt-6 max-w-[42ch] leading-relaxed text-steel">
                     Ti aspettiamo in {salone.via}.{" "}
-                    {conferma.gestione
+                    {conferma.riconosciuto
                       ? `Se hai un imprevisto puoi spostarlo o disdirlo da solo, fino a ${MARGINE_GESTIONE_MINUTI / 60} ore prima; dopo, chiama il `
                       : "Se hai un imprevisto, chiama il "}
                     <a href={salone.telefonoHref} className="text-ink underline underline-offset-4">
@@ -330,9 +338,7 @@ export function BookingWidget() {
                   <p className="info mt-6 text-steel">
                     Nome: {nome.trim()} · Tel: {telefonoPulito}
                   </p>
-                  {conferma.gestione && (
-                    <RiquadroGestione conferma={conferma as Conferma & { gestione: { token: string; codice: string } }} />
-                  )}
+                  <RiquadroDopo conferma={conferma} />
                 </div>
               ) : passo === 0 ? (
                 <ul className="flex flex-col gap-3">
@@ -455,6 +461,24 @@ export function BookingWidget() {
                     aiuto={`${note.length}/280`}
                     multilinea
                   />
+                  {/* N2: il telefono ricorda il cliente, a meno che non sia il suo. */}
+                  <div className="border border-ink/15 p-4">
+                    <p className="text-sm">Su questo telefono ritroverai l&apos;appuntamento con un tocco.</p>
+                    <label className="mt-3 flex min-h-11 cursor-pointer items-center gap-3 text-sm">
+                      <span className="relative size-5 shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={nonMio}
+                          onChange={(e) => setNonMio(e.target.checked)}
+                          className="peer size-5 cursor-pointer appearance-none rounded-none border-2 border-ink bg-paper checked:bg-ink"
+                        />
+                        <svg viewBox="0 0 24 24" aria-hidden className="pointer-events-none absolute inset-0 m-auto hidden size-3.5 text-paper peer-checked:block" fill="none" stroke="currentColor" strokeWidth="3.5">
+                          <path d="M5 12l5 5 9-10" />
+                        </svg>
+                      </span>
+                      Non è il mio telefono
+                    </label>
+                  </div>
                   <p className="text-xs leading-relaxed text-ink/70">
                     Usiamo nome e telefono solo per questo appuntamento e li cancelliamo entro{" "}
                     {CONSERVAZIONE_MESI} mesi.{" "}
@@ -531,27 +555,34 @@ export function BookingWidget() {
   );
 }
 
-/* Dopo la prenotazione: codice e link personali per spostare o disdire. Si
-   vedono solo qui, una volta: nel database ci sono solo le loro impronte, e
-   il link non va in localStorage né in altre richieste. */
-function RiquadroGestione({ conferma }: { conferma: Conferma & { gestione: { token: string; codice: string } } }) {
-  const link = `${window.location.origin}/appuntamento/${conferma.gestione.token}`;
+/* Dopo la prenotazione: niente da salvare. Il telefono lo ricorda (se non
+   è stato spuntato "Non è il mio telefono"); in più, facoltativi, Face ID
+   per gli altri dispositivi e il calendario. */
+function RiquadroDopo({ conferma }: { conferma: Conferma }) {
   return (
-    <section aria-labelledby="titolo-gestione" className="mt-8 border border-ink p-4 md:p-5">
-      <h3 id="titolo-gestione" className="eyebrow">
+    <section aria-labelledby="titolo-dopo" className="mt-8 border border-ink p-4 md:p-5">
+      <h3 id="titolo-dopo" className="eyebrow">
         Per spostare o disdire
       </h3>
-      <p className="mt-4 text-sm text-steel">Il tuo codice</p>
-      <p className="mt-1 font-mono text-3xl font-semibold tracking-[0.12em] tabular-nums">{conferma.gestione.codice}</p>
-      <p className="mt-4 text-sm text-steel">Il tuo link personale</p>
-      <p className="info mt-1 break-all normal-case">{link}</p>
-      <div className="mt-5">
-        <SalvaAppuntamento link={link} codice={conferma.gestione.codice} appuntamento={conferma} />
+      {conferma.riconosciuto ? (
+        <>
+          <p className="mt-3 text-base">
+            Lo ritrovi in home, in <b>«Il mio appuntamento»</b>: su questo telefono basta un tocco, senza codici.
+          </p>
+          <AttivaFaceId />
+        </>
+      ) : (
+        <p className="mt-3 text-base">
+          Per spostarlo o disdirlo chiama il{" "}
+          <a href={salone.telefonoHref} className="font-semibold underline underline-offset-4">
+            {salone.telefono}
+          </a>{" "}
+          o scrivici su WhatsApp.
+        </p>
+      )}
+      <div className="mt-4">
+        <SalvaAppuntamento appuntamento={conferma} soloCalendario />
       </div>
-      <p className="mt-2 text-sm font-semibold">Salvalo adesso: non potremo mostrartelo di nuovo.</p>
-      <p className="mt-1 text-sm text-steel">
-        Con il link, oppure con telefono e codice da &ldquo;Gestisci il tuo appuntamento&rdquo; in fondo al sito.
-      </p>
     </section>
   );
 }

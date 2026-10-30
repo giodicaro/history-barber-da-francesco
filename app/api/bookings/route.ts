@@ -3,8 +3,8 @@ import { formatoOra, giornoDellaData, oraDiRoma, turniDellaGiornata } from "@/li
 import { avvisaTitolare } from "@/lib/prenotazioni/avvisi";
 import { notificaPrenotazione } from "@/lib/prenotazioni/notifiche";
 import { ConflittoOrario, occupatiDelGiorno, salvaPrenotazione } from "@/lib/prenotazioni/archivio";
-import { formatoCodice } from "@/lib/prenotazioni/codice";
-import { nuoveCredenziali } from "@/lib/prenotazioni/gestione";
+import { randomUUID } from "node:crypto";
+import { clienteDaRichiesta, cookieCliente, origineValida, riconoscimentoAttivo } from "@/lib/prenotazioni/riconoscimento";
 import { generaSlot } from "@/lib/prenotazioni/slot";
 import type { RispostaSlot } from "@/lib/prenotazioni/tipi";
 import { analizzaRichiesta, servizioPerId, servizioPrenotabile } from "@/lib/prenotazioni/validazione";
@@ -15,8 +15,10 @@ import { listino, operatori, orari } from "@/lib/salone";
    GET  /api/bookings?date=YYYY-MM-DD&servizio=<id>[&operatore=<id>]
         → orari proposti per quel giorno e quel servizio.
    POST /api/bookings
-        → salva l'appuntamento, avvisa il titolare e restituisce (una volta
-          sola) link e codice per gestirlo: vedi app/api/appuntamento.
+        → salva l'appuntamento, avvisa il titolare e (se il cliente non ha
+          spuntato "Non è il mio telefono") scrive il cookie hb_cliente che
+          lo fa ritrovare in "Il mio appuntamento": vedi
+          lib/prenotazioni/riconoscimento.ts.
 
    Le Route Handler non sono in cache: ogni richiesta rilegge l'agenda. */
 
@@ -109,10 +111,14 @@ export async function POST(request: Request) {
   if (!esito.ok) return json({ errore: "Dati non validi", campi: esito.errori }, 400);
 
   try {
-    // Link e codice personali per spostare o disdire da soli: in chiaro solo
-    // in questa risposta, nel database solo le loro impronte.
-    const credenziali = nuoveCredenziali(esito.dati.cliente.telefono!);
-    const prenotazione = await salvaPrenotazione(esito.dati, credenziali);
+    // "Il mio appuntamento": il cliente già riconosciuto da questo browser
+    // tiene il suo identificativo (tutti i suoi appuntamenti insieme), gli
+    // altri ne ricevono uno nuovo. Con "Non è il mio telefono" (ricorda:
+    // false) niente cookie e niente legame. Il cookie lo scrive solo il
+    // server, e solo per richieste partite da questo sito.
+    const ricorda = (corpo as { ricorda?: unknown })?.ricorda !== false && riconoscimentoAttivo() && origineValida(request);
+    const clienteId = ricorda ? (clienteDaRichiesta(request) ?? randomUUID()) : null;
+    const prenotazione = await salvaPrenotazione(esito.dati, clienteId ? { clienteId } : {});
     // L'avviso parte DOPO aver risposto al cliente: "after" tiene viva la
     // funzione quel tanto che basta, senza far aspettare chi ha prenotato.
     // Due canali in parallelo: Telegram e la notifica sul telefono di chi
@@ -123,9 +129,10 @@ export async function POST(request: Request) {
         if (e.status === "rejected") console.error("[prenotazione] avviso al titolare non riuscito", e.reason);
       }
     });
-    return json(
+    const risposta = json(
       {
         ok: true,
+        riconosciuto: Boolean(clienteId),
         prenotazione: {
           id: prenotazione.id,
           data: prenotazione.data,
@@ -134,10 +141,12 @@ export async function POST(request: Request) {
           servizio: prenotazione.servizioNome,
           prezzo: prenotazione.prezzo,
         },
-        gestione: { token: credenziali.token, codice: formatoCodice(credenziali.codice) },
       },
       201,
     );
+    const cookie = clienteId ? cookieCliente(clienteId) : null;
+    if (cookie) risposta.headers.append("Set-Cookie", cookie);
+    return risposta;
   } catch (e) {
     if (e instanceof ConflittoOrario) {
       return json({ errore: "Qualcuno ha appena preso questo orario. Scegline un altro." }, 409);
