@@ -2,7 +2,7 @@
 
 import { giornoDellaData, oraDiRoma, sommaGiorni, turniDellaGiornata } from "@/lib/orari";
 import type { BookingSlot } from "@/lib/prenotazioni/tipi";
-import { GIORNI_PRENOTABILI } from "@/lib/salone";
+import { GIORNI_PRENOTABILI, PREAVVISO_MINUTI, salone } from "@/lib/salone";
 import { cn } from "@/lib/utils";
 
 /* Striscia dei giorni e griglia degli orari, in comune fra il widget di
@@ -82,10 +82,26 @@ export function StrisciaGiorni({
   );
 }
 
-const MOTIVI: Record<NonNullable<BookingSlot["motivo"]>, string> = {
-  occupato: "Già prenotato",
-  passato: "Troppo tardi per oggi",
-  chiusura: "Non ci sta prima della chiusura",
+/** "1 ora", "30 minuti", "1 ora e 30 minuti": il preavviso detto a parole. */
+export function aParole(minuti: number): string {
+  const ore = Math.floor(minuti / 60);
+  const resto = minuti % 60;
+  const h = ore === 0 ? "" : ore === 1 ? "1 ora" : `${ore} ore`;
+  const m = resto === 0 ? "" : `${resto} minuti`;
+  return [h, m].filter(Boolean).join(" e ");
+}
+
+const PREAVVISO =
+  PREAVVISO_MINUTI === 60 ? "entro l'ora di preavviso" : `entro i ${aParole(PREAVVISO_MINUTI)} di preavviso`;
+
+// Il motivo di ogni orario spento: nel title per il mouse e nell'aria-label
+// per i lettori di schermo. Su telefono il title non si vede: per questo il
+// preavviso ha anche una riga visibile sopra la griglia.
+const MOTIVI: Record<NonNullable<BookingSlot["motivo"]>, { title: string; voce: string }> = {
+  occupato: { title: "Già prenotato", voce: "già occupato" },
+  passato: { title: "Orario già passato", voce: "già passato" },
+  preavviso: { title: `Oggi si prenota fino a ${aParole(PREAVVISO_MINUTI)} prima`, voce: PREAVVISO },
+  chiusura: { title: "Non ci sta prima della chiusura", voce: "il servizio finirebbe dopo la chiusura" },
 };
 
 export function GrigliaOrari({
@@ -100,38 +116,54 @@ export function GrigliaOrari({
   /** L'orario attuale di chi sta spostando: si vede, ma non si sceglie. */
   proprio?: string | null;
 }) {
+  const preavviso = slot.some((s) => s.motivo === "preavviso");
   return (
-    <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-      {slot.map((s) =>
-        s.ora === proprio ? (
-          <li key={s.ora}>
-            <span
-              aria-label={`${s.ora}, il tuo orario`}
-              className="info flex min-h-12 w-full flex-col items-center justify-center border-2 border-dashed border-ink text-center tabular-nums"
-            >
-              {s.ora}
-              <span className="text-[0.625rem] leading-tight">Il tuo orario</span>
-            </span>
-          </li>
-        ) : (
-          <li key={s.ora}>
-            <button
-              type="button"
-              disabled={!s.disponibile}
-              onClick={() => onScegli(s.ora)}
-              aria-pressed={scelto === s.ora}
-              className={cn(
-                "info min-h-12 w-full cursor-pointer border text-center tabular-nums transition-colors duration-200",
-                scelto === s.ora ? "border-ink bg-ink text-paper" : "border-ink/15 hover:border-ink",
-                !s.disponibile && "cursor-not-allowed border-ink/10 text-ink/25 line-through hover:border-ink/10",
-              )}
-              title={s.motivo ? MOTIVI[s.motivo] : undefined}
-            >
-              {s.ora}
-            </button>
-          </li>
-        ),
+    <>
+      {preavviso && (
+        <p className="info mb-4 border-l-2 border-ink pl-3 text-ink">
+          Oggi si prenota fino a {aParole(PREAVVISO_MINUTI)} prima. Per un orario più vicino chiama il salone:{" "}
+          <a href={salone.telefonoHref} className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4">
+            {salone.telefono}
+          </a>
+        </p>
       )}
-    </ul>
+      <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        {slot.map((s) =>
+          s.ora === proprio ? (
+            <li key={s.ora}>
+              <span
+                aria-label={`${s.ora}, il tuo orario`}
+                className="info flex min-h-12 w-full flex-col items-center justify-center border-2 border-dashed border-ink text-center tabular-nums"
+              >
+                {s.ora}
+                <span className="text-[0.625rem] leading-tight">Il tuo orario</span>
+              </span>
+            </li>
+          ) : (
+            <li key={s.ora}>
+              <button
+                type="button"
+                disabled={!s.disponibile}
+                onClick={() => onScegli(s.ora)}
+                aria-pressed={scelto === s.ora}
+                className={cn(
+                  "info min-h-12 w-full cursor-pointer border text-center tabular-nums transition-colors duration-200",
+                  scelto === s.ora ? "border-ink bg-ink text-paper" : "border-ink/15 hover:border-ink",
+                  !s.disponibile &&
+                    (s.motivo === "preavviso"
+                      ? // Nel futuro ma troppo vicino: tratteggio come nell'agenda, non barrato.
+                        "cursor-not-allowed border-dashed border-ink/30 text-ink/40 hover:border-ink/30"
+                      : "cursor-not-allowed border-ink/10 text-ink/25 line-through hover:border-ink/10"),
+                )}
+                title={s.motivo ? MOTIVI[s.motivo].title : undefined}
+                aria-label={s.motivo ? `${s.ora}, ${MOTIVI[s.motivo].voce}` : undefined}
+              >
+                {s.ora}
+              </button>
+            </li>
+          ),
+        )}
+      </ul>
+    </>
   );
 }
