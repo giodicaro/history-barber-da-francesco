@@ -128,7 +128,18 @@ export function BookingWidget() {
     const contenuto = document.getElementById("contenuto");
     contenuto?.toggleAttribute("inert", true);
     lenis?.stop();
+    // Tastiera aperta (il viewport visibile si accorcia): il campo attivo
+    // resta in vista, sopra la tastiera e sopra la barra delle azioni.
+    const vv = window.visualViewport;
+    const inVista = () => {
+      const attivo = document.activeElement;
+      if (attivo instanceof HTMLElement && attivo.matches("input, textarea") && foglioRef.current?.contains(attivo)) {
+        attivo.scrollIntoView({ block: "center" });
+      }
+    };
+    vv?.addEventListener("resize", inVista);
     return () => {
+      vv?.removeEventListener("resize", inVista);
       contenuto?.toggleAttribute("inert", false);
       lenis?.start();
     };
@@ -140,9 +151,12 @@ export function BookingWidget() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") return chiudi();
       if (e.key !== "Tab" || !foglioRef.current) return;
-      const fuoco = foglioRef.current.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input, textarea, [tabindex]:not([tabindex="-1"])',
-      );
+      // Solo gli elementi visibili: uno nascosto in fondo romperebbe il giro.
+      const fuoco = [
+        ...foglioRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ].filter((el) => el.getClientRects().length > 0);
       if (fuoco.length === 0) return;
       const primo = fuoco[0];
       const ultimo = fuoco[fuoco.length - 1];
@@ -284,7 +298,8 @@ export function BookingWidget() {
         >
           <motion.div
             ref={foglioRef}
-            className="absolute inset-x-0 bottom-0 top-0 mx-auto flex max-w-2xl flex-col bg-paper text-ink md:inset-y-6 md:border md:border-ink"
+            // Safe area laterali: in orizzontale su iPhone niente sotto la tacca.
+            className="absolute inset-x-0 bottom-0 top-0 mx-auto flex max-w-2xl flex-col bg-paper pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-ink md:inset-y-6 md:border md:border-ink"
             initial={{ y: "4%", opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "3%", opacity: 0 }}
@@ -508,7 +523,7 @@ export function BookingWidget() {
                     <button
                       type="button"
                       onClick={() => setPasso((p) => p - 1)}
-                      className="eyebrow min-h-12 cursor-pointer border border-ink px-5 hover:bg-ink hover:text-paper"
+                      className="eyebrow min-h-12 shrink-0 cursor-pointer border border-ink px-4 hover:bg-ink hover:text-paper sm:px-5"
                     >
                       Indietro
                     </button>
@@ -518,7 +533,9 @@ export function BookingWidget() {
                       type="button"
                       disabled={!ora}
                       onClick={() => setPasso(2)}
-                      className={cn(CLASSI_BOTTONE, "flex-1")}
+                      // min-w-0: a 320 px il testo va a capo invece di spingere il
+                      // bottone fuori dallo schermo.
+                      className={cn(CLASSI_BOTTONE, "min-w-0 flex-1 px-4 text-center sm:px-6")}
                     >
                       {ora ? `Continua · ore ${ora}` : "Scegli un orario"}
                       <ArrowRight className="size-3.5" />
@@ -529,7 +546,9 @@ export function BookingWidget() {
                       type="button"
                       disabled={!datiValidi || invio === "invio"}
                       onClick={invia}
-                      className={cn(CLASSI_BOTTONE, "flex-1")}
+                      // min-w-0: a 320 px il testo va a capo invece di spingere il
+                      // bottone fuori dallo schermo.
+                      className={cn(CLASSI_BOTTONE, "min-w-0 flex-1 px-4 text-center sm:px-6")}
                     >
                       {invio === "invio" ? (
                         <>

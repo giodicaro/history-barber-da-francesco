@@ -50,9 +50,12 @@ export function GestioneWidget() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") return chiudi();
       if (e.key !== "Tab" || !foglioRef.current) return;
-      const fuoco = foglioRef.current.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input, textarea, [tabindex]:not([tabindex="-1"])',
-      );
+      // Solo gli elementi visibili: uno nascosto in fondo romperebbe il giro.
+      const fuoco = [
+        ...foglioRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ].filter((el) => el.getClientRects().length > 0);
       if (fuoco.length === 0) return;
       const primo = fuoco[0];
       const ultimo = fuoco[fuoco.length - 1];
@@ -92,7 +95,8 @@ export function GestioneWidget() {
         >
           <motion.div
             ref={foglioRef}
-            className="absolute inset-x-0 bottom-0 top-0 mx-auto flex max-w-2xl flex-col bg-paper text-ink md:inset-y-6 md:border md:border-ink"
+            // Safe area laterali: in orizzontale su iPhone niente sotto la tacca.
+            className="absolute inset-x-0 bottom-0 top-0 mx-auto flex max-w-2xl flex-col bg-paper pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-ink md:inset-y-6 md:border md:border-ink"
             initial={{ y: "4%", opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "3%", opacity: 0 }}

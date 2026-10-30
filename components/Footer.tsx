@@ -39,7 +39,7 @@ export function Footer() {
 
         {/* Blocchi informativi in monospazio, allineati alle colonne. */}
         <div className="mt-16 grid grid-cols-1 gap-y-12 border-t grid-line pt-8 md:mt-24 md:grid-cols-4">
-          <div data-reveal className="pl-3 pr-6">
+          <div data-reveal className="pl-3 pr-6 md:col-span-2 lg:col-span-1">
             <h3 className="eyebrow text-smoke">Dove</h3>
             <address className="info mt-5 not-italic">
               {salone.via}
@@ -69,13 +69,15 @@ export function Footer() {
             </div>
           </div>
 
-          <div data-reveal className="flex flex-col items-start pl-3 pr-3">
+          {/* Fra md e lg a tutta riga: in un quarto di riga "Il mio appuntamento"
+              non ci sta (768 px). */}
+          <div data-reveal className="flex flex-col items-start pl-3 pr-3 md:col-span-4 lg:col-span-1">
             <h3 className="eyebrow text-smoke">Appuntamenti</h3>
             {/* Come nella hero: numero e nota in monospazio, stessa misura. */}
             <p className="info mt-5">
               <a
                 href={salone.telefonoHref}
-                className="-my-3 inline-block py-3 underline-offset-4 hover:underline"
+                className="-my-3.5 inline-block py-3.5 underline-offset-4 hover:underline"
               >
                 Tel. {salone.telefono}
               </a>
@@ -92,7 +94,7 @@ export function Footer() {
               <span>@{salone.instagram}</span>
             </a>
             {/* La stessa coppia della hero, uno sopra l'altro. */}
-            <div className="mt-8 grid w-full gap-3">
+            <div className="mt-8 grid w-full gap-3 md:max-w-xl md:grid-cols-2 lg:max-w-none lg:grid-cols-1">
               <BookButton origine="footer" size="lg" suScuro className="w-full">
                 Prenota ora
               </BookButton>

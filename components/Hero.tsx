@@ -134,7 +134,7 @@ export function Hero() {
           <p data-reveal className={cn(INFO, "order-1 pl-3 md:order-none")}>
             {/* Padding compensato da margine negativo: area di tocco più alta
                 senza spostare le righe. */}
-            <a href={salone.telefonoHref} className="-my-3 inline-block py-3 underline-offset-4 hover:underline">
+            <a href={salone.telefonoHref} className="-my-3.5 inline-block py-3.5 underline-offset-4 hover:underline">
               Tel. {salone.telefono}
             </a>
             <br />

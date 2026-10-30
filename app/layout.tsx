@@ -36,6 +36,11 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#0a0a0a",
+  // La pagina va fino ai bordi dello schermo (tacca, barra di Safari sospesa
+  // in basso su iOS 26): senza "cover" env(safe-area-inset-*) vale sempre 0
+  // e i bottoni in fondo ai fogli finirebbero sotto la barra. Shell e fogli
+  // rispettano le safe area (app/globals.css, BookingWidget, FoglioInBasso).
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
