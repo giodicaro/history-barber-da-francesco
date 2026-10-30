@@ -174,10 +174,20 @@ export const PASSO_SLOT_MINUTI = 30;
 // Fin dove si può prenotare, in giorni.
 export const GIORNI_PRENOTABILI = 21;
 
-// "Gestisci il tuo appuntamento": il cliente può spostare o disdire da solo
-// fino a quanti minuti prima dell'inizio. Dopo, deve telefonare.
-// ⚠️ Da confermare con Francesco.
-export const MARGINE_GESTIONE_MINUTI = 120;
+// "Il mio appuntamento": il cliente può spostare o disdire da solo fino a
+// quanti minuti prima dell'inizio. Dopo, deve telefonare.
+// Chi può prenotare un orario deve poterlo anche spostare: un termine più
+// lungo del preavviso farebbe nascere appuntamenti già bloccati. Per questo
+// è il preavviso stesso, non un numero a parte (tests/gestione.test.mjs
+// fallisce se qualcuno lo rende più lungo).
+export const MARGINE_GESTIONE_MINUTI = PREAVVISO_MINUTI;
+
+// Ripensamento: per tanti minuti dopo la prenotazione l'appuntamento si può
+// sempre spostare o disdire, anche oltre il termine, purché all'inizio
+// manchino almeno ULTIMO_AVVISO_MINUTI (Francesco non deve scoprire una
+// disdetta a poltrona già pronta). ⚠️ Da confermare con Francesco.
+export const RIPENSAMENTO_MINUTI = 15;
+export const ULTIMO_AVVISO_MINUTI = 20;
 
 // Quante volte il cliente può spostare da solo lo stesso appuntamento; poi
 // resta la disdetta o il telefono. ⚠️ Da confermare con Francesco.

@@ -154,14 +154,12 @@ export function SpazioCliente({ onPrenota }: { onPrenota?: () => void }) {
             onPrenota={onPrenota}
             onIndietro={unico ? undefined : () => setAperto(null)}
             onCambiato={() => void aggiornaMiei()}
+            piede={<BloccoFaceId faceId={faceId && !elenco.conFaceId} inVolo={inVolo} esito={esito} onFaceId={attivaFaceId} />}
           />
-          <PiedeRiconosciuto
-            faceId={faceId && !elenco.conFaceId}
-            inVolo={inVolo}
-            esito={esito}
-            onFaceId={attivaFaceId}
-            onDimentica={() => setDimentica(true)}
-          />
+          {/* Per ultimo, dopo il calendario (C3). */}
+          <div className="mt-8 border-t border-ink/15 pt-4">
+            <BottoneDimentica onDimentica={() => setDimentica(true)} />
+          </div>
         </div>
       );
     }
@@ -276,7 +274,21 @@ function PiedeRiconosciuto({
   onDimentica: () => void;
 }) {
   return (
-    <div className="mt-10 space-y-4 border-t border-ink/15 pt-6">
+    <>
+      <BloccoFaceId faceId={faceId} inVolo={inVolo} esito={esito} onFaceId={onFaceId} />
+      <div className="mt-8 border-t border-ink/15 pt-4">
+        <BottoneDimentica onDimentica={onDimentica} />
+      </div>
+    </>
+  );
+}
+
+/** "Ritrovalo con Face ID o impronta": solo se il dispositivo li ha e il
+    cliente non ne ha ancora uno. */
+function BloccoFaceId({ faceId, inVolo, esito, onFaceId }: { faceId: boolean; inVolo: boolean; esito: string; onFaceId: () => void }) {
+  if (!faceId && !esito) return null;
+  return (
+    <div className="mt-8 border-t border-ink/15 pt-6">
       {faceId && (
         <div>
           <p className="text-sm text-steel">Così lo ritrovi anche dagli altri tuoi dispositivi, senza scrivere niente.</p>
@@ -287,10 +299,15 @@ function PiedeRiconosciuto({
         </div>
       )}
       <Esito testo={esito} chiaro />
-      <button type="button" onClick={onDimentica} className="eyebrow inline-flex min-h-11 cursor-pointer items-center text-steel underline-offset-4 hover:text-ink hover:underline">
-        Dimentica questo dispositivo
-      </button>
     </div>
+  );
+}
+
+function BottoneDimentica({ onDimentica }: { onDimentica: () => void }) {
+  return (
+    <button type="button" onClick={onDimentica} className="eyebrow inline-flex min-h-11 cursor-pointer items-center text-steel underline-offset-4 hover:text-ink hover:underline">
+      Dimentica questo dispositivo
+    </button>
   );
 }
 

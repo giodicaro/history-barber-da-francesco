@@ -31,7 +31,7 @@ export interface BookingSlot {
   ora: string;
   disponibile: boolean;
   /** Perché non è disponibile: utile in sviluppo e per l'agenda. */
-  motivo?: "occupato" | "passato" | "chiusura";
+  motivo?: "occupato" | "passato" | "preavviso" | "chiusura";
 }
 
 /** Risposta di GET /api/bookings. */

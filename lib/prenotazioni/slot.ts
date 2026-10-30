@@ -41,7 +41,9 @@ export const siSovrappongono = (a: Intervallo, b: Intervallo) =>
    - il servizio ci sta dentro il turno, chiusura compresa (un taglio da 45
      minuti alle 12:30 sforerebbe le 13:00: non si propone);
    - non si sovrappone a un appuntamento già preso;
-   - non è già passato, con un margine di preavviso.
+   - non è già iniziato ("passato") né troppo vicino ("preavviso": nel
+     futuro, ma dentro il margine). Per il cliente sono due cose diverse: la
+     seconda si risolve con una telefonata.
    Gli orari scartati restano nella lista con il motivo: il widget li mostra
    barrati, così il cliente vede che la giornata è piena e non vuota. */
 export function generaSlot({
@@ -55,6 +57,7 @@ export function generaSlot({
   // Nei festivi (se il salone chiude) la giornata non ha turni.
   const turni = turniDellaGiornata(data).length ? turniDelGiorno(giorno) : [];
   const oggi = data === adesso.data;
+  const iniziati = oggi ? adesso.minuti : -Infinity;
   const limite = oggi ? adesso.minuti + preavviso : -Infinity;
   const slot: BookingSlot[] = [];
 
@@ -63,9 +66,11 @@ export function generaSlot({
       const candidato = { inizio, fine: inizio + durata };
       const motivo = occupati.some((o) => siSovrappongono(candidato, o))
         ? "occupato"
-        : inizio < limite
+        : inizio < iniziati
           ? "passato"
-          : undefined;
+          : inizio < limite
+            ? "preavviso"
+            : undefined;
       slot.push({ ora: formatoOra(inizio), disponibile: !motivo, motivo });
     }
     // Un orario che sforerebbe la chiusura non viene generato dal ciclo: lo

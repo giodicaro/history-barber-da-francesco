@@ -57,19 +57,43 @@ export interface StatoGestione {
   /** Perché qualcosa non si può più fare (il termine vince sul limite). */
   motivoBlocco?: MotivoBlocco;
   spostamentiRimasti: number;
-  /** Ultimo momento utile, in ora di Roma. */
+  /** Ultimo momento utile, in ora di Roma: il più tardo fra il termine
+      normale e la fine del ripensamento. */
   termine: { data: string; minuti: number };
+  /** Fine del ripensamento, se cade dopo il termine normale. */
+  fineRipensamento?: { data: string; minuti: number };
+  /** Adesso vale solo il ripensamento ("Hai cambiato idea?"). */
+  inRipensamento: boolean;
+}
+
+export interface RegoleGestione {
+  margineMinuti: number;
+  spostamentiMax: number;
+  /** Minuti dopo la creazione in cui si può sempre modificare (C2). */
+  ripensamentoMinuti?: number;
+  /** ...purché all'inizio ne manchino almeno tanti. */
+  ultimoAvvisoMinuti?: number;
 }
 
 /** Cosa può fare il cliente adesso. Il termine si misura sugli istanti veri
-    (ora di Roma → UTC): la notte del cambio d'ora non sposta il limite. */
+    (ora di Roma → UTC): la notte del cambio d'ora non sposta il limite.
+
+    Due finestre, vale la più lunga:
+    - termine normale: inizio − margine;
+    - ripensamento: fino al primo fra creazione + ripensamento e
+      inizio − ultimo avviso. Senza creataIl il ripensamento non c'è. */
 export function puoGestire(
-  a: { data: string; inizio: number; spostamenti: number },
+  a: { data: string; inizio: number; spostamenti: number; creataIl?: string | number },
   adessoIstante: number,
-  regole: { margineMinuti: number; spostamentiMax: number },
+  regole: RegoleGestione,
 ): StatoGestione {
   const inizio = romaInIstante(a.data, a.inizio);
-  const termineIstante = inizio - regole.margineMinuti * 60000;
+  const normale = inizio - regole.margineMinuti * 60000;
+  const creata = a.creataIl === undefined ? NaN : new Date(a.creataIl).getTime();
+  const ripensamento = Number.isFinite(creata)
+    ? Math.min(creata + (regole.ripensamentoMinuti ?? 0) * 60000, inizio - (regole.ultimoAvvisoMinuti ?? 0) * 60000)
+    : -Infinity;
+  const termineIstante = Math.max(normale, ripensamento);
   const entroTermine = adessoIstante <= termineIstante;
   const spostamentiRimasti = Math.max(0, regole.spostamentiMax - a.spostamenti);
   return {
@@ -78,6 +102,8 @@ export function puoGestire(
     ...(!entroTermine ? { motivoBlocco: "termine" as const } : spostamentiRimasti === 0 ? { motivoBlocco: "spostamenti" as const } : {}),
     spostamentiRimasti,
     termine: istanteInRoma(termineIstante),
+    ...(ripensamento > normale ? { fineRipensamento: istanteInRoma(ripensamento) } : {}),
+    inRipensamento: entroTermine && adessoIstante > normale,
   };
 }
 
