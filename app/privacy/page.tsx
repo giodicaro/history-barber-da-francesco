@@ -4,9 +4,12 @@ import { CONSERVAZIONE_MESI, salone } from "@/lib/salone";
 
 /* Informativa privacy (art. 13 GDPR) per chi prenota dal sito.
 
-   Il sito non usa cookie di profilazione né statistiche: l'unico cookie è
-   quello tecnico della sessione dell'agenda, che riguarda solo il salone.
-   Per questo non serve un banner dei cookie.
+   Il sito non usa cookie di profilazione né statistiche. I cookie sono solo
+   tecnici: la sessione dell'agenda (solo il salone) e hb_cliente, che fa
+   ritrovare l'appuntamento al telefono con cui si è prenotato. Per questo
+   non serve un banner dei cookie (art. 122 Codice privacy, cookie tecnici).
+   DA CONFERMARE col commercialista / consulente privacy: testo dei paragrafi
+   "Ritrovare l'appuntamento" e "Cookie" (Bible §11).
 
    Titolare e P.IVA vengono da `lib/salone.ts`: finché sono vuoti la pagina
    indica il salone per nome, indirizzo e telefono, che bastano a
@@ -55,9 +58,12 @@ export default function Privacy() {
               (art. 6.1.b GDPR): senza nome e telefono non possiamo fissare l&apos;appuntamento.
             </p>
             <p className="mt-3">
-              Alla prenotazione ricevi un <b>link personale</b> e un <b>codice</b> per spostare o disdire da solo
-              l&apos;appuntamento. Li vedi una volta sola: noi conserviamo solo una loro impronta cifrata, da cui non si
-              può risalire al link né al codice, e la cancelliamo insieme all&apos;appuntamento.
+              <b>Ritrovare l&apos;appuntamento.</b> Se prenoti dal tuo telefono, il sito lo ricorda con un cookie tecnico
+              (vedi sotto): da «Il mio appuntamento» lo ritrovi con un tocco, per spostarlo o disdirlo da solo. Se
+              attivi <b>Face ID o l&apos;impronta</b>, il tuo telefono crea una chiave d&apos;accesso (passkey): il
+              riconoscimento del volto o dell&apos;impronta avviene solo sul dispositivo e al sito non arriva alcun dato
+              biometrico, solo una chiave pubblica che da sola non permette di risalire a te. Se il salone ti manda un
+              link d&apos;accesso su WhatsApp, quel link vale una volta sola e scade dopo 48 ore.
             </p>
             <p className="mt-3">
               Non usiamo i tuoi dati per pubblicità, non li vendiamo e non li cediamo a nessuno. Per evitare
@@ -98,8 +104,24 @@ export default function Privacy() {
           <section>
             <h2>Cookie</h2>
             <p>
-              Il sito non usa cookie di profilazione né strumenti di statistica. L&apos;unico cookie è tecnico e serve
-              al salone per accedere alla propria agenda.
+              Il sito non usa cookie di profilazione né strumenti di statistica. Usa solo cookie tecnici:
+            </p>
+            <ul className="mt-3 list-disc space-y-2 pl-5">
+              <li>
+                <b>hb_cliente</b>: un numero casuale, senza nome né telefono, che fa riconoscere al sito il browser
+                con cui hai prenotato, così ritrovi l&apos;appuntamento senza codici. Dura al massimo 400 giorni e si
+                rinnova quando torni. Lo cancelli quando vuoi con «Dimentica questo dispositivo» in «Il mio
+                appuntamento», o cancellando i cookie del browser. Se spunti «Non è il mio telefono» non viene
+                salvato.
+              </li>
+              <li>
+                <b>hb_sfida</b>: dura 5 minuti, solo mentre attivi o usi Face ID o l&apos;impronta.
+              </li>
+              <li>La sessione dell&apos;agenda, che serve solo al salone.</li>
+            </ul>
+            <p className="mt-3">
+              Le chiavi d&apos;accesso (passkey) restano salvate finché hai appuntamenti, e vengono cancellate dopo{" "}
+              {CONSERVAZIONE_MESI} mesi senza uso né prenotazioni.
             </p>
           </section>
         </div>

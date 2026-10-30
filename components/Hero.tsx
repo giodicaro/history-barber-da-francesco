@@ -5,6 +5,7 @@ import { EASE, gsap, prefersReducedMotion, prendiInCarico, useIsoLayoutEffect } 
 import { fotoHero, salone } from "@/lib/salone";
 import { cn } from "@/lib/utils";
 import { BookButton } from "./BookButton";
+import { MioAppuntamentoButton } from "./MioAppuntamentoButton";
 import { GridLines } from "./GridLines";
 import { OpenStatus } from "./OpenStatus";
 import { Photo } from "./Photo";
@@ -160,15 +161,22 @@ export function Hero() {
           </h1>
         </div>
 
+        {/* Da md testo e bottoni a metà ciascuno. Fra md e lg i due bottoni
+            affiancati non starebbero in mezza riga: lì vanno uno sopra
+            l'altro, e il testo resta su tre righe. */}
         <div className="grid grid-cols-1 items-end gap-y-5 border-t grid-line pt-5 md:mt-10 md:grid-cols-4">
           <p data-reveal className="max-w-[28rem] pl-3 pr-4 text-base leading-snug text-paper/80 md:col-span-2 md:text-lg">
             Tagli, sfumature e barba curati al millimetro, in Via Ca&apos; Rossa a {salone.citta}.
             Si riceve solo su appuntamento.
           </p>
-          <div data-reveal className="pl-3 md:col-span-2 md:justify-self-end md:pl-0">
-            <BookButton origine="hero" size="lg" suScuro className="w-full md:w-auto">
+          {/* "Prenota ora" e "Il mio appuntamento": una coppia, non un
+              principale e un'aggiunta. Stessa altezza e stessa larghezza; li
+              distingue solo pieno / contorno. Sotto sm uno sopra l'altro. */}
+          <div data-reveal className="grid gap-3 pl-3 sm:grid-cols-2 md:col-span-2 md:grid-cols-1 md:justify-self-end md:pl-0 lg:grid-cols-2">
+            <BookButton origine="hero" size="lg" suScuro className="w-full">
               Prenota ora
             </BookButton>
+            <MioAppuntamentoButton origine="hero" className="w-full" />
           </div>
         </div>
       </div>

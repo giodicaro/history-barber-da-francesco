@@ -90,6 +90,38 @@ alter table prenotazioni add column if not exists spostamenti smallint not null 
 create unique index if not exists prenotazioni_gestione on prenotazioni (gestione_hash) where gestione_hash is not null;
 create index if not exists prenotazioni_codice on prenotazioni (codice_hash) where codice_hash is not null;
 
+-- ── "Il mio appuntamento" (v2): il telefono si ricorda del cliente ─────────
+-- Al posto di link e codice da salvare, ogni cliente ha un identificativo
+-- casuale che il suo browser conserva in un cookie firmato (hb_cliente). Le
+-- colonne gestione_hash e codice_hash qui sopra restano finché i link già
+-- consegnati non sono scaduti (vedi la bible §11).
+alter table prenotazioni add column if not exists cliente_id uuid;
+create index if not exists prenotazioni_cliente on prenotazioni (cliente_id, data) where cliente_id is not null;
+
+-- Face ID / impronta (passkey) per ritrovarsi su un altro dispositivo. Il
+-- sito riceve solo la chiave pubblica: nessun dato biometrico.
+create table if not exists passkey_clienti (
+  id_credenziale  text primary key,
+  chiave_pubblica bytea  not null,
+  contatore       bigint not null default 0,
+  trasporti       text,
+  -- user.id della passkey: 32 byte casuali (base64url), non il cliente_id.
+  id_utente       text   not null,
+  cliente_id      uuid   not null,
+  creata_il       timestamptz not null default now(),
+  usata_il        timestamptz
+);
+create index if not exists passkey_clienti_cliente on passkey_clienti (cliente_id);
+
+-- Accesso monouso che Francesco manda su WhatsApp dall'agenda: solo
+-- l'impronta del token, 48 ore, si consuma al primo uso.
+create table if not exists accessi_monouso (
+  hash            text primary key,
+  prenotazione_id uuid not null,
+  scade_il        timestamptz not null,
+  usato_il        timestamptz
+);
+
 -- L'agenda e il calcolo degli slot leggono sempre "tutto un giorno, in
 -- ordine di orario".
 create index if not exists prenotazioni_giorno on prenotazioni (data, inizio);

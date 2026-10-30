@@ -18,6 +18,7 @@ export default function AppuntamentoNonTrovato() {
       </p>
       <Link
         href="/?prenota=gestione"
+        prefetch={false}
         className="eyebrow mt-6 inline-flex min-h-14 w-full items-center justify-center border border-ink bg-ink px-6 text-paper transition-colors duration-200 hover:bg-paper hover:text-ink sm:w-auto"
       >
         Prenota un nuovo orario

@@ -1,7 +1,14 @@
 import { after } from "next/server";
-import { minutiDaOra } from "@/lib/orari";
+import { minutiDaOra, oraDiRoma } from "@/lib/orari";
 import { avvisaModifica, testoModifica, type ModificaCliente } from "@/lib/prenotazioni/avvisi";
-import { ConflittoOrario, disdiciAppuntamento, spostaAppuntamento } from "@/lib/prenotazioni/archivio";
+import {
+  appuntamentiDelCliente,
+  ConflittoOrario,
+  disdiciAppuntamento,
+  passkeyDelCliente,
+  spostaAppuntamento,
+} from "@/lib/prenotazioni/archivio";
+import { codiceErrore } from "@/lib/prenotazioni/db";
 import { nomeBreve } from "@/lib/prenotazioni/gestione";
 import {
   dataSpostabile,
@@ -13,46 +20,49 @@ import {
   trovaAppuntamento,
 } from "@/lib/prenotazioni/gestione-dati";
 import { notificaModifica } from "@/lib/prenotazioni/notifiche";
-import { codiceErrore } from "@/lib/prenotazioni/db";
+import {
+  clienteDaRichiesta,
+  cookieCliente,
+  cookieDimentica,
+  freno,
+  NO_STORE,
+  origineValida,
+  riconoscimentoAttivo,
+} from "@/lib/prenotazioni/riconoscimento";
 import { salone, SPOSTAMENTI_MAX } from "@/lib/salone";
 
-/* POST /api/appuntamento — "Gestisci il tuo appuntamento".
+/* POST /api/appuntamento — "Il mio appuntamento".
 
-   Un solo POST, anche per leggere: le credenziali (token del link, oppure
-   telefono + codice) non devono stare in un indirizzo, che finisce nei log
-   e nella cronologia. Corpo: { azione, credenziale, data?, ora? }.
+   Corpo: { azione, credenziale?, data?, ora? }.
+   - azione "elenco": gli appuntamenti futuri del cliente riconosciuto dal
+     cookie hb_cliente (v2);
+   - azione "dimentica": cancella il cookie ("Dimentica questo dispositivo");
+   - azioni "leggi" | "orari" | "sposta" | "disdici" su un appuntamento:
+     credenziale { prenotazioneId } con il cookie del suo cliente (v2),
+     oppure { token } / { telefono, codice } della v1, che valgono finché i
+     loro appuntamenti non sono passati.
 
-   azione: "leggi" | "orari" | "sposta" | "disdici".
+   Il server decide tutto da sé a ogni richiesta (termine, limite, orari) e
+   sull'orario l'ultima parola è del vincolo del database. Ogni POST deve
+   arrivare da questo sito (Origin). Nei log niente cookie, token, codici,
+   telefoni. */
 
-   Il server decide tutto da sé a ogni richiesta (termine, limite di
-   spostamenti, orari proponibili) e sull'orario l'ultima parola è del
-   vincolo del database. Token, codice e telefono non vanno mai nei log. */
-
-const json = (dati: unknown, stato = 200) =>
-  Response.json(dati, { status: stato, headers: { "Cache-Control": "no-store" } });
-
-const NON_TROVATO = {
-  errore: `Non troviamo un appuntamento con questi dati. Controlla il codice, oppure chiama il salone al ${salone.telefono}.`,
+const json = (dati: unknown, stato = 200, cookie?: string | null) => {
+  const r = Response.json(dati, { status: stato, headers: NO_STORE });
+  if (cookie) r.headers.append("Set-Cookie", cookie);
+  return r;
 };
 
-/* Freno ai tentativi con telefono + codice: 10 ogni 10 minuti per IP, in
-   memoria come quello di /api/bookings. È un argine (ogni istanza di
-   Vercel ha il suo contatore): 887 milioni di codici per numero restano
-   comunque fuori portata a mano. */
-const TENTATIVI_MAX = 10;
-const FINESTRA_MS = 10 * 60 * 1000;
-const tentativi = ((globalThis as { __tentativiGestione?: Map<string, number[]> }).__tentativiGestione ??= new Map());
+const NON_TROVATO = {
+  errore: `Non troviamo questo appuntamento. Per aiuto chiama il salone al ${salone.telefono}.`,
+};
 
-function troppiTentativi(ip: string) {
-  const adesso = Date.now();
-  const recenti = (tentativi.get(ip) ?? []).filter((t: number) => adesso - t < FINESTRA_MS);
-  tentativi.set(ip, [...recenti, adesso]);
-  return recenti.length >= TENTATIVI_MAX;
-}
+// v1: tentativi con telefono + codice. Un argine per istanza (bible §11).
+const troppiTentativi = freno("gestione-codice", 10, 10 * 60 * 1000);
 
 function avvisa(m: ModificaCliente, dataAgenda: string, id: string) {
-  // Dopo la risposta al cliente, come per le prenotazioni: un avviso che non
-  // parte non deve mai far fallire una disdetta o uno spostamento.
+  // Dopo la risposta al cliente: un avviso che non parte non deve mai far
+  // fallire una disdetta o uno spostamento.
   after(async () => {
     const titolo = m.tipo === "disdetta" ? `Disdetta · ${m.nome}` : `Spostato · ${m.nome}`;
     const esiti = await Promise.allSettled([
@@ -64,26 +74,40 @@ function avvisa(m: ModificaCliente, dataAgenda: string, id: string) {
 }
 
 export async function POST(request: Request) {
+  if (!origineValida(request)) return json({ errore: "Richiesta non valida." }, 403);
   let corpo: Record<string, unknown>;
   try {
     corpo = (await request.json()) as Record<string, unknown>;
   } catch {
     return json({ errore: "Richiesta non leggibile." }, 400);
   }
-  const azione = corpo?.azione;
-  const credenziale = leggiCredenziale(corpo?.credenziale);
-  if (!credenziale || !["leggi", "orari", "sposta", "disdici"].includes(String(azione))) {
-    return json({ errore: "Richiesta non valida." }, 400);
+  const azione = String(corpo?.azione ?? "");
+  const clienteId = clienteDaRichiesta(request);
+  // Ogni uso rinnova il cookie: 400 giorni dall'ultima visita.
+  const rinnovo = clienteId ? cookieCliente(clienteId) : null;
+
+  if (azione === "dimentica") return json({ ok: true }, 200, cookieDimentica());
+
+  if (azione === "elenco") {
+    if (!riconoscimentoAttivo()) return json({ attivo: false, riconosciuto: false });
+    if (!clienteId) return json({ attivo: true, riconosciuto: false });
+    const [elenco, passkey] = await Promise.all([appuntamentiDelCliente(clienteId, oraDiRoma().data), passkeyDelCliente(clienteId)]);
+    return json({ attivo: true, riconosciuto: true, appuntamenti: elenco.map((a) => riepilogo(a)), conFaceId: passkey.length > 0 }, 200, rinnovo);
   }
 
-  if ("telefono" in credenziale) {
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "sconosciuto";
-    if (troppiTentativi(ip)) return json({ errore: "Troppi tentativi. Riprova fra qualche minuto o chiama il salone." }, 429);
+  const credenziale = leggiCredenziale(corpo?.credenziale);
+  if (!credenziale || !["leggi", "orari", "sposta", "disdici"].includes(azione)) {
+    return json({ errore: "Richiesta non valida." }, 400);
   }
+  if ("telefono" in credenziale && troppiTentativi(request)) {
+    return json({ errore: "Troppi tentativi. Riprova fra qualche minuto o chiama il salone." }, 429);
+  }
+  // v2: l'appartenenza al cliente si controlla nello SQL (id + cliente_id).
+  const proprietario = "prenotazioneId" in credenziale ? clienteId : null;
 
   let a;
   try {
-    a = await trovaAppuntamento(credenziale);
+    a = await trovaAppuntamento(credenziale, proprietario);
   } catch (e) {
     console.error("[gestione] lettura non riuscita", codiceErrore(e));
     return json({ errore: "Non riusciamo a leggere l'appuntamento. Riprova fra poco." }, 500);
@@ -92,7 +116,7 @@ export async function POST(request: Request) {
 
   const stato = statoDi(a);
 
-  if (azione === "leggi") return json({ appuntamento: riepilogo(a) });
+  if (azione === "leggi") return json({ appuntamento: riepilogo(a) }, 200, rinnovo);
 
   if (azione === "orari") {
     const data = String(corpo.data ?? "");
@@ -104,14 +128,14 @@ export async function POST(request: Request) {
 
   if (azione === "disdici") {
     if (!stato.disdicibile) return json({ errore: "Ormai è tardi per disdire online: chiama il salone.", motivoBlocco: stato.motivoBlocco }, 403);
-    const tolto = await disdiciAppuntamento(a.id);
+    const tolto = await disdiciAppuntamento(a.id, proprietario);
     if (!tolto) return json({ errore: "Questo appuntamento non c'è più." }, 404);
     avvisa(
       { tipo: "disdetta", nome: nomeBreve(tolto.cliente.nome), data: tolto.data, inizio: tolto.inizio, servizio: tolto.servizioNome },
       tolto.data,
       tolto.id,
     );
-    return json({ ok: true, disdetto: { data: tolto.data, ora: riepilogo(tolto).ora, servizio: tolto.servizioNome } });
+    return json({ ok: true, disdetto: { data: tolto.data, ora: riepilogo(tolto).ora, servizio: tolto.servizioNome } }, 200, rinnovo);
   }
 
   // ── sposta ──
@@ -122,17 +146,15 @@ export async function POST(request: Request) {
   const ora = String(corpo.ora ?? "");
   if (!dataSpostabile(data) || !/^\d{2}:\d{2}$/.test(ora)) return json({ errore: "Giorno o orario non valido." }, 400);
 
-  const conAlternative = async () => {
-    const alternative = await orariPerSpostamento(a, data);
-    return json(
+  const conAlternative = async () =>
+    json(
       {
         errore: "Spiacenti, l'orario scelto non è più disponibile.",
-        alternative,
+        alternative: await orariPerSpostamento(a, data),
         prossimiGiorni: await prossimiGiorniLiberi(a, data),
       },
       409,
     );
-  };
 
   const proposti = await orariPerSpostamento(a, data);
   const scelto = proposti.slot.find((s) => s.ora === ora);
@@ -146,7 +168,7 @@ export async function POST(request: Request) {
 
   let nuovo;
   try {
-    nuovo = await spostaAppuntamento(a.id, { data, inizio, fine: inizio + (a.fine - a.inizio) }, SPOSTAMENTI_MAX);
+    nuovo = await spostaAppuntamento(a.id, { data, inizio, fine: inizio + (a.fine - a.inizio) }, SPOSTAMENTI_MAX, proprietario);
   } catch (e) {
     if (e instanceof ConflittoOrario) return conAlternative();
     console.error("[gestione] spostamento non riuscito", codiceErrore(e));
@@ -155,7 +177,7 @@ export async function POST(request: Request) {
   if (!nuovo) {
     // Fra la lettura e la scrittura: o è stato disdetto, o il limite è
     // stato raggiunto da un'altra scheda.
-    const ancora = await trovaAppuntamento(credenziale);
+    const ancora = await trovaAppuntamento(credenziale, proprietario);
     return ancora
       ? json({ errore: "Hai già usato tutti gli spostamenti: chiama il salone.", motivoBlocco: "spostamenti" }, 403)
       : json({ errore: "Questo appuntamento non c'è più." }, 404);
@@ -165,5 +187,5 @@ export async function POST(request: Request) {
     nuovo.data,
     nuovo.id,
   );
-  return json({ appuntamento: riepilogo(nuovo), da: { data: a.data, ora: riepilogo(a).ora } });
+  return json({ appuntamento: riepilogo(nuovo), da: { data: a.data, ora: riepilogo(a).ora } }, 200, rinnovo);
 }

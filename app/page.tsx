@@ -5,6 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { Portfolio } from "@/components/Portfolio";
 import { PriceList } from "@/components/PriceList";
 import { BookingWidget } from "@/components/BookingWidget";
+import { GestioneWidget } from "@/components/GestioneWidget";
 import { RevealOnScroll } from "@/components/RevealOnScroll";
 import { SmoothScroll } from "@/components/SmoothScroll";
 import { orari, salone } from "@/lib/salone";
@@ -65,6 +66,8 @@ export default function Home() {
       <RevealOnScroll />
       {/* Foglio di prenotazione: montato una volta, lo aprono i bottoni "Prenota". */}
       <BookingWidget />
+      {/* "Il mio appuntamento": il foglio gemello, lo aprono i suoi bottoni. */}
+      <GestioneWidget />
     </SmoothScroll>
   );
 }

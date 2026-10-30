@@ -6,6 +6,8 @@ import { useLenis } from "lenis/react";
 import { salone, vociMenu } from "@/lib/salone";
 import { cn } from "@/lib/utils";
 import { BookButton } from "./BookButton";
+import { MioAppuntamentoButton } from "./MioAppuntamentoButton";
+import { apriGestione } from "@/lib/gestione";
 import { GridLines } from "./GridLines";
 import { Logo } from "./Logo";
 import { useVaiASezione } from "./SmoothScroll";
@@ -138,6 +140,12 @@ export function Navbar() {
   };
 
   const dopoUscita = () => {
+    // "Il mio appuntamento" dal menu: si apre il suo foglio a tenda chiusa.
+    if (destinazione.current === "mio-appuntamento") {
+      destinazione.current = null;
+      apriGestione("menu");
+      return;
+    }
     const id = destinazione.current;
     destinazione.current = null;
     if (id) vaiA(id);
@@ -208,7 +216,24 @@ export function Navbar() {
           <Logo variante="adattivo" className="h-9 sm:h-11 md:h-12" />
         </a>
 
-        <div className="justify-self-end">
+        {/* "Il mio appuntamento" accanto a "Prenota": testo da lg (fra md e lg
+            non ci starebbe senza spostare il logo dal centro), icona da 44 px
+            fra md e lg, solo con un appuntamento in arrivo. Sotto md niente:
+            a 375 px l'icona spingeva il logo fuori centro (la data resta nel
+            bottone della hero). */}
+        <div className="flex items-center gap-2 justify-self-end lg:gap-3">
+          {!aperto && (
+            <div className="hidden md:block lg:hidden">
+              <MioAppuntamentoButton origine="navbar" variante="icona" />
+            </div>
+          )}
+          {/* Contenitore a parte: cn() non fonde le classi, e "hidden" sul bottone
+              perderebbe contro il suo inline-flex. */}
+          {!aperto && (
+            <div className="hidden lg:block">
+              <MioAppuntamentoButton origine="navbar" variante="barra" suScuro={!chiaro} />
+            </div>
+          )}
           <BookButton origine={aperto ? "menu" : "navbar"} suScuro={!chiaro} />
         </div>
       </div>
@@ -256,6 +281,19 @@ export function Navbar() {
                   </li>
                 ))}
               </motion.ul>
+
+              {/* "Il mio appuntamento": una voce del menu, non gigante come le
+                  sezioni (non è un'ancora della pagina, apre un foglio). */}
+              <motion.div variants={dissolvenza} className="mb-6 pl-3 md:mb-8">
+                <button
+                  type="button"
+                  onClick={() => chiudiVerso("mio-appuntamento")}
+                  className="eyebrow flex min-h-14 w-full cursor-pointer items-center justify-between gap-4 border border-paper/40 px-5 transition-colors duration-200 hover:border-paper hover:bg-paper hover:text-ink md:w-auto md:min-w-80"
+                >
+                  Il mio appuntamento
+                  <span aria-hidden>→</span>
+                </button>
+              </motion.div>
 
               {/* Blocchi informativi, come nella hero: anche qui 11px sotto i
                   380px, perché l'indirizzo non vada a capo sul trattino. */}

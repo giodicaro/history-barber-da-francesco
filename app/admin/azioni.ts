@@ -1,6 +1,15 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { refresh } from "next/cache";
+import { headers } from "next/headers";
+import { formatoOra } from "@/lib/orari";
+import { creaAccessoMonouso } from "@/lib/prenotazioni/archivio";
+import { sha256 } from "@/lib/prenotazioni/gestione";
+import { salone } from "@/lib/salone";
+
+const giornoBreve = new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+const etichettaGiornoBreve = (data: string) => giornoBreve.format(new Date(`${data}T12:00:00Z`));
 import { auth } from "@/auth";
 import {
   aggiornaVoce,
@@ -149,4 +158,28 @@ export async function notificaDiProva(): Promise<EsitoAzione & { inviate?: numbe
     };
   }
   return { ok: true, inviate };
+}
+
+/* ── "Il mio appuntamento": accesso monouso su WhatsApp (N4) ───────────── */
+
+/** Prepara un accesso monouso (48 ore, una volta sola) per il cliente di
+    questo appuntamento e il messaggio WhatsApp con il link. Nel database
+    finisce solo l'impronta del token. */
+export async function accessoWhatsApp(id: string): Promise<EsitoAzione & { whatsapp?: string }> {
+  if (!(await autorizzato())) return NON_AUTORIZZATO;
+  const v = await leggiVoce(String(id));
+  if (!v || v.tipo !== "appuntamento") return { ok: false, errore: "Questo appuntamento non c'è più." };
+  if (!v.cliente.telefono) return { ok: false, errore: "Manca il telefono del cliente." };
+  const token = randomBytes(32).toString("base64url");
+  await creaAccessoMonouso(sha256(`accesso:${token}`), v.id, 48);
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "history-barber-da-francesco.vercel.app";
+  const protocollo = (h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https")).split(",")[0];
+  const link = `${protocollo}://${host}/appuntamento/accesso/${token}`;
+  const nome = v.cliente.nome.trim().split(/\s+/)[0];
+  const quando = `${etichettaGiornoBreve(v.data)} alle ${formatoOra(v.inizio)}`;
+  const testo =
+    `Ciao ${nome}, ecco il tuo accesso al tuo appuntamento da ${salone.nomeCompleto} (${quando}). ` +
+    `Tocca il link per spostarlo o disdirlo: ${link}\nVale 48 ore e una volta sola.`;
+  return { ok: true, whatsapp: `https://wa.me/${v.cliente.telefono.replace(/^\+/, "")}?text=${encodeURIComponent(testo)}` };
 }
