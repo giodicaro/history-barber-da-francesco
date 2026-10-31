@@ -1,4 +1,5 @@
 import { after } from "next/server";
+import { avvisoGiornoChiuso } from "@/lib/chiusure";
 import { minutiDaOra, oraDiRoma } from "@/lib/orari";
 import { avvisaModifica, testoModifica, type ModificaCliente } from "@/lib/prenotazioni/avvisi";
 import {
@@ -157,6 +158,8 @@ export async function POST(request: Request) {
     );
 
   const proposti = await orariPerSpostamento(a, data);
+  // Giorno chiuso (ferie): rifiutato anche se qualcuno aggira il sito.
+  if (proposti.chiusura) return json({ errore: avvisoGiornoChiuso(proposti.chiusura) }, 400);
   const scelto = proposti.slot.find((s) => s.ora === ora);
   if (!scelto) return json({ errore: "Orario fuori dagli orari di apertura." }, 400);
   const inizio = minutiDaOra(ora);

@@ -7,6 +7,8 @@ import { impronta, improntaCodice, puoGestire, slotPerSpostamento, TOKEN_GESTION
 import { normalizzaTelefono } from "./telefono";
 import type { RispostaSlot } from "./tipi";
 import { servizioPerId } from "./validazione";
+import { chiusoIl } from "@/lib/chiusure";
+import { chiusuraDelGiorno, chiusureAttiveDa } from "./chiusure";
 
 /* "Gestisci il tuo appuntamento", lato server: dalla credenziale
    all'appuntamento, e ciò che il cliente vede. Lo usano l'API
@@ -89,19 +91,24 @@ export function dataSpostabile(data: string): boolean {
     dell'appuntamento e senza l'appuntamento stesso fra gli occupati. */
 export async function orariPerSpostamento(a: AppuntamentoGestito, data: string): Promise<RispostaSlot & { proprio: string | null }> {
   const giorno = giornoDellaData(data);
-  const slot = slotPerSpostamento({
-    id: a.id,
-    data,
-    giorno,
-    durata: a.fine - a.inizio,
-    occupati: await occupatiConId(data, a.operatoreId),
-    adesso: oraDiRoma(),
-  });
+  // Ferie e chiusure decise da Francesco: nessun orario quel giorno.
+  const chiusura = await chiusuraDelGiorno(data);
+  const slot = chiusura
+    ? []
+    : slotPerSpostamento({
+        id: a.id,
+        data,
+        giorno,
+        durata: a.fine - a.inizio,
+        occupati: await occupatiConId(data, a.operatoreId),
+        adesso: oraDiRoma(),
+      });
   return {
     data,
     giorno,
     giornoNome: orari[giorno].giorno,
-    aperto: turniDellaGiornata(data).length > 0,
+    aperto: !chiusura && turniDellaGiornata(data).length > 0,
+    ...(chiusura ? { chiusura: { ...(chiusura.motivo ? { motivo: chiusura.motivo } : {}) } } : {}),
     servizio: {
       id: a.servizioId,
       nome: a.servizioNome,
@@ -118,10 +125,11 @@ export async function orariPerSpostamento(a: AppuntamentoGestito, data: string):
     chi trova pieno il giorno che voleva. */
 export async function prossimiGiorniLiberi(a: AppuntamentoGestito, escludi: string, quanti = 3) {
   const oggi = oraDiRoma().data;
+  const chiusure = await chiusureAttiveDa(oggi);
   const trovati: { data: string; liberi: number }[] = [];
   for (let i = 0; i <= GIORNI_PRENOTABILI && trovati.length < quanti; i++) {
     const data = sommaGiorni(oggi, i);
-    if (data === escludi || turniDellaGiornata(data).length === 0) continue;
+    if (data === escludi || turniDellaGiornata(data).length === 0 || chiusoIl(data, chiusure)) continue;
     const { liberi } = await orariPerSpostamento(a, data);
     if (liberi > 0) trovati.push({ data, liberi });
   }

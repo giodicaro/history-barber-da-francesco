@@ -5,6 +5,8 @@ import { notificaPrenotazione } from "@/lib/prenotazioni/notifiche";
 import { ConflittoOrario, occupatiDelGiorno, salvaPrenotazione } from "@/lib/prenotazioni/archivio";
 import { randomUUID } from "node:crypto";
 import { clienteDaRichiesta, cookieCliente, origineValida, riconoscimentoAttivo } from "@/lib/prenotazioni/riconoscimento";
+import { avvisoGiornoChiuso } from "@/lib/chiusure";
+import { chiusuraDelGiorno } from "@/lib/prenotazioni/chiusure";
 import { generaSlot } from "@/lib/prenotazioni/slot";
 import type { RispostaSlot } from "@/lib/prenotazioni/tipi";
 import { analizzaRichiesta, servizioPerId, servizioPrenotabile } from "@/lib/prenotazioni/validazione";
@@ -52,17 +54,20 @@ export async function GET(request: Request) {
   }
 
   const giorno = giornoDellaData(data);
-  const occupati = await occupatiDelGiorno(data, operatoreId);
-  const slot = generaSlot({ data, giorno, durata: servizio.durata, occupati, adesso });
+  // Ferie e chiusure decise da Francesco: nessun orario quel giorno.
+  const chiusura = await chiusuraDelGiorno(data);
+  const occupati = chiusura ? [] : await occupatiDelGiorno(data, operatoreId);
+  const slot = chiusura ? [] : generaSlot({ data, giorno, durata: servizio.durata, occupati, adesso });
 
   const risposta: RispostaSlot = {
     data,
     giorno,
     giornoNome: orari[giorno].giorno,
-    aperto: turniDellaGiornata(data).length > 0,
+    aperto: !chiusura && turniDellaGiornata(data).length > 0,
     servizio: { id: servizio.id, nome: servizio.nome, durata: servizio.durata, prezzo: servizio.prezzo },
     slot,
     liberi: slot.filter((s) => s.disponibile).length,
+    ...(chiusura ? { chiusura: { ...(chiusura.motivo ? { motivo: chiusura.motivo } : {}) } } : {}),
   };
   return json(risposta);
 }
@@ -106,6 +111,10 @@ export async function POST(request: Request) {
   const occupati = /^\d{4}-\d{2}-\d{2}$/.test(dataRichiesta)
     ? await occupatiDelGiorno(dataRichiesta, operatoreId)
     : [];
+
+  // Giorno chiuso (ferie): rifiutato anche se qualcuno aggira il sito.
+  const chiusura = /^\d{4}-\d{2}-\d{2}$/.test(dataRichiesta) ? await chiusuraDelGiorno(dataRichiesta) : null;
+  if (chiusura) return json({ errore: avvisoGiornoChiuso(chiusura), campi: { data: avvisoGiornoChiuso(chiusura) } }, 400);
 
   const esito = analizzaRichiesta(corpo, { adesso, occupati });
   if (!esito.ok) return json({ errore: "Dati non validi", campi: esito.errori }, 400);

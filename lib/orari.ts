@@ -3,7 +3,8 @@ import { CHIUSO_NEI_FESTIVI, orari, type Turno } from "./salone";
 
 export type StatoApertura =
   | { aperto: true; chiudeAlle: string }
-  | { aperto: false; riapre: string };
+  /** ferie: oggi chiuso per una chiusura di Francesco (motivo, o ""). */
+  | { aperto: false; riapre: string; ferie?: string };
 
 // Minuti dalla mezzanotte ⇄ "HH:MM". Esportate perché le usano anche l'API di
 // prenotazione e l'agenda: un solo posto dove si decide il formato dell'ora.
@@ -61,26 +62,44 @@ export function turniDellaGiornata(data: string): Turno[] {
   return festivitaChiusa(data) ? [] : orari[giornoDellaData(data)].turni;
 }
 
-export function calcolaStato(adesso = new Date()): StatoApertura {
+/** Lo stato "Aperto ora / Chiuso ora · Riapre …". Con le chiusure decise da
+    Francesco (ferie) i giorni chiusi saltano, e se oggi è chiuso per una di
+    quelle lo stato lo dice (ferie, con il motivo se c'è). */
+export function calcolaStato(
+  adesso = new Date(),
+  chiusure: readonly { dal: string; al: string; motivo?: string }[] = [],
+): StatoApertura {
   const { data, minuti } = oraDiRoma(adesso);
+  const chiusa = (giornata: string) => chiusure.find((c) => c.dal <= giornata && giornata <= c.al);
+  const turniDi = (giornata: string) => (chiusa(giornata) ? [] : turniDellaGiornata(giornata));
+  const ferie = chiusa(data);
+  const conFerie = ferie ? { ferie: ferie.motivo ?? "" } : {};
 
-  const turnoInCorso = turniDellaGiornata(data).find(
+  const turnoInCorso = turniDi(data).find(
     (t) => minuti >= t.apre && minuti < t.chiude,
   );
   if (turnoInCorso) return { aperto: true, chiudeAlle: formatoOra(turnoInCorso.chiude) };
 
   // Prossima apertura: prima il resto di oggi (la pausa pranzo), poi i giorni
-  // seguenti. Due settimane bastano anche con un ponte di festività.
-  for (let avanti = 0; avanti < 14; avanti++) {
+  // seguenti. Due mesi coprono anche le ferie più lunghe.
+  for (let avanti = 0; avanti < 62; avanti++) {
     const giornata = sommaGiorni(data, avanti);
     const g = giornoDellaData(giornata);
-    const turno = turniDellaGiornata(giornata).find((t) => avanti > 0 || t.apre > minuti);
+    const turno = turniDi(giornata).find((t) => avanti > 0 || t.apre > minuti);
     if (!turno) continue;
-    const quando = avanti === 0 ? "oggi" : avanti === 1 ? "domani" : orari[g].breve.toLowerCase();
+    // Oltre la settimana il nome del giorno non basta: "il 25/8".
+    const quando =
+      avanti === 0
+        ? "oggi"
+        : avanti === 1
+          ? "domani"
+          : avanti < 7
+            ? orari[g].breve.toLowerCase()
+            : `il ${Number(giornata.slice(8, 10))}/${Number(giornata.slice(5, 7))}`;
     // Spazio unificatore: se la riga non basta, "alle 14:30" va a capo intero.
-    return { aperto: false, riapre: `${quando} alle\u00a0${formatoOra(turno.apre)}` };
+    return { aperto: false, riapre: `${quando} alle\u00a0${formatoOra(turno.apre)}`, ...conFerie };
   }
-  return { aperto: false, riapre: "" };
+  return { aperto: false, riapre: "", ...conFerie };
 }
 
 export function turniLeggibili(turni: { apre: number; chiude: number }[]) {
