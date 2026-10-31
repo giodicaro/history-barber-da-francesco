@@ -122,6 +122,53 @@ create table if not exists accessi_monouso (
   usato_il        timestamptz
 );
 
+-- ── Chiusure e ferie (31/10/2026) ──────────────────────────────────────────
+-- Periodi in cui il salone è chiuso, dal / al inclusi, decisi da Francesco
+-- nell'agenda. Altra cosa rispetto ai giorni di chiusura della settimana e
+-- alle festività (lib/salone.ts, lib/festivi.ts): tutti e tre rendono il
+-- giorno non prenotabile. Date senza orario: la giornata del salone a Roma.
+create table if not exists chiusure (
+  id            uuid primary key default gen_random_uuid(),
+  dal           date not null,
+  al            date not null,
+  -- Facoltativo, lo vedono anche i clienti ("Ferie estive").
+  motivo        text,
+  -- Interruttore: una chiusura spenta resta in elenco ma non chiude niente.
+  attiva        boolean not null default true,
+  creata_il     timestamptz not null default now(),
+  modificata_il timestamptz,
+  constraint chiusure_date_in_ordine check (al >= dal)
+);
+create index if not exists chiusure_periodo on chiusure (dal, al);
+
+-- Appuntamento spostato (dal cliente o da Francesco in agenda): giorno e ora
+-- di prima ("YYYY-MM-DD HH:MM") e quando. L'agenda lo mostra con
+-- l'etichetta "Spostato", nella posizione nuova.
+alter table prenotazioni add column if not exists spostato_da text;
+alter table prenotazioni add column if not exists spostato_il timestamptz;
+
+-- Appuntamenti disdetti (dal cliente o da Francesco). La riga lascia
+-- prenotazioni nella stessa istruzione (lo slot si libera subito, il vincolo
+-- di esclusione non cambia) e arriva qui, perché l'agenda la mostri
+-- attenuata. Stessa conservazione delle prenotazioni (eliminaScadute).
+create table if not exists disdette (
+  id               uuid primary key,
+  data             date not null,
+  inizio           smallint not null,
+  fine             smallint not null,
+  servizio_nome    text,
+  prezzo           smallint not null default 0,
+  operatore_id     text not null,
+  cliente_nome     text,
+  cliente_telefono text,
+  origine          text,
+  -- "cliente" (da "Il mio appuntamento" o dal link) o "salone" (agenda).
+  disdetta_da      text not null,
+  disdetta_il      timestamptz not null default now(),
+  creata_il        timestamptz
+);
+create index if not exists disdette_giorno on disdette (data, inizio);
+
 -- L'agenda e il calcolo degli slot leggono sempre "tutto un giorno, in
 -- ordine di orario".
 create index if not exists prenotazioni_giorno on prenotazioni (data, inizio);

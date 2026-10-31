@@ -2,7 +2,7 @@ import "server-only";
 import { CONSERVAZIONE_MESI } from "@/lib/salone";
 import { codiceErrore, db, tipoArchivio, VIOLAZIONE_ESCLUSIONE } from "./db";
 import type { Intervallo } from "./slot";
-import type { NuovaVoce, Prenotazione, RichiestaPrenotazione, VoceAgenda } from "./tipi";
+import type { Disdetta, NuovaVoce, Prenotazione, RichiestaPrenotazione, VoceAgenda } from "./tipi";
 
 /* Archivio dell'agenda: appuntamenti e blocchi, nella tabella `prenotazioni`.
 
@@ -44,6 +44,7 @@ type Riga = {
   note: string | null;
   origine: string | null;
   creata_il: Date;
+  spostato_da: string | null;
 };
 
 /* La colonna "data" si legge come testo, non come oggetto data: un `date`
@@ -51,7 +52,7 @@ type Riga = {
    scivolerebbe al giorno prima per chi sta a est di Greenwich. */
 const COLONNE = `id, tipo, to_char(data, 'YYYY-MM-DD') as data, inizio, fine,
   servizio_id, servizio_nome, prezzo, operatore_id,
-  cliente_nome, cliente_telefono, note, origine, creata_il`;
+  cliente_nome, cliente_telefono, note, origine, creata_il, spostato_da`;
 
 function daRiga(r: Riga): VoceAgenda {
   const comuni = {
@@ -77,8 +78,30 @@ function daRiga(r: Riga): VoceAgenda {
       ...(r.note ? { note: r.note } : {}),
     },
     ...(r.origine ? { origine: r.origine } : {}),
+    ...(r.spostato_da ? { spostatoDa: r.spostato_da } : {}),
   };
 }
+
+/* "Spostato": se cambiano giorno o ora, si ricorda dove era. Nelle SET di un
+   update le colonne valgono ancora i valori di prima. $D e $I sono i
+   segnaposto del giorno e dell'ora nuovi nella query che lo usa. */
+const SPOSTATO = (D: string, I: string) => `
+  spostato_da = case when tipo = 'appuntamento' and (data <> ${D}::date or inizio <> ${I})
+    then to_char(data, 'YYYY-MM-DD') || ' ' || lpad((inizio / 60)::text, 2, '0') || ':' || lpad((inizio % 60)::text, 2, '0')
+    else spostato_da end,
+  spostato_il = case when tipo = 'appuntamento' and (data <> ${D}::date or inizio <> ${I}) then now() else spostato_il end`;
+
+/* Disdetta: la riga lascia prenotazioni e arriva in disdette nella stessa
+   istruzione. $1 è l'id, $CHI chi disdice. */
+const ARCHIVIA = (chi: string) => `
+  archiviata as (
+    insert into disdette (id, data, inizio, fine, servizio_nome, prezzo, operatore_id,
+                          cliente_nome, cliente_telefono, origine, disdetta_da, creata_il)
+    select id, data, inizio, fine, servizio_nome, prezzo, operatore_id,
+           cliente_nome, cliente_telefono, origine, ${chi}, creata_il
+    from tolta where tipo = 'appuntamento'
+    on conflict (id) do nothing
+  )`;
 
 // Da oggetto a colonne, nello stesso ordine per insert e update.
 function colonne(v: NuovaVoce) {
@@ -120,6 +143,61 @@ export async function vociDelGiorno(data: string): Promise<VoceAgenda[]> {
     [data],
   );
   return righe.map(daRiga);
+}
+
+/** Voci di più giorni (vista settimana), in ordine di giorno e orario. */
+export async function vociDellIntervallo(dal: string, al: string): Promise<VoceAgenda[]> {
+  const righe = await (await db()).query<Riga>(
+    `select ${COLONNE} from prenotazioni where data between $1::date and $2::date order by data, inizio`,
+    [dal, al],
+  );
+  return righe.map(daRiga);
+}
+
+type RigaDisdetta = {
+  id: string;
+  data: string;
+  inizio: number;
+  fine: number;
+  servizio_nome: string | null;
+  prezzo: number;
+  cliente_nome: string | null;
+  cliente_telefono: string | null;
+  disdetta_da: string;
+  disdetta_il: Date;
+};
+
+/** Appuntamenti disdetti fra due giorni (inclusi): l'agenda li mostra
+    attenuati, senza che occupino la poltrona. */
+export async function disdetteDellIntervallo(dal: string, al: string): Promise<Disdetta[]> {
+  const righe = await (await db()).query<RigaDisdetta>(
+    `select id, to_char(data, 'YYYY-MM-DD') as data, inizio, fine, servizio_nome, prezzo,
+            cliente_nome, cliente_telefono, disdetta_da, disdetta_il
+     from disdette where data between $1::date and $2::date order by data, inizio`,
+    [dal, al],
+  );
+  return righe.map((r) => ({
+    id: r.id,
+    data: r.data,
+    inizio: r.inizio,
+    fine: r.fine,
+    servizioNome: r.servizio_nome ?? "",
+    prezzo: r.prezzo,
+    cliente: { nome: r.cliente_nome ?? "", ...(r.cliente_telefono ? { telefono: r.cliente_telefono } : {}) },
+    da: r.disdetta_da === "cliente" ? "cliente" : "salone",
+    disdettaIl: new Date(r.disdetta_il).toISOString(),
+  }));
+}
+
+/** Appuntamenti (non disdetti) in un periodo: i conflitti di una chiusura. */
+export async function appuntamentiNelPeriodo(dal: string, al: string): Promise<Prenotazione[]> {
+  const righe = await (await db()).query<Riga>(
+    `select ${COLONNE} from prenotazioni
+     where tipo = 'appuntamento' and data between $1::date and $2::date
+     order by data, inizio`,
+    [dal, al],
+  );
+  return righe.map(daRiga) as Prenotazione[];
 }
 
 /** Intervalli occupati di un operatore in un giorno, blocchi compresi: il
@@ -182,6 +260,7 @@ export async function aggiornaVoce(id: string, voce: NuovaVoce): Promise<VoceAge
   return conVincolo(async () => {
     const [riga] = await (await db()).query<Riga>(
       `update prenotazioni set
+         ${SPOSTATO("$3", "$4")},
          tipo = $2, data = $3::date, inizio = $4, fine = $5,
          servizio_id = $6, servizio_nome = $7, prezzo = $8, operatore_id = $9,
          cliente_nome = $10, cliente_telefono = $11, note = $12,
@@ -198,11 +277,14 @@ export async function aggiornaVoce(id: string, voce: NuovaVoce): Promise<VoceAge
 /** Cancella una voce: appuntamento annullato o blocco tolto. */
 export async function eliminaVoce(id: string): Promise<void> {
   if (!UUID.test(id)) throw new VoceNonTrovata();
-  const righe = await (await db()).query<{ id: string }>(
-    `delete from prenotazioni where id = $1 returning id`,
+  // Un appuntamento disdetto dall'agenda va fra i disdetti; un blocco no.
+  const [r] = await (await db()).query<{ n: number }>(
+    `with tolta as (delete from prenotazioni where id = $1 returning *),
+     ${ARCHIVIA("'salone'")}
+     select count(*)::int as n from tolta`,
     [id],
   );
-  if (righe.length === 0) throw new VoceNonTrovata();
+  if (!r || r.n === 0) throw new VoceNonTrovata();
 }
 
 // Giorno dell'ultima pulizia, per farla una volta al giorno per istanza e non
@@ -221,6 +303,10 @@ export async function eliminaScadute(oggi: string): Promise<void> {
       [oggi, CONSERVAZIONE_MESI],
     );
     if (righe.length > 0) console.info(`[agenda] cancellate ${righe.length} voci oltre il periodo di conservazione`);
+    await (await db()).query(
+      `delete from disdette where data < $1::date - make_interval(months => $2)`,
+      [oggi, CONSERVAZIONE_MESI],
+    );
     // "Il mio appuntamento": accessi monouso scaduti o senza più appuntamento,
     // e Face ID / impronta di clienti senza più prenotazioni in archivio e
     // non usati da CONSERVAZIONE_MESI.
@@ -302,6 +388,7 @@ export async function spostaAppuntamento(
   return conVincolo(async () => {
     const [r] = await (await db()).query<Riga & { spostamenti: number }>(
       `update prenotazioni set
+         ${SPOSTATO("$2", "$3")},
          data = $2::date, inizio = $3, fine = $4,
          spostamenti = spostamenti + 1, modificata_il = now()
        where id = $1 and tipo = 'appuntamento' and spostamenti < $5
@@ -313,14 +400,19 @@ export async function spostaAppuntamento(
   });
 }
 
-/** Disdetta = la riga si cancella, come fa l'agenda: lo slot torna libero
-    subito. I dati per l'avviso a Francesco tornano dalla stessa query. */
+/** Disdetta = la riga lascia prenotazioni (lo slot torna libero subito) e va
+    fra i disdetti, come fa l'agenda. I dati per l'avviso a Francesco
+    tornano dalla stessa query. */
 export async function disdiciAppuntamento(id: string, clienteId: string | null = null): Promise<AppuntamentoGestito | null> {
   if (!UUID.test(id)) return null;
   const [r] = await (await db()).query<Riga & { spostamenti: number }>(
-    `delete from prenotazioni
-     where id = $1 and tipo = 'appuntamento' and ($2::uuid is null or cliente_id = $2::uuid)
-     returning ${COLONNE_GESTIONE}`,
+    `with tolta as (
+       delete from prenotazioni
+       where id = $1 and tipo = 'appuntamento' and ($2::uuid is null or cliente_id = $2::uuid)
+       returning *
+     ),
+     ${ARCHIVIA("'cliente'")}
+     select ${COLONNE_GESTIONE} from tolta`,
     [id, clienteId],
   );
   return r ? daRigaGestita(r) : null;
