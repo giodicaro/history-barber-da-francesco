@@ -78,7 +78,8 @@ npm run db:init    # applica lo schema al database di DATABASE_URL; è rieseguib
 | `components/GestioneWidget.tsx`, `components/MioAppuntamentoButton.tsx`, `components/gestione/`, `lib/gestione.ts` | Il foglio "Il mio appuntamento" in home, i suoi bottoni (hero, barra, footer) e lo spazio del cliente (`SpazioCliente.tsx`) |
 | `lib/prenotazioni/cliente.ts`, `riconoscimento.ts`, `passkey.ts` | Firma del cookie (chiave derivata da `AUTH_SECRET`), controllo dell'Origin, passkey con @simplewebauthn |
 | `lib/prenotazioni/gestione.ts`, `gestione-dati.ts`, `codice.ts`, `calendario.ts` | Regole della gestione (termine, limite), credenziali della v1, file .ics |
-| `components/agenda/` | Agenda interattiva: navigazione fra i giorni, calendario, fogli per creare, modificare, disdire e bloccare |
+| `components/agenda/` | Agenda interattiva: navigazione fra i giorni, calendario, fogli per creare, modificare, disdire e bloccare; vista Settimana; Chiusure e ferie |
+| `lib/chiusure.ts`, `lib/prenotazioni/chiusure.ts`, `app/api/chiusure/`, `components/NotiziaChiusura.tsx` | Chiusure e ferie: regola unica `chiusoIl`, database, API pubblica, notizia in home (bible §6.17) |
 | `auth.ts`, `auth.config.ts`, `middleware.ts` | Accesso all'agenda |
 
 ## Prima di prendere appuntamenti veri

@@ -369,6 +369,16 @@ async function giro(playwright, motore, [larghezza, altezza]) {
       await p.locator("dialog[open]").waitFor();
       await attendi(700);
       await vista(p, motore, misura, "agenda-calendario", { intera: false });
+      await p.keyboard.press("Escape");
+      // Settimana e "Chiusure e ferie" (con il foglio della nuova chiusura).
+      await p.goto(`${URL_BASE}/admin/settimana${dataPrenotata ? `?data=${dataPrenotata}` : ""}`, { waitUntil: "networkidle" });
+      await vista(p, motore, misura, "agenda-settimana", { barra: true });
+      await p.goto(`${URL_BASE}/admin/chiusure`, { waitUntil: "networkidle" });
+      await vista(p, motore, misura, "agenda-chiusure", { barra: true });
+      await p.locator("button", { hasText: "Aggiungi chiusura" }).click();
+      await p.locator("dialog[open]").waitFor();
+      await attendi(700);
+      await vista(p, motore, misura, "agenda-chiusura-nuova", { intera: false });
     }, motore, misura, "agenda");
   }
 
