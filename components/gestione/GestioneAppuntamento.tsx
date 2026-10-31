@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Rotella } from "@/components/agenda/FoglioInBasso";
-import { giorniProposti, GrigliaOrari, StrisciaGiorni } from "@/components/prenotazione/GiorniEOrari";
+import { AvvisoChiusureVicine, GiornoChiuso, giorniProposti, GrigliaOrari, StrisciaGiorni } from "@/components/prenotazione/GiorniEOrari";
+import { useChiusure } from "@/lib/chiusure-sito";
 import { giornoLungo, SalvaAppuntamento } from "@/components/prenotazione/SalvaAppuntamento";
 import type { BookingSlot } from "@/lib/prenotazioni/tipi";
 import { oraDiRoma } from "@/lib/orari";
@@ -48,6 +49,8 @@ type Orari = {
   liberi: number;
   proprio: string | null;
   prossimiGiorni?: { data: string; liberi: number }[];
+  /** Giorno chiuso per ferie (dal server). */
+  chiusura?: { motivo?: string };
 };
 
 type Schermata = "riepilogo" | "disdici" | "disdetto" | "spostato" | "sparito";
@@ -413,7 +416,9 @@ function SceltaOrario({
   onSparito: () => void;
   onBloccato: (messaggio: string) => void;
 }) {
-  const [giorni] = useState(giorniProposti);
+  // Ferie di Francesco comprese (GET /api/chiusure): quei giorni sono spenti.
+  const { chiusure } = useChiusure();
+  const giorni = useMemo(() => giorniProposti(chiusure), [chiusure]);
   const primoAperto = giorni.find((g) => g.iso === app.data && g.aperto)?.iso ?? giorni.find((g) => g.aperto)?.iso ?? giorni[0].iso;
   const [data, setData] = useState("");
   const [orari, setOrari] = useState<Orari | null>(null);
@@ -484,6 +489,7 @@ function SceltaOrario({
       </p>
 
       <div className="mt-6">
+        <AvvisoChiusureVicine chiusure={chiusure} />
         <StrisciaGiorni giorni={giorni} scelto={data} onScegli={(g) => void caricaOrari(g)} className="-mx-5 overflow-x-auto px-5 md:-mx-10 md:px-10" />
       </div>
 
@@ -496,7 +502,9 @@ function SceltaOrario({
           <p className="info flex items-center gap-3 py-8 text-steel" role="status">
             <Rotella /> Cerco gli orari…
           </p>
-        ) : !orari ? null : !orari.aperto ? (
+        ) : !orari ? null : orari.chiusura ? (
+          <GiornoChiuso motivo={orari.chiusura.motivo} />
+        ) : !orari.aperto ? (
           <p className="py-8 text-steel">Il {orari.giornoNome.toLowerCase()} il salone è chiuso. Scegli un altro giorno.</p>
         ) : (
           <>

@@ -10,7 +10,8 @@ import type { RispostaSlot, ServiceOption } from "@/lib/prenotazioni/tipi";
 import { CONSERVAZIONE_MESI, listino, MARGINE_GESTIONE_MINUTI, operatori, salone } from "@/lib/salone";
 import { cn, formatoPrezzo } from "@/lib/utils";
 import { ArrowRight } from "./icons";
-import { GIORNI_BREVI, giorniProposti, GrigliaOrari, StrisciaGiorni } from "./prenotazione/GiorniEOrari";
+import { AvvisoChiusureVicine, GIORNI_BREVI, GiornoChiuso, giorniProposti, GrigliaOrari, StrisciaGiorni } from "./prenotazione/GiorniEOrari";
+import { useChiusure } from "@/lib/chiusure-sito";
 import { AttivaFaceId } from "./gestione/AttivaFaceId";
 import { SalvaAppuntamento } from "./prenotazione/SalvaAppuntamento";
 import { aggiornaMiei } from "@/lib/gestione";
@@ -83,8 +84,10 @@ export function BookingWidget() {
   const titoloId = useId();
   const lenis = useLenis();
 
-  // Giorni proposti: da oggi (ora di Roma) in avanti, chiusi compresi (spenti).
-  const giorni = useMemo(() => giorniProposti(), []);
+  // Giorni proposti: da oggi (ora di Roma) in avanti, chiusi compresi
+  // (spenti), ferie di Francesco comprese (GET /api/chiusure).
+  const { chiusure } = useChiusure();
+  const giorni = useMemo(() => giorniProposti(chiusure), [chiusure]);
 
   const chiudi = useCallback(() => setAperto(false), []);
 
@@ -396,6 +399,7 @@ export function BookingWidget() {
                 </ul>
               ) : passo === 1 ? (
                 <div>
+                  <AvvisoChiusureVicine chiusure={chiusure} />
                   <StrisciaGiorni giorni={giorni} scelto={data} onScegli={scegliGiorno} />
 
                   <div className="mt-6 flex items-baseline justify-between gap-4">
@@ -411,7 +415,9 @@ export function BookingWidget() {
                         <Rotella />
                         Cerco gli orari…
                       </p>
-                    ) : !slot ? null : !slot.aperto ? (
+                    ) : !slot ? null : slot.chiusura ? (
+                      <GiornoChiuso motivo={slot.chiusura.motivo} />
+                    ) : !slot.aperto ? (
                       <p className="py-8 text-steel">
                         Il {slot.giornoNome.toLowerCase()} il salone è chiuso. Scegli un altro giorno.
                       </p>

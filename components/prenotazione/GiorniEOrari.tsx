@@ -1,5 +1,6 @@
 "use client";
 
+import { avvisoGiornoChiuso, chiusoIl, periodoParlato, type ChiusuraPubblica } from "@/lib/chiusure";
 import { giornoDellaData, oraDiRoma, sommaGiorni, turniDellaGiornata } from "@/lib/orari";
 import type { BookingSlot } from "@/lib/prenotazioni/tipi";
 import { GIORNI_PRENOTABILI, PREAVVISO_MINUTI, salone } from "@/lib/salone";
@@ -23,24 +24,55 @@ export type GiornoProposto = {
   giorno: number;
   mese: string;
   oggi: boolean;
+  /** Chiuso per una chiusura di Francesco (ferie): spento e scritto "Chiuso". */
+  chiusura?: { motivo?: string };
 };
 
 /** Da oggi (ora di Roma) a GIORNI_PRENOTABILI in avanti. I giorni di chiusura
-    restano nella lista, spenti: vedere "LUN CHIUSO" spiega più di un buco. */
-export function giorniProposti(): GiornoProposto[] {
+    restano nella lista, spenti: vedere "LUN CHIUSO" spiega più di un buco.
+    Le chiusure (lib/chiusure-sito.ts) spengono anche i giorni di ferie; il
+    server comunque li rifiuta da sé. */
+export function giorniProposti(chiusure: readonly ChiusuraPubblica[] = []): GiornoProposto[] {
   const oggi = oraDiRoma().data;
   return Array.from({ length: GIORNI_PRENOTABILI + 1 }, (_, i) => {
     const iso = sommaGiorni(oggi, i);
     const settimana = giornoDellaData(iso);
+    const chiusa = chiusoIl(iso, chiusure);
     return {
       iso,
       settimana,
-      aperto: turniDellaGiornata(iso).length > 0,
+      aperto: !chiusa && turniDellaGiornata(iso).length > 0,
       giorno: Number(iso.slice(8, 10)),
       mese: MESI[Number(iso.slice(5, 7)) - 1],
       oggi: i === 0,
+      ...(chiusa ? { chiusura: { ...(chiusa.motivo ? { motivo: chiusa.motivo } : {}) } } : {}),
     };
   });
+}
+
+/** Riga sopra la striscia: chiusure che iniziano nei prossimi 14 giorni (o in
+    corso), ben visibile. Il giorno chiuso, se lo si sceglie, lo dice anche
+    la griglia. */
+export function AvvisoChiusureVicine({ chiusure }: { chiusure: readonly ChiusuraPubblica[] }) {
+  const oggi = oraDiRoma().data;
+  const vicine = chiusure.filter((c) => c.al >= oggi && c.dal <= sommaGiorni(oggi, 14));
+  if (vicine.length === 0) return null;
+  return (
+    <div role="note" className="mb-4 border-2 border-ink px-4 py-3">
+      <p className="eyebrow">Avviso</p>
+      {vicine.map((c) => (
+        <p key={c.id} className="mt-1 text-base">
+          Il salone è chiuso {periodoParlato(c)}
+          {c.motivo ? ` (${c.motivo})` : ""}.
+        </p>
+      ))}
+    </div>
+  );
+}
+
+/** Al posto della griglia, il giorno chiuso spiegato. */
+export function GiornoChiuso({ motivo }: { motivo?: string }) {
+  return <p className="py-8 text-base">{avvisoGiornoChiuso({ motivo })}</p>;
 }
 
 export function StrisciaGiorni({
@@ -65,6 +97,7 @@ export function StrisciaGiorni({
               disabled={!g.aperto}
               onClick={() => onScegli(g.iso)}
               aria-pressed={scelto === g.iso}
+              aria-label={g.chiusura ? `${GIORNI_BREVI[g.settimana]} ${g.giorno} ${g.mese}, chiuso${g.chiusura.motivo ? ` (${g.chiusura.motivo})` : ""}` : undefined}
               className={cn(
                 "flex min-h-[4.5rem] w-16 cursor-pointer flex-col items-center justify-center border px-1",
                 scelto === g.iso ? "border-ink bg-ink text-paper" : "border-ink/15 hover:border-ink",
@@ -73,7 +106,8 @@ export function StrisciaGiorni({
             >
               <span className="info text-[0.625rem] opacity-70">{g.oggi ? "Oggi" : GIORNI_BREVI[g.settimana]}</span>
               <span className="mt-1 text-lg font-bold leading-none tabular-nums">{g.giorno}</span>
-              <span className="info text-[0.625rem] opacity-70">{g.mese}</span>
+              {/* Ferie: al posto del mese, "Chiuso" (il motivo nell'etichetta). */}
+              <span className="info text-[0.625rem] opacity-70">{g.chiusura ? "Chiuso" : g.mese}</span>
             </button>
           </li>
         ))}

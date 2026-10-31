@@ -6,6 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { Portfolio } from "@/components/Portfolio";
 import { PriceList } from "@/components/PriceList";
 import { FogliDifferiti } from "@/components/FogliDifferiti";
+import { NotiziaChiusura } from "@/components/NotiziaChiusura";
 import { RevealOnScroll } from "@/components/RevealOnScroll";
 import { SmoothScroll } from "@/components/SmoothScroll";
 import { orari, salone } from "@/lib/salone";
@@ -75,6 +76,8 @@ export default function Home() {
       {/* Foglio di prenotazione e "Il mio appuntamento": montati una volta, li
           aprono i loro bottoni. Codice scaricato dopo la pagina (FogliDifferiti). */}
       <FogliDifferiti />
+      {/* Ferie e chiusure decise da Francesco: notizia in alto finché durano. */}
+      <NotiziaChiusura />
     </SmoothScroll>
   );
 }

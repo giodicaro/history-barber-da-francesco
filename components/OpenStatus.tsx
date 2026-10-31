@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { useChiusure } from "@/lib/chiusure-sito";
 import { calcolaStato, oraDiRoma, turniLeggibili } from "@/lib/orari";
 import { orari, ordineSettimana } from "@/lib/salone";
 import { cn } from "@/lib/utils";
@@ -14,13 +15,15 @@ function ogniMezzoMinuto(avvisa: () => void) {
   return () => window.clearInterval(id);
 }
 
-// Stringa e non oggetto: useSyncExternalStore confronta per identità, e un
-// oggetto nuovo a ogni lettura farebbe ridisegnare all'infinito.
-const statoSerializzato = () => JSON.stringify(calcolaStato());
 const nessunValore = () => null;
 
 export function OpenStatus({ className }: { className?: string }) {
-  const grezzo = useSyncExternalStore(ogniMezzoMinuto, statoSerializzato, nessunValore);
+  // Con le ferie decise da Francesco (GET /api/chiusure): oggi chiuso e
+  // "Riapre" calcolato saltando i giorni chiusi. Stringa e non oggetto:
+  // useSyncExternalStore confronta per identità, e un oggetto nuovo a ogni
+  // lettura farebbe ridisegnare all'infinito.
+  const { chiusure } = useChiusure();
+  const grezzo = useSyncExternalStore(ogniMezzoMinuto, () => JSON.stringify(calcolaStato(new Date(), chiusure)), nessunValore);
   const stato = grezzo ? (JSON.parse(grezzo) as ReturnType<typeof calcolaStato>) : null;
 
   return (
@@ -32,7 +35,7 @@ export function OpenStatus({ className }: { className?: string }) {
               aria-hidden
               className={cn("size-2 rounded-full", stato.aperto ? "bg-current" : "border border-current")}
             />
-            {stato.aperto ? "Aperto ora" : "Chiuso ora"}
+            {stato.aperto ? "Aperto ora" : stato.ferie !== undefined ? "Chiuso per ferie" : "Chiuso ora"}
           </span>
           <br />
           <span className="opacity-70">

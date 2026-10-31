@@ -181,6 +181,15 @@ html.lenis body {
    --ease-crisp): linee della griglia in 1,6 s (0,08 s l'una dall'altra), foto
    da 1,18 a 1 in 2,4 s, righe del titolo da 0,25 s (0,12 s l'una), blocchi da
    0,75 s (0,08 s l'uno). L'ordine è in --i, scritto in Hero.tsx. */
+/* Notizia della chiusura in home (components/NotiziaChiusura.tsx): scende
+   di poco quando arriva. */
+@keyframes avviso-entra {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
 @keyframes hero-linea {
   from {
     transform: scaleY(0);
