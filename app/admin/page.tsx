@@ -5,7 +5,9 @@ import { auth, signOut } from "@/auth";
 import { Agenda } from "@/components/agenda/Agenda";
 import { Notifiche, PromemoriaNotifiche } from "@/components/agenda/Notifiche";
 import { oraDiRoma } from "@/lib/orari";
-import { eliminaScadute, tipoArchivio, vociDelGiorno } from "@/lib/prenotazioni/archivio";
+import { NavAdmin } from "@/components/agenda/NavAdmin";
+import { disdetteDellIntervallo, eliminaScadute, tipoArchivio, vociDelGiorno } from "@/lib/prenotazioni/archivio";
+import { chiusuraDelGiorno } from "@/lib/prenotazioni/chiusure";
 import { chiavePubblica } from "@/lib/prenotazioni/notifiche";
 
 /* Agenda del salone, pensata per il telefono di Francesco e per un tablet
@@ -39,7 +41,11 @@ export default async function PaginaAgenda(props: PageProps<"/admin">) {
       ? richiesta
       : adesso.data;
 
-  const voci = await vociDelGiorno(data);
+  const [voci, chiusura, disdette] = await Promise.all([
+    vociDelGiorno(data),
+    chiusuraDelGiorno(data),
+    disdetteDellIntervallo(data, data),
+  ]);
 
   // Pulizia dei dati oltre il periodo di conservazione dell'informativa
   // privacy, dopo aver mostrato la pagina.
@@ -49,6 +55,7 @@ export default async function PaginaAgenda(props: PageProps<"/admin">) {
     <main className="min-h-svh bg-paper pb-[env(safe-area-inset-bottom)] text-ink">
       {/* Da lg l'agenda si allarga: testata e timeline affiancate (Agenda.tsx). */}
       <div className="shell max-w-3xl py-6 md:py-10 lg:max-w-6xl">
+        <NavAdmin attiva="giorno" data={data === adesso.data ? undefined : data} />
         <Agenda
           data={data}
           oggi={adesso.data}
@@ -56,6 +63,8 @@ export default async function PaginaAgenda(props: PageProps<"/admin">) {
           voci={voci}
           archivio={tipoArchivio}
           promemoria={<PromemoriaNotifiche chiave={chiavePubblica()} />}
+          chiusura={chiusura}
+          disdette={disdette}
         />
         {/* Le notifiche in fondo: la prima cosa che si vede è la giornata. */}
         <Notifiche chiave={chiavePubblica()} />

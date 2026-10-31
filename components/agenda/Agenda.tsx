@@ -12,7 +12,8 @@ import {
   turniDellaData,
 } from "@/lib/prenotazioni/agenda";
 import type { TipoArchivio } from "@/lib/prenotazioni/db";
-import type { VoceAgenda } from "@/lib/prenotazioni/tipi";
+import type { Disdetta, VoceAgenda } from "@/lib/prenotazioni/tipi";
+import { dataBreve } from "@/lib/chiusure";
 import { orari, salone } from "@/lib/salone";
 import { cn, formatoPrezzo } from "@/lib/utils";
 import { Calendario } from "./Calendario";
@@ -47,6 +48,8 @@ export function Agenda({
   voci,
   archivio,
   promemoria,
+  chiusura,
+  disdette = [],
 }: {
   data: string;
   oggi: string;
@@ -56,6 +59,11 @@ export function Agenda({
   archivio: TipoArchivio;
   /** In testata, accanto al titoletto: la campanella delle notifiche spente. */
   promemoria?: ReactNode;
+  /** Giorno chiuso per una chiusura di Francesco (ferie): banner, e gli
+      appuntamenti rimasti sono "da gestire". */
+  chiusura?: { motivo?: string } | null;
+  /** Appuntamenti disdetti del giorno: attenuati, non occupano la poltrona. */
+  disdette?: Disdetta[];
 }) {
   const router = useRouter();
   const [navigando, avviaNavigazione] = useTransition();
@@ -180,15 +188,18 @@ export function Agenda({
             />
           </div>
 
-          {dataMostrata !== oggi && (
-            <a
-              href="/admin"
-              onClick={clicLink(oggi)}
-              className="eyebrow mt-3 inline-flex min-h-11 cursor-pointer items-center text-steel underline-offset-4 hover:text-ink hover:underline"
-            >
-              ← Torna a oggi
-            </a>
-          )}
+          {/* "Oggi" sempre al suo posto: si torna con un tocco da qualsiasi giorno. */}
+          <a
+            href="/admin"
+            onClick={clicLink(oggi)}
+            aria-current={dataMostrata === oggi ? "date" : undefined}
+            className={cn(
+              "eyebrow mt-3 inline-flex min-h-11 cursor-pointer items-center gap-2 border px-4 underline-offset-4",
+              dataMostrata === oggi ? "border-ink/15 text-steel" : "border-ink hover:bg-ink hover:text-paper",
+            )}
+          >
+            Oggi
+          </a>
 
           <dl
             className={cn(
@@ -231,7 +242,24 @@ export function Agenda({
               </div>
             )}
 
-            <ol className="mt-6 lg:mt-0">
+            {/* Chiusura decisa da Francesco (ferie): in evidenza, prima di tutto. */}
+            {chiusura && (
+              <div role="note" className="mt-6 border-2 border-ink bg-ink px-4 py-4 text-paper lg:mt-0">
+                <p className="eyebrow text-smoke">Giorno chiuso</p>
+                <p className="mt-1 text-2xl font-extrabold tracking-[-0.02em]">
+                  Chiuso per {chiusura.motivo ? chiusura.motivo.toLowerCase() : "ferie"}
+                </p>
+                <p className="mt-1 text-base text-smoke">
+                  Il sito non prende prenotazioni in questo giorno.
+                  {voci.some((v) => v.tipo === "appuntamento") && " Gli appuntamenti qui sotto sono da gestire."}
+                </p>
+                <a href="/admin/chiusure" className="eyebrow mt-3 inline-flex min-h-11 items-center underline underline-offset-4">
+                  Chiusure e ferie →
+                </a>
+              </div>
+            )}
+
+            <ol className={cn("mt-6", !chiusura && "lg:mt-0")}>
               {righe.map((riga) => {
                 if (riga.tipo === "pausa") {
                   return (
@@ -284,13 +312,14 @@ export function Agenda({
                 const v = riga.voce;
                 const durata = v.fine - v.inizio;
                 const inCorso = eOggi && adesso >= v.inizio && adesso < v.fine;
+                const telefono = v.tipo === "appuntamento" ? v.cliente.telefono : undefined;
                 return (
-                  <li key={v.id} className="border-t border-ink/10 py-1">
+                  <li key={v.id} className="flex items-stretch gap-2 border-t border-ink/10 py-1">
                     <button
                       type="button"
                       onClick={() => setFoglio({ tipo: "voce", id: v.id })}
                       style={{ minHeight: `${Math.max(3.5, (REM_MEZZORA * durata) / MINUTI_RIGA) - 0.5}rem` }}
-                      className="grid w-full cursor-pointer grid-cols-[4.5rem_minmax(0,1fr)] items-stretch text-left md:grid-cols-[6rem_minmax(0,1fr)]"
+                      className="grid min-w-0 flex-auto cursor-pointer grid-cols-[4.5rem_minmax(0,1fr)] items-stretch text-left md:grid-cols-[6rem_minmax(0,1fr)]"
                     >
                       <span className="info flex flex-col justify-between py-2 tabular-nums text-ink">
                         <span>{formatoOra(v.inizio)}</span>
@@ -309,7 +338,19 @@ export function Agenda({
                             {v.servizioNome} · {durataLeggibile(durata)}
                             {v.cliente.note && " · con nota"}
                           </span>
-                          {inCorso && <span className="info mt-2 w-fit bg-paper px-2 py-0.5 text-ink">In corso</span>}
+                          {telefono && <span className="info mt-1 tabular-nums text-smoke">{telefono}</span>}
+                          {/* Stato: sempre a parole, non solo con il colore. */}
+                          {(inCorso || v.spostatoDa || chiusura) && (
+                            <span className="mt-2 flex flex-wrap gap-1.5">
+                              {inCorso && <span className="info w-fit bg-paper px-2 py-0.5 text-ink">In corso</span>}
+                              {chiusura && <span className="info w-fit bg-paper px-2 py-0.5 font-bold text-ink">Da gestire · giorno chiuso</span>}
+                              {v.spostatoDa && (
+                                <span className="info w-fit border border-paper/60 px-2 py-0.5">
+                                  Spostato · prima {dataBreve(v.spostatoDa.slice(0, 10)).slice(0, 5)} {v.spostatoDa.slice(11)}
+                                </span>
+                              )}
+                            </span>
+                          )}
                         </span>
                       ) : (
                         <span
@@ -325,10 +366,24 @@ export function Agenda({
                         </span>
                       )}
                     </button>
+                    {/* Telefono: un tocco e chiama (fuori dal bottone della scheda). */}
+                    {telefono && (
+                      <a
+                        href={`tel:${telefono.replace(/\s/g, "")}`}
+                        aria-label={`Chiama ${v.tipo === "appuntamento" ? v.cliente.nome : ""} al ${telefono}`}
+                        className="flex w-11 shrink-0 items-center justify-center border border-ink transition-colors duration-150 hover:bg-ink hover:text-paper"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+                          <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" />
+                        </svg>
+                      </a>
+                    )}
                   </li>
                 );
               })}
             </ol>
+
+            <Disdetti disdette={disdette} />
           </div>
         </section>
       </div>
@@ -381,6 +436,45 @@ function FrecciaGiorno({
         <path d={verso < 0 ? "M15 5l-7 7 7 7" : "M9 5l7 7-7 7"} />
       </svg>
     </a>
+  );
+}
+
+/* Appuntamenti disdetti del giorno: attenuati e barrati, non occupano la
+   poltrona (gli orari sopra sono già liberi). Un tocco li nasconde. */
+function Disdetti({ disdette }: { disdette: Disdetta[] }) {
+  const [visibili, setVisibili] = useState(true);
+  if (disdette.length === 0) return null;
+  return (
+    <section aria-labelledby="titolo-disdetti" className="mt-8 border-t border-ink/15 pt-4">
+      <div className="flex items-center justify-between gap-3">
+        <h2 id="titolo-disdetti" className="eyebrow text-steel">
+          Disdetti ({disdette.length})
+        </h2>
+        <button
+          type="button"
+          onClick={() => setVisibili((v) => !v)}
+          aria-expanded={visibili}
+          className="eyebrow inline-flex min-h-11 cursor-pointer items-center text-steel underline-offset-4 hover:text-ink hover:underline"
+        >
+          {visibili ? "Nascondi" : "Mostra"}
+        </button>
+      </div>
+      {visibili && (
+        <ul className="mt-2 space-y-2">
+          {disdette.map((d) => (
+            <li key={d.id} className="grid grid-cols-[4.5rem_minmax(0,1fr)] text-steel opacity-70 md:grid-cols-[6rem_minmax(0,1fr)]">
+              <span className="info py-2 tabular-nums line-through">{formatoOra(d.inizio)}</span>
+              <span className="border-l-4 border-dashed border-ink/30 px-4 py-2">
+                <span className="block text-base font-bold line-through">{d.cliente.nome}</span>
+                <span className="block text-sm">
+                  {d.servizioNome} · <span className="font-bold">Disdetto</span> {d.da === "cliente" ? "dal cliente" : "dal salone"}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
