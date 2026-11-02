@@ -2,9 +2,11 @@ import { after } from "next/server";
 import { formatoOra, giornoDellaData, oraDiRoma, turniDellaGiornata } from "@/lib/orari";
 import { avvisaTitolare } from "@/lib/prenotazioni/avvisi";
 import { notificaPrenotazione } from "@/lib/prenotazioni/notifiche";
-import { ConflittoOrario, occupatiDelGiorno, salvaPrenotazione } from "@/lib/prenotazioni/archivio";
+import { AppuntamentoGiaAttivo, ConflittoOrario, occupatiDelGiorno, salvaPrenotazione, telefonoConAppuntamentoAttivo } from "@/lib/prenotazioni/archivio";
 import { randomUUID } from "node:crypto";
 import { clienteDaRichiesta, cookieCliente, origineValida, riconoscimentoAttivo } from "@/lib/prenotazioni/riconoscimento";
+import { avvisoGiornoChiuso } from "@/lib/chiusure";
+import { chiusuraDelGiorno } from "@/lib/prenotazioni/chiusure";
 import { generaSlot } from "@/lib/prenotazioni/slot";
 import type { RispostaSlot } from "@/lib/prenotazioni/tipi";
 import { analizzaRichiesta, servizioPerId, servizioPrenotabile } from "@/lib/prenotazioni/validazione";
@@ -15,12 +17,21 @@ import { listino, operatori, orari } from "@/lib/salone";
    GET  /api/bookings?date=YYYY-MM-DD&servizio=<id>[&operatore=<id>]
         → orari proposti per quel giorno e quel servizio.
    POST /api/bookings
-        → salva l'appuntamento, avvisa il titolare e (se il cliente non ha
+        → salva l'appuntamento (uno solo attivo per numero, 409 altrimenti),
+          avvisa il titolare e (se il cliente non ha
           spuntato "Non è il mio telefono") scrive il cookie hb_cliente che
           lo fa ritrovare in "Il mio appuntamento": vedi
           lib/prenotazioni/riconoscimento.ts.
 
    Le Route Handler non sono in cache: ogni richiesta rilegge l'agenda. */
+
+/* Niente data e ora dell'appuntamento esistente: chiunque può scrivere il
+   numero di un altro. */
+const GIA_ATTIVO = {
+  errore:
+    "Risulta già un appuntamento attivo per questo numero. Puoi disdirlo da 'Gestisci il tuo appuntamento' e poi prenotare di nuovo, oppure contattare il salone.",
+  codice: "gia-attivo",
+};
 
 const primoPrenotabile = () =>
   listino.flatMap((g) => g.servizi).find(servizioPrenotabile)!;
@@ -52,17 +63,20 @@ export async function GET(request: Request) {
   }
 
   const giorno = giornoDellaData(data);
-  const occupati = await occupatiDelGiorno(data, operatoreId);
-  const slot = generaSlot({ data, giorno, durata: servizio.durata, occupati, adesso });
+  // Ferie e chiusure decise da Francesco: nessun orario quel giorno.
+  const chiusura = await chiusuraDelGiorno(data);
+  const occupati = chiusura ? [] : await occupatiDelGiorno(data, operatoreId);
+  const slot = chiusura ? [] : generaSlot({ data, giorno, durata: servizio.durata, occupati, adesso });
 
   const risposta: RispostaSlot = {
     data,
     giorno,
     giornoNome: orari[giorno].giorno,
-    aperto: turniDellaGiornata(data).length > 0,
+    aperto: !chiusura && turniDellaGiornata(data).length > 0,
     servizio: { id: servizio.id, nome: servizio.nome, durata: servizio.durata, prezzo: servizio.prezzo },
     slot,
     liberi: slot.filter((s) => s.disponibile).length,
+    ...(chiusura ? { chiusura: { ...(chiusura.motivo ? { motivo: chiusura.motivo } : {}) } } : {}),
   };
   return json(risposta);
 }
@@ -97,6 +111,11 @@ export async function POST(request: Request) {
   }
 
   const adesso = oraDiRoma();
+  const telefonoInviato = (corpo as { cliente?: { telefono?: unknown } })?.cliente?.telefono;
+  if (typeof telefonoInviato === "string" && (await telefonoConAppuntamentoAttivo(telefonoInviato, adesso))) {
+    return json(GIA_ATTIVO, 409);
+  }
+
   const operatoreId =
     typeof (corpo as { operatoreId?: unknown })?.operatoreId === "string"
       ? (corpo as { operatoreId: string }).operatoreId
@@ -106,6 +125,10 @@ export async function POST(request: Request) {
   const occupati = /^\d{4}-\d{2}-\d{2}$/.test(dataRichiesta)
     ? await occupatiDelGiorno(dataRichiesta, operatoreId)
     : [];
+
+  // Giorno chiuso (ferie): rifiutato anche se qualcuno aggira il sito.
+  const chiusura = /^\d{4}-\d{2}-\d{2}$/.test(dataRichiesta) ? await chiusuraDelGiorno(dataRichiesta) : null;
+  if (chiusura) return json({ errore: avvisoGiornoChiuso(chiusura), campi: { data: avvisoGiornoChiuso(chiusura) } }, 400);
 
   const esito = analizzaRichiesta(corpo, { adesso, occupati });
   if (!esito.ok) return json({ errore: "Dati non validi", campi: esito.errori }, 400);
@@ -118,7 +141,7 @@ export async function POST(request: Request) {
     // server, e solo per richieste partite da questo sito.
     const ricorda = (corpo as { ricorda?: unknown })?.ricorda !== false && riconoscimentoAttivo() && origineValida(request);
     const clienteId = ricorda ? (clienteDaRichiesta(request) ?? randomUUID()) : null;
-    const prenotazione = await salvaPrenotazione(esito.dati, clienteId ? { clienteId } : {});
+    const prenotazione = await salvaPrenotazione(esito.dati, adesso, clienteId ? { clienteId } : {});
     // L'avviso parte DOPO aver risposto al cliente: "after" tiene viva la
     // funzione quel tanto che basta, senza far aspettare chi ha prenotato.
     // Due canali in parallelo: Telegram e la notifica sul telefono di chi
@@ -148,6 +171,7 @@ export async function POST(request: Request) {
     if (cookie) risposta.headers.append("Set-Cookie", cookie);
     return risposta;
   } catch (e) {
+    if (e instanceof AppuntamentoGiaAttivo) return json(GIA_ATTIVO, 409);
     if (e instanceof ConflittoOrario) {
       return json({ errore: "Qualcuno ha appena preso questo orario. Scegline un altro." }, 409);
     }

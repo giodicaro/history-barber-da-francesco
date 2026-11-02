@@ -45,6 +45,8 @@ export interface RispostaSlot {
   slot: BookingSlot[];
   /** Quanti slot restano liberi: il widget ci scrive "ultimi posti". */
   liberi: number;
+  /** Giorno chiuso per una chiusura decisa da Francesco (ferie, ponte…). */
+  chiusura?: { motivo?: string };
 }
 
 /** Cliente come lo registra l'agenda. Il telefono manca solo negli
@@ -73,6 +75,23 @@ export interface Prenotazione {
   origine?: string;
   /** ISO 8601 UTC. */
   creataIl: string;
+  /** Spostato: giorno e ora di prima, "YYYY-MM-DD HH:MM". */
+  spostatoDa?: string;
+}
+
+/** Appuntamento disdetto: non occupa più la poltrona, l'agenda lo mostra
+    attenuato (tabella disdette). */
+export interface Disdetta {
+  id: string;
+  data: string;
+  inizio: number;
+  fine: number;
+  servizioNome: string;
+  prezzo: number;
+  cliente: { nome: string; telefono?: string };
+  /** Chi l'ha disdetto: il cliente online o il salone dall'agenda. */
+  da: "cliente" | "salone";
+  disdettaIl: string;
 }
 
 /** Fascia in cui la poltrona non si prenota: pausa, commissione, ferie. */

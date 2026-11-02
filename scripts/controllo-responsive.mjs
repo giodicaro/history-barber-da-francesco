@@ -305,12 +305,12 @@ async function giro(playwright, motore, [larghezza, altezza]) {
       await attendi(500);
       const campi = p.locator(`${dialogo} input:not([type=checkbox])`);
       await campi.nth(0).fill("Prova Responsive");
-      await campi.nth(1).fill("347 000 4321");
+      await campi.nth(1).fill(`347 ${String(Date.now()).slice(-7)}`);
       await vista(p, motore, misura, "widget-3", { intera: false });
       const risposta = p.waitForResponse((r) => r.url().endsWith("/api/bookings") && r.request().method() === "POST");
       await p.locator(`${dialogo} button`, { hasText: "Conferma prenotazione" }).click();
       dataPrenotata = (await (await risposta).json()).prenotazione?.data ?? null;
-      await p.locator(dialogo).getByText("Per spostare o disdire").waitFor();
+      await p.locator(dialogo).getByText("Per disdire o cambiare orario").waitFor();
       await attendi(700);
       await vista(p, motore, misura, "widget-conferma", { intera: false });
       await p.keyboard.press("Escape");
@@ -321,12 +321,12 @@ async function giro(playwright, motore, [larghezza, altezza]) {
   if (GRUPPI.includes("mio") && dataPrenotata) {
     await prova(async () => {
       await p.locator('[data-mio-appuntamento="hero"]').click();
-      await p.locator(dialogo).getByText("Scegli un altro orario").waitFor();
+      await p.locator(dialogo).getByText("Vuoi cambiare orario?").waitFor();
       await attendi(900);
       await vista(p, motore, misura, "mio-riconosciuto", { intera: false });
       await p.keyboard.press("Escape");
       await p.goto(`${URL_BASE}/appuntamento`, { waitUntil: "networkidle" });
-      await p.getByText("Scegli un altro orario").waitFor();
+      await p.getByText("Vuoi cambiare orario?").waitFor();
       await attendi(600);
       await vista(p, motore, misura, "mio-pagina", { barra: true });
     }, motore, misura, "mio-riconosciuto");
@@ -369,6 +369,16 @@ async function giro(playwright, motore, [larghezza, altezza]) {
       await p.locator("dialog[open]").waitFor();
       await attendi(700);
       await vista(p, motore, misura, "agenda-calendario", { intera: false });
+      await p.keyboard.press("Escape");
+      // Settimana e "Chiusure e ferie" (con il foglio della nuova chiusura).
+      await p.goto(`${URL_BASE}/admin/settimana${dataPrenotata ? `?data=${dataPrenotata}` : ""}`, { waitUntil: "networkidle" });
+      await vista(p, motore, misura, "agenda-settimana", { barra: true });
+      await p.goto(`${URL_BASE}/admin/chiusure`, { waitUntil: "networkidle" });
+      await vista(p, motore, misura, "agenda-chiusure", { barra: true });
+      await p.locator("button", { hasText: "Aggiungi chiusura" }).click();
+      await p.locator("dialog[open]").waitFor();
+      await attendi(700);
+      await vista(p, motore, misura, "agenda-chiusura-nuova", { intera: false });
     }, motore, misura, "agenda");
   }
 

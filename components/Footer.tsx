@@ -3,6 +3,7 @@ import { BookButton } from "./BookButton";
 import { MioAppuntamentoButton } from "./MioAppuntamentoButton";
 import { GridLines } from "./GridLines";
 import { Logo } from "./Logo";
+import { NotaChiusureFooter } from "./NotiziaChiusura";
 import { ArrowUpRight, InstagramGlyph } from "./icons";
 import { OpenStatus, OrariTable } from "./OpenStatus";
 import { SectionLink } from "./SectionLink";
@@ -67,6 +68,8 @@ export function Footer() {
             <div className="mt-4">
               <OrariTable />
             </div>
+            {/* Ferie e chiusure in vista, finché durano. */}
+            <NotaChiusureFooter />
           </div>
 
           {/* Fra md e lg a tutta riga: in un quarto di riga "Il mio appuntamento"

@@ -180,6 +180,6 @@ export async function accessoWhatsApp(id: string): Promise<EsitoAzione & { whats
   const quando = `${etichettaGiornoBreve(v.data)} alle ${formatoOra(v.inizio)}`;
   const testo =
     `Ciao ${nome}, ecco il tuo accesso al tuo appuntamento da ${salone.nomeCompleto} (${quando}). ` +
-    `Tocca il link per spostarlo o disdirlo: ${link}\nVale 48 ore e una volta sola.`;
+    `Tocca il link per disdirlo: ${link}\nVale 48 ore e una volta sola.`;
   return { ok: true, whatsapp: `https://wa.me/${v.cliente.telefono.replace(/^\+/, "")}?text=${encodeURIComponent(testo)}` };
 }

@@ -491,7 +491,8 @@ Solo "Rasatura della testa" compare su Fresha, e senza prezzo. **Tutto il resto 
 | 6.13 | Agenda (navigazione, appuntamenti, blocchi) | `app/admin/`, `components/agenda/` | ✅ Completa in locale |
 | 6.14 | App dei clienti (PWA in `/app`) | — | ❌ Eliminata il 29/10 (§1.4 punto 11) |
 | 6.15 | Lookbook personale (foto e note del taglio) | — | ❌ Eliminato il 29/10 su richiesta: restano solo sito e agenda |
-| 6.16 | "Il mio appuntamento": il cliente ritrova, sposta e disdice senza codici (v2), più link e codici della v1 ancora validi | `app/appuntamento/`, `app/api/appuntamento/`, `components/gestione/`, `components/GestioneWidget.tsx`, `components/MioAppuntamentoButton.tsx`, `lib/gestione.ts`, `lib/prenotazioni/{cliente,riconoscimento,passkey,gestione*}.ts` | 🟠 v2 completa e verificata in locale sul ramo `feature/mio-appuntamento-v2`; non in produzione, passkey non provate su iPhone vero |
+| 6.16 | "Il mio appuntamento": il cliente ritrova e disdice senza codici (v2; dal 2/11 non sposta più, §6.18), più link e codici della v1 ancora validi | `app/appuntamento/`, `app/api/appuntamento/`, `components/gestione/`, `components/GestioneWidget.tsx`, `components/MioAppuntamentoButton.tsx`, `lib/gestione.ts`, `lib/prenotazioni/{cliente,riconoscimento,passkey,gestione*}.ts` | 🟠 v2 completa e verificata in locale sul ramo `feature/mio-appuntamento-v2`; non in produzione, passkey non provate su iPhone vero |
+| 6.17 | Chiusure e ferie (agenda → sito) | `app/admin/chiusure/`, `app/admin/azioni-chiusure.ts`, `components/agenda/GestioneChiusure.tsx`, `lib/chiusure.ts`, `lib/prenotazioni/chiusure.ts`, `app/api/chiusure/`, `components/NotiziaChiusura.tsx` | 🟠 Completa e verificata in locale sul ramo `feat/chiusure`; non in produzione |
 
 **6.1 Barra fissa.**
 - **Trasparente** solo con la pagina ferma in cima alla hero (sentinella `data-cima`, `Hero.tsx:107`).
@@ -632,6 +633,41 @@ Senza `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` il messaggio finisce comunque ne
 - Da tastiera il focus attiva il riempimento.
 - `data-prenota` riporta l'origine, utile per un futuro tracciamento.
 
+**6.13 bis — Agenda ordinata (31/10/2026, ramo `feat/chiusure`).**
+- In cima a ogni pagina dell'agenda **Giorno · Settimana · Chiusure** (`components/agenda/NavAdmin.tsx`, link veri).
+- **Giorno** (`/admin`): ordine cronologico come prima; "Oggi" sempre visibile accanto a frecce e calendario; per ogni appuntamento telefono scritto e bottone da 44 px che chiama (`tel:`, fuori dalla scheda); stato sempre **a parole**: "In corso", "Spostato · prima 12/11 10:00", "Da gestire · giorno chiuso". Nel giorno chiuso un banner nero "Chiuso per …" con il link a Chiusure. Sotto la timeline i **disdetti** del giorno, barrati e attenuati, con "Nascondi / Mostra"; non occupano la poltrona.
+- **Settimana** (`/admin/settimana?data=`, `components/agenda/Settimana.tsx`, componente server): da lunedì a domenica. Da `md` griglia oraria (una colonna per giorno, schede alte quanto durano, giorni chiusi tratteggiati); sul telefono elenco giorno per giorno (una griglia a 7 colonne su 360 px non si legge). Ogni scheda porta al giorno.
+- **Dati nuovi** (`db/schema.ts`, solo aggiunte):
+  - `prenotazioni.spostato_da` ("YYYY-MM-DD HH:MM") e `spostato_il`, scritti nello stesso `update` sia dallo spostamento del cliente sia dalla modifica in agenda, quando cambiano giorno o ora;
+  - tabella **`disdette`**: la disdetta (cliente o agenda) toglie la riga da `prenotazioni` e la copia qui **nella stessa istruzione** (`with tolta as (delete … returning *) insert into disdette …`). Così lo slot si libera subito, il vincolo anti-sovrapposizione non cambia e l'agenda può mostrare i disdetti. Stessa conservazione delle prenotazioni (`eliminaScadute`). Cambia D5 della v1 qui sotto: la riga non sparisce più del tutto.
+- Stato "Confermato": tutto ciò che non è spostato, disdetto o da gestire (non c'è una colonna stato, e non serve).
+
+**6.17 Chiusure e ferie (31/10/2026, ramo `feat/chiusure`).**
+- **Cosa fa.** Francesco, da `/admin/chiusure`, aggiunge un giorno o un periodo (dal–al, inclusi) con un motivo facoltativo che vedono anche i clienti ("Ferie estive"). Vede le chiusure in arrivo e, richiudibili, quelle passate; può modificarle, spegnerle con un interruttore ed eliminarle (con conferma).
+- **Validazioni:** fine prima dell'inizio (anche subito nel modulo, Salva spento); periodo tutto nel passato; date vere. **Sovrapposizioni** (anche periodi attaccati): avviso e proposta di unirle in una sola.
+- **Conflitti:** prima di salvare o riaccendere una chiusura si cercano gli appuntamenti in quei giorni. Se ci sono, elenco (data, ora, cliente, Chiama, WhatsApp con il messaggio già pronto) e tre scelte: **Salva comunque** (restano in agenda come "da gestire"), **Annulla**, **Vai agli appuntamenti**. Mai disdette o spostamenti automatici. Ai clienti si scrive solo su WhatsApp, a mano: non c'è un sistema di messaggi automatici, e non ne è stato aggiunto uno.
+- **Dati:** tabella `chiusure` (`id`, `dal`, `al` di tipo `date`, `motivo`, `attiva`, `creata_il`, `modificata_il`, vincolo `al >= dal`). Date senza orario, confrontate come testo "YYYY-MM-DD": niente fuso né ora legale che le sposti (test a cavallo del cambio d'ora di marzo e ottobre). Altra cosa rispetto ai giorni di chiusura della settimana (`orari` in `lib/salone.ts`) e alle festività (`lib/festivi.ts`): tutti e tre rendono il giorno non prenotabile.
+- **Regola unica:** `chiusoIl(data, chiusure)` in `lib/chiusure.ts` (pura, testata in `tests/chiusure.test.mjs`) e `chiusuraDelGiorno(data)` in `lib/prenotazioni/chiusure.ts` (dal database). La usano:
+  - `GET /api/bookings` (nessun orario, `aperto: false`, `chiusura.motivo`) e `POST /api/bookings` (400 "Il salone è chiuso in questa data (Ferie estive). Scegli un altro giorno.");
+  - lo stato "Aperto ora" (`calcolaStato`, che durante le ferie dice "Chiuso per ferie" e "Riapre il 25/8 alle 08:30");
+  - la striscia dei giorni nel widget e nello spostamento (giorni spenti con "Chiuso", motivo nell'etichetta).
+- **Sul sito** (`GET /api/chiusure`: solo le attive non ancora finite, solo date e motivo, 30 secondi di cache sulla rete di Vercel; letta dal browser con `lib/chiusure-sito.ts`, la home resta statica):
+  - **notizia in home** (`components/NotiziaChiusura.tsx`): riquadro chiaro con bordo pieno, fisso sotto la barra, che sulla hero scura salta all'occhio: "Ferie estive dal 10 al 24 agosto · Il salone resta chiuso … Riapriamo martedì 25 agosto", con "Prenota un altro giorno" e "Ho capito" (chiusa, resta chiusa per quella chiusura, ricordato nel browser). Durante la chiusura dice "Oggi siamo chiusi". **Sparisce da sola** il giorno dopo la fine, perché l'API non la restituisce più;
+  - una riga fissa nel footer, sotto gli orari;
+  - un avviso nel widget e nello spostamento se una chiusura inizia nei prossimi 14 giorni.
+- **Annullare la migrazione:** `db/annulla-chiusure.sql` (a mano, dopo aver tolto il codice: lo schema altrimenti la ricrea). Applicarla: si applica da sola alla prima connessione, oppure `npm run db:init`.
+- *Verificato il 31/10* in locale (build di produzione, PGlite, Playwright a 360 e 1280 px, `scratchpad/pw/chiusure-e2e.cjs`): ordine del giorno, telefono, Spostato, disdetto attenuato e filtro; fine prima dell'inizio; conflitti con le tre scelte; slot pubblici spariti e prenotazione diretta rifiutata; spostamento rifiutato; giorno aperto prenotabile come prima; notizia in home, "Ho capito", footer; giorni spenti nel widget; banner e "da gestire" nell'agenda; settimana su telefono e computer; spegni → prenotabile, riaccendi → avviso e di nuovo bloccato; unione delle sovrapposte; eliminazione con conferma. Pagine admin nuove senza login → 307 al login.
+
+**6.18 Solo disdetta e un appuntamento attivo per numero (2/11/2026, ramo `feat/solo-disdetta`).** Cambia quanto scritto al §6.16 sullo spostamento: quella parte è storia, il codice non c'è più.
+- **Il cliente non sposta più.** In "Il mio appuntamento" restano riepilogo, Disdici (stesso termine di prima, `puoGestire`) e "Vuoi cambiare orario? Contatta il salone" con Chiama e WhatsApp. `POST /api/appuntamento` con `orari` o `sposta` risponde 403, anche per chi è proprietario dell'appuntamento e per le pagine rimaste aperte da prima. Tolti: `SceltaOrario`, `spostaAppuntamento`, `occupatiConId`, `orariPerSpostamento`, `prossimiGiorniLiberi`, `dataSpostabile`, `slotPerSpostamento`, `occupatiSenza`, `SPOSTAMENTI_MAX`.
+- **L'agenda non cambia.** Non ha mai usato quella rotta: passa dalle Server Action di `app/admin/azioni.ts`, con la sessione controllata per prima cosa. L'etichetta "Spostato" resta. La colonna `spostamenti` resta nel database ma non si usa più (nessuna migrazione).
+- **Un appuntamento attivo per numero, solo dal sito.** Attivo = riga `tipo = 'appuntamento'` in `prenotazioni` (i disdetti lasciano la tabella) con data e ora future, in ora di Roma: uno già iniziato non blocca. Contano anche quelli creati dall'agenda; l'agenda però ne crea quanti vuole, perché usa `creaVoce`.
+- **Stesso numero:** `chiaveTelefono` (`lib/prenotazioni/telefono.ts`) dà il numero nazionale; `CHIAVE_TELEFONO_SQL` in `archivio.ts` è la stessa regola dentro la query, così un numero salvato in un altro formato si riconosce senza toccare i dati.
+- **Atomico:** `salvaPrenotazione` apre una transazione (`transazione()`, aggiunta a `lib/prenotazioni/db.ts`), prende `pg_advisory_xact_lock` sul numero, controlla e inserisce. Controllo e inserimento sono per forza query separate: in una query unica, dopo l'attesa del lock, il controllo guarderebbe ancora i dati di prima dell'attesa. `POST /api/bookings` fa anche un controllo veloce prima di validare l'orario, perché chi riprova senta il motivo vero e non "orario occupato".
+- **Risposta:** 409 con `codice: "gia-attivo"` e il messaggio, senza data né ora dell'appuntamento esistente. Il widget resta allo step 3 con i dati inseriti e porta l'avviso in vista.
+- **Limiti noti:** chi non è riconosciuto dal dispositivo (nessun cookie, "Non è il mio telefono") non può disdire online e deve contattare il salone; un numero condiviso (genitore e figli) prenota un appuntamento alla volta; il numero non è verificato, quindi chi scrive il numero di un altro lo blocca, e il messaggio rivela che quel numero ha un appuntamento.
+- *Verificato il 2/11* in locale, build di produzione, Playwright a 360 px, sia con PGlite sia con postgres.js (`sql.begin`) su protocollo Postgres verso PGlite: 8 invii simultanei con lo stesso numero → 1 creato e 7 rifiutati. **Non provato su un Postgres vero con più connessioni** (Neon): PGlite ha una connessione sola.
+
 **6.16 "Il mio appuntamento": il cliente ritrova, sposta e disdice** (v2 del 30/10/2026, in produzione; correzioni C1–C6 sul ramo `fix/mio-appuntamento-orari`; la v1 con link e codice è più sotto).
 
 *Correzioni del 30/10 pomeriggio (C1–C6)*, dopo una prova in produzione: un Taglio bambino prenotato alle 16:11 per le 17:30 risultava subito "Ormai non si può più modificare online".
@@ -723,7 +759,7 @@ Matrice visiva a 375, 390, 768 e 1440 px: hero riconosciuto e no, barra sopra la
   - **Gli occupati escludono l'appuntamento stesso** (`occupatiSenza`), altrimenti spostarlo di mezz'ora sopra il suo orario risulterebbe "occupato". C'è un test.
   - Al massimo `SPOSTAMENTI_MAX` = 2 spostamenti (**da confermare**), controllati nella condizione stessa dell'`update`.
   - Sull'orario decide il vincolo di esclusione: `ConflittoOrario` → 409 con gli orari ancora liberi e i primi 3 giorni con posto.
-- **D5 Disdetta = cancellazione della riga** (`delete … returning`), come in agenda: lo slot torna libero subito. Un secondo tentativo dà 404 "non c'è più".
+- **D5 Disdetta = cancellazione della riga** (`delete … returning`; dal 31/10 la riga va nella tabella `disdette` nella stessa istruzione, §6.13 bis), come in agenda: lo slot torna libero subito. Un secondo tentativo dà 404 "non c'è più".
 - **D6 Avvisi** su Telegram e push, dopo la risposta (`after()`), che non fanno mai fallire l'operazione. Testi: `DISDETTA · Mario R. · mer 4/11 10:00 · Taglio uomo` e `SPOSTATO · Mario R. · da mer 4/11 10:00 a gio 5/11 17:30`. La notifica apre `/admin?data=<giorno nuovo>`.
 - **D7 Senza credenziali** restano gli appuntamenti inseriti dall'agenda e quelli precedenti alla funzione: la ricerca risponde "non trovato" con il telefono del salone, e non c'è generazione retroattiva.
 
@@ -1064,6 +1100,8 @@ Cookie `hb_cliente` e passkey sono legati al dominio, oggi `history-barber-da-fr
     - alle 16:04 un Taglio uomo e alle 16:05 un Taglio bambino, **entrambi alle 17:30**: la seconda è passata, quindi la prima era già stata tolta; alle 16:29 nessuna delle due c'era più;
     - nei log nessuna disdetta fatta dal cliente (che avrebbe scritto "DISDETTA"). La spiegazione compatibile è una cancellazione dall'agenda (le azioni dell'agenda non scrivono nei log). **Da confermare con Giovanni.**
     - Il piano Hobby di Vercel tiene i log solo per l'ultima mezz'ora.
+
+16. **Chiusure e ferie in produzione:** le tabelle nuove (`chiusure`, `disdette`, colonne `spostato_*`) si creano da sole alla prima connessione dopo il deploy. Le disdette di prima del 31/10 non ci sono: allora la riga si cancellava e basta. La notizia in home usa il motivo così come lo scrive Francesco: meglio brevi ("Ferie estive").
 
 ### 🟠 Da chiarire col committente
 
