@@ -31,7 +31,7 @@ export function dataValida(data: string): boolean {
 }
 
 /** La chiusura attiva che copre questo giorno, o null. È "isClosed(date)":
-    l'unica regola, usata da slot, prenotazione, spostamento, agenda e sito. */
+    l'unica regola, usata da slot, prenotazione, agenda e sito. */
 export function chiusoIl<T extends Pick<Chiusura, "dal" | "al"> & { attiva?: boolean }>(data: string, chiusure: readonly T[]): T | null {
   return chiusure.find((c) => c.attiva !== false && c.dal <= data && data <= c.al) ?? null;
 }

@@ -4,7 +4,7 @@ import { chiusureAttiveDa } from "@/lib/prenotazioni/chiusure";
 
 /* GET /api/chiusure: le chiusure attive in corso o future, per il sito.
    Le legge il browser dopo il caricamento (la home resta statica): la notizia
-   in home, i giorni spenti nel widget e nello spostamento, lo stato "Aperto
+   in home, i giorni spenti nel widget, lo stato "Aperto
    ora". Una chiusura finita non c'è più: sparisce da sola. Solo date e
    motivo, niente di più. */
 

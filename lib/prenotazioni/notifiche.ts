@@ -155,9 +155,8 @@ export async function notificaPrenotazione(p: Prenotazione) {
   }
 }
 
-/** Notifica a chi usa l'agenda di una disdetta o di uno spostamento fatto
-    dal cliente. Al tocco apre l'agenda sul giorno che conta adesso (quello
-    nuovo, per uno spostamento). Non lancia mai. */
+/** Notifica a chi usa l'agenda di una disdetta fatta dal cliente. Al tocco
+    apre l'agenda su quel giorno. Non lancia mai. */
 export async function notificaModifica(titolo: string, testo: string, data: string, tag: string) {
   try {
     return await inviaATutti({ titolo, testo, url: `/admin?data=${data}`, tag });

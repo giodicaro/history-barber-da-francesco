@@ -43,7 +43,7 @@ export function SalvaAppuntamento({
   const quando = `${giornoLungo(appuntamento.data)} alle ${appuntamento.ora}`;
   const messaggio = [
     `Il mio appuntamento da ${salone.nomeCompleto}: ${appuntamento.servizio}, ${quando}.`,
-    link && `Per spostarlo o disdirlo: ${link}`,
+    link && `Per disdirlo: ${link}`,
     codice && `Codice: ${codice}`,
   ]
     .filter(Boolean)
@@ -58,9 +58,9 @@ export function SalvaAppuntamento({
       titolo: `${appuntamento.servizio} · ${salone.nomeCompleto}`,
       luogo: `${salone.nomeCompleto}, ${salone.via}, ${salone.cap} ${salone.citta} (${salone.provincia})`,
       descrizione: [
-        link ? `Per spostare o disdire (fino a ${MARGINE_GESTIONE_MINUTI / 60} ore prima): ${link}` : "Per spostare o disdire: /appuntamento sul sito",
+        link ? `Per disdire (fino a ${MARGINE_GESTIONE_MINUTI} minuti prima): ${link}` : "Per disdire: /appuntamento sul sito",
         codice ? `Codice: ${codice}` : "",
-        `Telefono del salone: ${salone.telefono}`,
+        `Per cambiare orario, telefono del salone: ${salone.telefono}`,
       ]
         .filter(Boolean)
         .join("\n"),

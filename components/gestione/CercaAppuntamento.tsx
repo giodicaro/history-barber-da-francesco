@@ -64,7 +64,7 @@ export function CercaAppuntamento({ compatta = false }: { compatta?: boolean }) 
         </>
       )}
       <p className="mt-4 max-w-[46ch] text-base text-steel">
-        Per spostarlo o disdirlo scrivi il telefono che hai lasciato e il codice di 6 caratteri che hai ricevuto
+        Per disdirlo scrivi il telefono che hai lasciato e il codice di 6 caratteri che hai ricevuto
         prenotando. Se hai il link personale, ti basta aprirlo.
       </p>
 

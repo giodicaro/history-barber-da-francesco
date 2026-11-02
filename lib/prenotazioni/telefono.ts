@@ -13,6 +13,14 @@ export function normalizzaTelefono(grezzo: string): string | null {
   return `+39${senzaPrefisso}`;
 }
 
+/** Il numero nazionale, senza prefisso né separatori: "+39 347-555 1234",
+    "0039 3475551234" e "347 555 1234" danno la stessa chiave. È ciò che si
+    confronta per dire "stesso cliente" (vedi CHIAVE_TELEFONO_SQL in archivio.ts,
+    la stessa regola dentro una query). */
+export function chiaveTelefono(grezzo: string): string | null {
+  return normalizzaTelefono(grezzo)?.slice(3) ?? null;
+}
+
 /** "+393475551234" → "+39 347 555 1234": per leggerlo, non per salvarlo. */
 export function telefonoLeggibile(telefono: string): string {
   const m = telefono.match(/^\+39(\d{3})(\d{3})(\d+)$/);

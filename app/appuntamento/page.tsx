@@ -11,7 +11,7 @@ import { SpazioCliente } from "@/components/gestione/SpazioCliente";
 
 export const metadata: Metadata = {
   title: "Il mio appuntamento — History Barber da Francesco",
-  description: "Sposta o disdici da solo il tuo appuntamento da History Barber da Francesco.",
+  description: "Ritrova e disdici da solo il tuo appuntamento da History Barber da Francesco.",
   robots: { index: false, follow: false, nocache: true },
   referrer: "no-referrer",
 };

@@ -60,7 +60,7 @@ export default function Privacy() {
             </p>
             <p className="mt-3">
               <b>Ritrovare l&apos;appuntamento.</b> Se prenoti dal tuo telefono, il sito lo ricorda con un cookie tecnico
-              (vedi sotto): da «Il mio appuntamento» lo ritrovi con un tocco, per spostarlo o disdirlo da solo. Se
+              (vedi sotto): da «Il mio appuntamento» lo ritrovi con un tocco, per disdirlo da solo. Se
               attivi <b>Face ID o l&apos;impronta</b>, il tuo telefono crea una chiave d&apos;accesso (passkey): il
               riconoscimento del volto o dell&apos;impronta avviene solo sul dispositivo e al sito non arriva alcun dato
               biometrico, solo una chiave pubblica che da sola non permette di risalire a te. Se il salone ti manda un

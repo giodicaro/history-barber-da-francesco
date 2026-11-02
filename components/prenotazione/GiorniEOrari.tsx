@@ -142,13 +142,10 @@ export function GrigliaOrari({
   slot,
   scelto,
   onScegli,
-  proprio,
 }: {
   slot: BookingSlot[];
   scelto: string | null;
   onScegli: (ora: string) => void;
-  /** L'orario attuale di chi sta spostando: si vede, ma non si sceglie. */
-  proprio?: string | null;
 }) {
   const preavviso = slot.some((s) => s.motivo === "preavviso");
   return (
@@ -162,41 +159,29 @@ export function GrigliaOrari({
         </p>
       )}
       <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-        {slot.map((s) =>
-          s.ora === proprio ? (
-            <li key={s.ora}>
-              <span
-                aria-label={`${s.ora}, il tuo orario`}
-                className="info flex min-h-12 w-full flex-col items-center justify-center border-2 border-dashed border-ink text-center tabular-nums"
-              >
-                {s.ora}
-                <span className="text-[0.625rem] leading-tight">Il tuo orario</span>
-              </span>
-            </li>
-          ) : (
-            <li key={s.ora}>
-              <button
-                type="button"
-                disabled={!s.disponibile}
-                onClick={() => onScegli(s.ora)}
-                aria-pressed={scelto === s.ora}
-                className={cn(
-                  "info min-h-12 w-full cursor-pointer border text-center tabular-nums transition-colors duration-200",
-                  scelto === s.ora ? "border-ink bg-ink text-paper" : "border-ink/15 hover:border-ink",
-                  !s.disponibile &&
-                    (s.motivo === "preavviso"
-                      ? // Nel futuro ma troppo vicino: tratteggio come nell'agenda, non barrato.
-                        "cursor-not-allowed border-dashed border-ink/30 text-ink/40 hover:border-ink/30"
-                      : "cursor-not-allowed border-ink/10 text-ink/25 line-through hover:border-ink/10"),
-                )}
-                title={s.motivo ? MOTIVI[s.motivo].title : undefined}
-                aria-label={s.motivo ? `${s.ora}, ${MOTIVI[s.motivo].voce}` : undefined}
-              >
-                {s.ora}
-              </button>
-            </li>
-          ),
-        )}
+        {slot.map((s) => (
+          <li key={s.ora}>
+            <button
+              type="button"
+              disabled={!s.disponibile}
+              onClick={() => onScegli(s.ora)}
+              aria-pressed={scelto === s.ora}
+              className={cn(
+                "info min-h-12 w-full cursor-pointer border text-center tabular-nums transition-colors duration-200",
+                scelto === s.ora ? "border-ink bg-ink text-paper" : "border-ink/15 hover:border-ink",
+                !s.disponibile &&
+                  (s.motivo === "preavviso"
+                    ? // Nel futuro ma troppo vicino: tratteggio come nell'agenda, non barrato.
+                      "cursor-not-allowed border-dashed border-ink/30 text-ink/40 hover:border-ink/30"
+                    : "cursor-not-allowed border-ink/10 text-ink/25 line-through hover:border-ink/10"),
+              )}
+              title={s.motivo ? MOTIVI[s.motivo].title : undefined}
+              aria-label={s.motivo ? `${s.ora}, ${MOTIVI[s.motivo].voce}` : undefined}
+            >
+              {s.ora}
+            </button>
+          </li>
+        ))}
       </ul>
     </>
   );

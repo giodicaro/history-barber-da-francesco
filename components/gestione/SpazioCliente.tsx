@@ -18,8 +18,8 @@ import { GestioneAppuntamento, type Riepilogo } from "./GestioneAppuntamento";
 /* Lo spazio "Il mio appuntamento" (N6), lo stesso nel foglio della home
    (GestioneWidget) e a tutta pagina (/appuntamento).
 
-   Stati: caricamento; riconosciuto con appuntamenti (elenco, poi Sposta /
-   Disdici con le regole della v1); riconosciuto senza appuntamenti;
+   Stati: caricamento; riconosciuto con appuntamenti (elenco, poi Disdici
+   con le regole della v1); riconosciuto senza appuntamenti;
    non riconosciuto (Face ID o impronta, poi telefono e WhatsApp);
    riconoscimento spento (solo telefono e WhatsApp).
 
@@ -143,7 +143,7 @@ export function SpazioCliente({ onPrenota }: { onPrenota?: () => void }) {
     );
   }
 
-  // Un appuntamento aperto (o l'unico): riepilogo, Sposta, Disdici.
+  // Un appuntamento aperto (o l'unico): riepilogo, Disdici.
   if (elenco.stato === "riconosciuto") {
     const unico = elenco.appuntamenti.length === 1 ? elenco.appuntamenti[0] : null;
     const scelto = elenco.appuntamenti.find((a) => a.id === aperto) ?? unico;
@@ -256,7 +256,7 @@ export function SpazioCliente({ onPrenota }: { onPrenota?: () => void }) {
       {(elenco.stato === "spento" || elenco.stato === "errore") && (
         <>
           {elenco.stato === "errore" && <Esito testo="Non riusciamo a leggere i tuoi appuntamenti adesso. Riprova fra poco." />}
-          <Contatti titolo="Per spostare o disdire" />
+          <Contatti titolo="Per disdire o cambiare orario" />
         </>
       )}
     </div>

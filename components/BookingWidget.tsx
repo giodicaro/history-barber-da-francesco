@@ -10,7 +10,7 @@ import type { RispostaSlot, ServiceOption } from "@/lib/prenotazioni/tipi";
 import { CONSERVAZIONE_MESI, listino, MARGINE_GESTIONE_MINUTI, operatori, salone } from "@/lib/salone";
 import { cn, formatoPrezzo } from "@/lib/utils";
 import { ArrowRight } from "./icons";
-import { AvvisoChiusureVicine, GIORNI_BREVI, GiornoChiuso, giorniProposti, GrigliaOrari, StrisciaGiorni } from "./prenotazione/GiorniEOrari";
+import { aParole, AvvisoChiusureVicine, GIORNI_BREVI, GiornoChiuso, giorniProposti, GrigliaOrari, StrisciaGiorni } from "./prenotazione/GiorniEOrari";
 import { useChiusure } from "@/lib/chiusure-sito";
 import { AttivaFaceId } from "./gestione/AttivaFaceId";
 import { SalvaAppuntamento } from "./prenotazione/SalvaAppuntamento";
@@ -81,6 +81,7 @@ export function BookingWidget() {
   const [conferma, setConferma] = useState<Conferma | null>(null);
 
   const foglioRef = useRef<HTMLDivElement>(null);
+  const avvisoRef = useRef<HTMLParagraphElement>(null);
   const titoloId = useId();
   const lenis = useLenis();
 
@@ -224,6 +225,11 @@ export function BookingWidget() {
     void caricaOrari(s, giorno);
   };
 
+  // Il modulo è lungo: su telefono l'avviso nascerebbe sotto il bordo.
+  useEffect(() => {
+    if (erroreServer) avvisoRef.current?.scrollIntoView({ block: "center" });
+  }, [erroreServer]);
+
   async function invia() {
     if (!servizio || !ora || !datiValidi || invio === "invio") return;
     setInvio("invio");
@@ -260,6 +266,11 @@ export function BookingWidget() {
         return;
       }
       setInvio("fermo");
+      // Il numero ha già un appuntamento: si resta qui, con i dati inseriti.
+      if (corpo?.codice === "gia-attivo") {
+        setErroreServer(corpo.errore);
+        return;
+      }
       // 409 = scontro fra due salvataggi simultanei; il 400 con campo "ora" è
       // lo stesso caso visto un attimo prima, in validazione. Per il cliente
       // cambia nulla: si torna a scegliere l'orario, appena riletto.
@@ -346,7 +357,7 @@ export function BookingWidget() {
                   <p className="mt-6 max-w-[42ch] leading-relaxed text-steel">
                     Ti aspettiamo in {salone.via}.{" "}
                     {conferma.riconosciuto
-                      ? `Se hai un imprevisto puoi spostarlo o disdirlo da solo, fino a ${MARGINE_GESTIONE_MINUTI / 60} ore prima; dopo, chiama il `
+                      ? `Se hai un imprevisto puoi disdirlo da solo, fino a ${aParole(MARGINE_GESTIONE_MINUTI)} prima. Per cambiare orario o dopo quel termine, chiama il `
                       : "Se hai un imprevisto, chiama il "}
                     <a href={salone.telefonoHref} className="text-ink underline underline-offset-4">
                       {salone.telefono}
@@ -511,7 +522,7 @@ export function BookingWidget() {
               )}
 
               {erroreServer && (
-                <p role="alert" className="mt-6 border border-ink bg-ink px-4 py-3 text-sm text-paper">
+                <p ref={avvisoRef} role="alert" className="mt-6 border border-ink bg-ink px-4 py-3 text-sm text-paper">
                   {erroreServer}
                 </p>
               )}
@@ -587,18 +598,23 @@ function RiquadroDopo({ conferma }: { conferma: Conferma }) {
   return (
     <section aria-labelledby="titolo-dopo" className="mt-8 border border-ink p-4 md:p-5">
       <h3 id="titolo-dopo" className="eyebrow">
-        Per spostare o disdire
+        Per disdire o cambiare orario
       </h3>
       {conferma.riconosciuto ? (
         <>
           <p className="mt-3 text-base">
-            Lo ritrovi in home, in <b>«Il mio appuntamento»</b>: su questo telefono basta un tocco, senza codici.
+            Per disdirlo lo ritrovi in home, in <b>«Il mio appuntamento»</b>: su questo telefono basta un tocco, senza codici.
+            Per cambiare orario chiama il{" "}
+            <a href={salone.telefonoHref} className="font-semibold underline underline-offset-4">
+              {salone.telefono}
+            </a>
+            .
           </p>
           <AttivaFaceId />
         </>
       ) : (
         <p className="mt-3 text-base">
-          Per spostarlo o disdirlo chiama il{" "}
+          Per disdirlo o cambiare orario chiama il{" "}
           <a href={salone.telefonoHref} className="font-semibold underline underline-offset-4">
             {salone.telefono}
           </a>{" "}

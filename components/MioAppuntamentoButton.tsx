@@ -11,7 +11,7 @@ import { GIORNI_BREVI, MESI } from "./prenotazione/GiorniEOrari";
    peso. Stessa altezza, stessa tipografia, stesso riempimento al passaggio;
    "Prenota" è pieno, questo a contorno.
 
-   Due righe fisse: "Il mio appuntamento" e, sotto, "Sposta o disdici",
+   Due righe fisse: "Il mio appuntamento" e, sotto, "Disdici",
    che diventa "Mer 4 nov · 10:00" quando il cliente è riconosciuto e ha un
    appuntamento in arrivo. L'altezza non cambia: niente salti.
 
@@ -116,7 +116,7 @@ export function MioAppuntamentoButton({ origine, variante = "coppia", suScuro = 
           bianco e il testo in difference diventa nero, come in "Prenota". */}
       <motion.span aria-hidden style={{ y: riempimento }} className="absolute inset-0 -z-10 bg-paper" />
       <span className="eyebrow mix-blend-difference">Il mio appuntamento</span>
-      <span className="info mix-blend-difference">{prossimo ?? "Sposta o disdici"}</span>
+      <span className="info mix-blend-difference">{prossimo ?? "Disdici"}</span>
     </button>
   );
 }

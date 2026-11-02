@@ -3,7 +3,7 @@ import type { ChiusuraPubblica } from "./chiusure";
 
 /* Le chiusure per le pagine pubbliche, lette UNA volta da GET /api/chiusure
    dopo il caricamento (la home resta statica): notizia in home, footer,
-   stato "Aperto ora", giorni spenti nel widget e nello spostamento. Stesso
+   stato "Aperto ora", giorni spenti nel widget. Stesso
    schema di useMiei in lib/gestione.ts. */
 
 export type StatoChiusure = { caricato: boolean; oggi: string; chiusure: ChiusuraPubblica[] };

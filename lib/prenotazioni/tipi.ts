@@ -75,7 +75,7 @@ export interface Prenotazione {
   origine?: string;
   /** ISO 8601 UTC. */
   creataIl: string;
-  /** Spostato (dal cliente o in agenda): giorno e ora di prima, "YYYY-MM-DD HH:MM". */
+  /** Spostato: giorno e ora di prima, "YYYY-MM-DD HH:MM". */
   spostatoDa?: string;
 }
 

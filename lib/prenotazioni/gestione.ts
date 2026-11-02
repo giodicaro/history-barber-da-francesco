@@ -1,8 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
-import { generaSlot, type Intervallo } from "./slot";
 import { romaInIstante, istanteInRoma } from "./calendario";
 import { ALFABETO_CODICE, LUNGHEZZA_CODICE, normalizzaCodice } from "./codice";
-import type { BookingSlot } from "./tipi";
 
 /* "Gestisci il tuo appuntamento": regole pure, senza database né rete.
 
@@ -45,18 +43,13 @@ export function nuoveCredenziali(telefono: string) {
   return { token, codice, gestioneHash: impronta(token), codiceHash: improntaCodice(telefono, codice) };
 }
 
-/* ── Termine e limite (D3, D4) ──────────────────────────────────────────── */
-
-export type MotivoBlocco = "termine" | "spostamenti";
+/* ── Termine (D3) ──────────────────────────────────────────── */
 
 export interface StatoGestione {
   /** Si può ancora disdire. */
   disdicibile: boolean;
-  /** Si può ancora spostare. */
-  spostabile: boolean;
-  /** Perché qualcosa non si può più fare (il termine vince sul limite). */
-  motivoBlocco?: MotivoBlocco;
-  spostamentiRimasti: number;
+  /** Perché non si può più disdire. */
+  motivoBlocco?: "termine";
   /** Ultimo momento utile, in ora di Roma: il più tardo fra il termine
       normale e la fine del ripensamento. */
   termine: { data: string; minuti: number };
@@ -68,7 +61,6 @@ export interface StatoGestione {
 
 export interface RegoleGestione {
   margineMinuti: number;
-  spostamentiMax: number;
   /** Minuti dopo la creazione in cui si può sempre modificare (C2). */
   ripensamentoMinuti?: number;
   /** ...purché all'inizio ne manchino almeno tanti. */
@@ -83,7 +75,7 @@ export interface RegoleGestione {
     - ripensamento: fino al primo fra creazione + ripensamento e
       inizio − ultimo avviso. Senza creataIl il ripensamento non c'è. */
 export function puoGestire(
-  a: { data: string; inizio: number; spostamenti: number; creataIl?: string | number },
+  a: { data: string; inizio: number; creataIl?: string | number },
   adessoIstante: number,
   regole: RegoleGestione,
 ): StatoGestione {
@@ -95,45 +87,13 @@ export function puoGestire(
     : -Infinity;
   const termineIstante = Math.max(normale, ripensamento);
   const entroTermine = adessoIstante <= termineIstante;
-  const spostamentiRimasti = Math.max(0, regole.spostamentiMax - a.spostamenti);
   return {
     disdicibile: entroTermine,
-    spostabile: entroTermine && spostamentiRimasti > 0,
-    ...(!entroTermine ? { motivoBlocco: "termine" as const } : spostamentiRimasti === 0 ? { motivoBlocco: "spostamenti" as const } : {}),
-    spostamentiRimasti,
+    ...(!entroTermine ? { motivoBlocco: "termine" as const } : {}),
     termine: istanteInRoma(termineIstante),
     ...(ripensamento > normale ? { fineRipensamento: istanteInRoma(ripensamento) } : {}),
     inRipensamento: entroTermine && adessoIstante > normale,
   };
-}
-
-/* ── Spostamento (D4) ───────────────────────────────────────────────────── */
-
-/** Gli occupati del giorno senza l'appuntamento che si sta spostando:
-    altrimenti spostarlo di mezz'ora sopra il suo vecchio orario risulterebbe
-    "occupato" da sé stesso. */
-export function occupatiSenza(occupati: (Intervallo & { id: string })[], id: string): Intervallo[] {
-  return occupati.filter((o) => o.id !== id).map(({ inizio, fine }) => ({ inizio, fine }));
-}
-
-/** Gli orari proponibili per spostare un appuntamento: stessa regola del
-    sito (generaSlot: turni, festivi, preavviso, chiusura), stessa durata,
-    senza l'appuntamento stesso fra gli occupati. */
-export function slotPerSpostamento(opzioni: {
-  id: string;
-  data: string;
-  giorno: number;
-  durata: number;
-  occupati: (Intervallo & { id: string })[];
-  adesso: { data: string; minuti: number };
-}): BookingSlot[] {
-  return generaSlot({
-    data: opzioni.data,
-    giorno: opzioni.giorno,
-    durata: opzioni.durata,
-    occupati: occupatiSenza(opzioni.occupati, opzioni.id),
-    adesso: opzioni.adesso,
-  });
 }
 
 /** "Mario Rossi" → "Mario R.": negli avvisi basta per riconoscerlo. */

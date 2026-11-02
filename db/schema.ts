@@ -85,7 +85,8 @@ end $$;
 -- gestione online per loro.
 alter table prenotazioni add column if not exists gestione_hash text;
 alter table prenotazioni add column if not exists codice_hash text;
--- Quante volte il cliente l'ha spostato da solo (c'è un massimo).
+-- Quante volte il cliente l'ha spostato da solo. Dal 2/11/2026 il cliente non
+-- sposta più: la colonna resta per non toccare i dati, l'app non la usa.
 alter table prenotazioni add column if not exists spostamenti smallint not null default 0;
 create unique index if not exists prenotazioni_gestione on prenotazioni (gestione_hash) where gestione_hash is not null;
 create index if not exists prenotazioni_codice on prenotazioni (codice_hash) where codice_hash is not null;
@@ -141,7 +142,7 @@ create table if not exists chiusure (
 );
 create index if not exists chiusure_periodo on chiusure (dal, al);
 
--- Appuntamento spostato (dal cliente o da Francesco in agenda): giorno e ora
+-- Appuntamento spostato da Francesco in agenda (o, prima del 2/11/2026, dal cliente): giorno e ora
 -- di prima ("YYYY-MM-DD HH:MM") e quando. L'agenda lo mostra con
 -- l'etichetta "Spostato", nella posizione nuova.
 alter table prenotazioni add column if not exists spostato_da text;

@@ -39,8 +39,13 @@ export const tipoArchivio: TipoArchivio = URL_DB ? "postgres" : process.env.VERC
 /** Cartella del database locale, relativa alla radice del progetto. */
 export const CARTELLA_LOCALE = ".data/agenda";
 
-export interface Database {
+export interface Interrogabile {
   query<T>(testo: string, parametri?: unknown[]): Promise<T[]>;
+}
+
+export interface Database extends Interrogabile {
+  /** Più query nella stessa transazione: se `lavoro` lancia, non resta niente. */
+  transazione<T>(lavoro: (tx: Interrogabile) => Promise<T>): Promise<T>;
 }
 
 // Su globalThis: in sviluppo il ricaricamento a caldo rivaluta il modulo e
@@ -73,6 +78,13 @@ async function apri(): Promise<Database> {
     return {
       query: async <T,>(testo: string, parametri: unknown[] = []) =>
         (await sql.unsafe(testo, parametri as postgres.ParameterOrJSON<never>[])) as unknown as T[],
+      transazione: async <T,>(lavoro: (tx: Interrogabile) => Promise<T>) =>
+        (await sql.begin((tx) =>
+          lavoro({
+            query: async <R,>(testo: string, parametri: unknown[] = []) =>
+              (await tx.unsafe(testo, parametri as postgres.ParameterOrJSON<never>[])) as unknown as R[],
+          }),
+        )) as T,
     };
   }
 
@@ -96,6 +108,12 @@ async function apri(): Promise<Database> {
   return {
     query: async <T,>(testo: string, parametri: unknown[] = []) =>
       (await pg.query<T>(testo, parametri)).rows,
+    transazione: async <T,>(lavoro: (tx: Interrogabile) => Promise<T>) =>
+      (await pg.transaction((tx) =>
+        lavoro({
+          query: async <R,>(testo: string, parametri: unknown[] = []) => (await tx.query<R>(testo, parametri)).rows,
+        }),
+      )) as T,
   };
 }
 
