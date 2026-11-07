@@ -48,3 +48,13 @@ next-env.d.ts
 
 # controllo responsive (scripts/controllo-responsive.mjs)
 /.controllo-responsive/
+
+# Report di Lighthouse e schermate: pesanti, restano in locale.
+/perf-reports/*
+!/perf-reports/REPORT.md
+!/perf-reports/before/
+!/perf-reports/after/
+/perf-reports/before/*
+/perf-reports/after/*
+!/perf-reports/before/mediane.json
+!/perf-reports/after/mediane.json
