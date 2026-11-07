@@ -1,9 +1,9 @@
 "use client";
 
 import type { FocusEvent, PointerEvent } from "react";
-import { animate, motion, useMotionValue, useReducedMotion } from "framer-motion";
 import { giornoDellaData } from "@/lib/orari";
 import { apriGestione, useMiei, type OrigineGestione } from "@/lib/gestione";
+import { useRiempimento } from "@/lib/riempimento";
 import { cn } from "@/lib/utils";
 import { GIORNI_BREVI, MESI } from "./prenotazione/GiorniEOrari";
 
@@ -17,8 +17,6 @@ import { GIORNI_BREVI, MESI } from "./prenotazione/GiorniEOrari";
 
    Varianti: "coppia" (hero e footer, accanto a Prenota), "barra" (testo,
    da md) e "icona" (44 px, sotto md, solo con un appuntamento in arrivo). */
-
-const CURVA = [0.16, 1, 0.3, 1] as const;
 
 /** "Mer 4 nov · 10:00": lo stesso formato della striscia dei giorni del widget. */
 export function etichettaProssimo(p: { data: string; ora: string }) {
@@ -34,14 +32,7 @@ type Props = {
 
 export function MioAppuntamentoButton({ origine, variante = "coppia", suScuro = true, className }: Props) {
   const miei = useMiei();
-  const ridotto = useReducedMotion();
-  const riempimento = useMotionValue("101%");
-  const durata = ridotto ? 0 : 0.55;
-  const riempi = () => animate(riempimento, ["101%", "0%"], { duration: durata, ease: CURVA });
-  const svuota = () => {
-    if (riempimento.get() === "101%") return;
-    animate(riempimento, "-101%", { duration: durata, ease: CURVA });
-  };
+  const { fondo, riempi, svuota } = useRiempimento<HTMLSpanElement>();
   const entra = (e: PointerEvent<HTMLButtonElement>) => e.pointerType === "mouse" && riempi();
   const esce = (e: PointerEvent<HTMLButtonElement>) => e.pointerType === "mouse" && svuota();
   const focus = (e: FocusEvent<HTMLButtonElement>) => e.currentTarget.matches(":focus-visible") && riempi();
@@ -89,7 +80,7 @@ export function MioAppuntamentoButton({ origine, variante = "coppia", suScuro = 
         {/* Su fondo scuro come "Prenota" (bianco che sale, testo in
             difference). Su fondo chiaro il difference renderebbe il testo
             bianco su bianco: lì sale il nero e il testo passa al bianco. */}
-        <motion.span aria-hidden style={{ y: riempimento }} className={cn("absolute inset-0 -z-10", suScuro ? "bg-paper" : "bg-ink")} />
+        <span ref={fondo} aria-hidden style={{ transform: "translateY(101%)" }} className={cn("absolute inset-0 -z-10", suScuro ? "bg-paper" : "bg-ink")} />
         <span
           className={cn(
             suScuro
@@ -114,7 +105,7 @@ export function MioAppuntamentoButton({ origine, variante = "coppia", suScuro = 
     >
       {/* Contorno: il fondo resta quello della sezione; al passaggio sale il
           bianco e il testo in difference diventa nero, come in "Prenota". */}
-      <motion.span aria-hidden style={{ y: riempimento }} className="absolute inset-0 -z-10 bg-paper" />
+      <span ref={fondo} aria-hidden style={{ transform: "translateY(101%)" }} className="absolute inset-0 -z-10 bg-paper" />
       <span className="eyebrow mix-blend-difference">Il mio appuntamento</span>
       <span className="info mix-blend-difference">{prossimo ?? "Disdici"}</span>
     </button>

@@ -1,12 +1,10 @@
 "use client";
 
 import type { FocusEvent, PointerEvent, ReactNode } from "react";
-import { animate, motion, useMotionValue, useReducedMotion } from "framer-motion";
 import { apriPrenotazione, type OrigineCta } from "@/lib/prenotazione";
+import { useRiempimento } from "@/lib/riempimento";
 import { cn } from "@/lib/utils";
 import { ArrowRight } from "./icons";
-
-const CURVA = [0.16, 1, 0.3, 1] as const;
 
 type Props = {
   origine: OrigineCta;
@@ -27,20 +25,10 @@ type Props = {
    È un link segnaposto (href="#") come da brief: il clic non segue l'ancora
    e passa da lib/prenotazione.ts, dove verrà innestato il sistema nativo. */
 export function BookButton({ origine, children = "Prenota", size = "md", suScuro = false, className }: Props) {
-  const ridotto = useReducedMotion();
-
-  // La posizione del riempimento è solo di framer-motion. Niente classi
+  // La posizione del riempimento è solo di useRiempimento. Niente classi
   // translate-y di Tailwind: in v4 usano la proprietà CSS "translate", che si
-  // somma al "transform" di framer e sposterebbe i conti di un'altezza intera.
-  const riempimento = useMotionValue("101%");
-  const durata = ridotto ? 0 : 0.55;
-  const riempi = () => animate(riempimento, ["101%", "0%"], { duration: durata, ease: CURVA });
-  // Se il bottone non è mai stato riempito (101%, sotto) non c'è niente da
-  // svuotare: animarlo verso -101% lo farebbe attraversare tutto, un lampo.
-  const svuota = () => {
-    if (riempimento.get() === "101%") return;
-    animate(riempimento, "-101%", { duration: durata, ease: CURVA });
-  };
+  // somma al "transform" e sposterebbe i conti di un'altezza intera.
+  const { fondo, riempi, svuota } = useRiempimento<HTMLSpanElement>();
 
   // Solo mouse: su touch l'hover non esiste e il riempimento resterebbe
   // acceso dopo il tocco.
@@ -78,10 +66,11 @@ export function BookButton({ origine, children = "Prenota", size = "md", suScuro
     >
       {/* inset-0 e non oltre: il bordo resta visibile anche a bottone pieno,
           così su fondo chiaro l'inversione ha ancora il suo contorno nero. */}
-      <motion.span
+      <span
+        ref={fondo}
         data-riempimento
         aria-hidden
-        style={{ y: riempimento }}
+        style={{ transform: "translateY(101%)" }}
         className="absolute inset-0 -z-10 bg-paper"
       />
       <span className="flex items-center gap-3 text-paper mix-blend-difference">
