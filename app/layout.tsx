@@ -7,14 +7,19 @@ import "./globals.css";
 // del sito), Inter per testi e listino, JetBrains Mono per le informazioni
 // pratiche (indirizzo, orari, stato di apertura). Tutti variabili: un file
 // per famiglia copre ogni peso usato.
+// `subsets` decide solo cosa si PRECARICA: il CSS dichiara comunque tutti i
+// set (latin-ext compreso, con il suo unicode-range) e il browser li scarica
+// se una pagina li usa (un nome come "Łukasz" in agenda). Il testo italiano
+// sta tutto in "latin": precaricare anche latin-ext erano 99 KB in più, ad
+// alta priorità, prima del primo disegno sul telefono.
 const syne = Syne({
   variable: "--font-syne",
-  subsets: ["latin", "latin-ext"],
+  subsets: ["latin"],
 });
 
 const inter = Inter({
   variable: "--font-inter",
-  subsets: ["latin", "latin-ext"],
+  subsets: ["latin"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
