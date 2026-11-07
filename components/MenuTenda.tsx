@@ -5,8 +5,8 @@ import { salone, vociMenu } from "@/lib/salone";
 import { GridLines } from "./GridLines";
 
 /* La tenda del menu, con le sue animazioni (framer-motion). Sta in un file a
-   sé perché parte chiusa: la barra la carica a browser libero (o al primo
-   tocco del bottone), e framer non entra nel JavaScript della prima
+   sé perché parte chiusa: la barra la scarica subito dopo l'idratazione, fuori
+   dal primo blocco di JavaScript, e framer non entra in quello della prima
    apertura della pagina. */
 
 // Tenda del menu: entra dall'alto, esce verso l'alto.
