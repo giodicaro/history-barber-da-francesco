@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  EASE,
-  gsap,
-  prefersReducedMotion,
-  prendiInCarico,
-  ScrollTrigger,
-  useIsoLayoutEffect,
-} from "@/lib/gsap";
+import { useEffect } from "react";
+import { EASE, gsap, prefersReducedMotion, prendiInCarico, ScrollTrigger } from "@/lib/gsap";
 
 // Distanza da cui salgono gli elementi, uguale per tutto il sito.
 const SALITA = 50;
@@ -31,9 +25,14 @@ const SALITA = 50;
    ScrollTrigger e non IntersectionObserver: con un salto via ancora o uno
    scroll molto rapido l'observer può non ricevere mai la soglia, e gli
    elementi resterebbero invisibili. ScrollTrigger scatta anche se la soglia
-   viene scavalcata. */
+   viene scavalcata.
+
+   useEffect e non useLayoutEffect: gli elementi partono già invisibili dal
+   CSS (app/globals.css), quindi preparare le animazioni subito dopo il primo
+   disegno non cambia nulla di visibile. Dentro il commit dell'idratazione
+   era il pezzo più pesante del blocco lungo all'avvio del telefono. */
 export function RevealOnScroll() {
-  useIsoLayoutEffect(() => {
+  useEffect(() => {
     const ridotto = prefersReducedMotion();
     const ctx = gsap.context(() => {});
     const fuoriHero = (el: Element) => !el.closest("[data-hero]");

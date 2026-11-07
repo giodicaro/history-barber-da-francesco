@@ -39,16 +39,24 @@ export const EASE = "expo.out";
    di noi (JavaScript arrivato molto tardi), lo si fissa visibile e non lo si
    anima: nasconderlo di nuovo per farlo ricomparire sarebbe un lampo.
 
-   Restituisce solo gli elementi ancora da animare. */
+   Restituisce solo gli elementi ancora da animare.
+
+   Prima tutte le letture, poi tutte le scritture: alternate, ogni
+   setAttribute invalidava gli stili e il getComputedStyle seguente costringeva
+   il browser a ricalcolarli, elemento per elemento (layout thrashing). */
 export function prendiInCarico<T extends HTMLElement>(elementi: T[]): T[] {
+  const letti = elementi
+    .filter((el) => !el.hasAttribute("data-animato"))
+    .map((el) => {
+      // Per le maschere conta la riga interna, che è quella traslata.
+      const mobile = (el.hasAttribute("data-mask-line") ? el.firstElementChild : el) as HTMLElement | null;
+      const stile = mobile ? getComputedStyle(mobile) : null;
+      const giaVisibile =
+        !!stile && (el.hasAttribute("data-mask-line") ? stile.transform === "none" : parseFloat(stile.opacity) > 0);
+      return { el, mobile, giaVisibile };
+    });
   const daAnimare: T[] = [];
-  for (const el of elementi) {
-    if (el.hasAttribute("data-animato")) continue;
-    // Per le maschere conta la riga interna, che è quella traslata.
-    const mobile = (el.hasAttribute("data-mask-line") ? el.firstElementChild : el) as HTMLElement | null;
-    const stile = mobile ? getComputedStyle(mobile) : null;
-    const giaVisibile =
-      !!stile && (el.hasAttribute("data-mask-line") ? stile.transform === "none" : parseFloat(stile.opacity) > 0);
+  for (const { el, mobile, giaVisibile } of letti) {
     // Valori in linea e non clearProps: senza la rete di sicurezza (che non
     // si applica più agli elementi marcati) tornerebbe a valere lo stato
     // nascosto del CSS.

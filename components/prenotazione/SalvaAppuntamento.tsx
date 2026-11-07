@@ -13,8 +13,12 @@ import { cn } from "@/lib/utils";
 const bottone =
   "eyebrow inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 border border-ink px-4 text-center transition-colors duration-200 hover:bg-ink hover:text-paper";
 
-const dataLunga = new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
-export const giornoLungo = (data: string) => dataLunga.format(new Date(`${data}T12:00:00Z`));
+// Creato al primo uso, non quando il widget si scarica (vedi lib/utils.ts).
+let dataLunga: Intl.DateTimeFormat | undefined;
+export const giornoLungo = (data: string) =>
+  (dataLunga ??= new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })).format(
+    new Date(`${data}T12:00:00Z`),
+  );
 
 export function SalvaAppuntamento({
   link,

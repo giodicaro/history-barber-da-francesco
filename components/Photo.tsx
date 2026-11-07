@@ -41,6 +41,9 @@ export function Photo({ src, alt, sizes, preload, etichetta, posizione, classNam
       fill
       sizes={sizes}
       preload={preload}
+      // Il preload da solo parte a priorità bassa: la foto della prima schermata
+      // deve arrivare prima dei file che non si vedono.
+      fetchPriority={preload ? "high" : undefined}
       style={posizione ? { objectPosition: posizione } : undefined}
       className={cn("object-cover", className)}
     />

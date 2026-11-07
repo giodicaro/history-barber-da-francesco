@@ -21,6 +21,11 @@ const nextConfig: NextConfig = {
   // dell'estensione btree_gist: va lasciato fuori dal bundle e letto da
   // node_modules così com'è.
   serverExternalPackages: ["@electric-sql/pglite"],
+  // AVIF a chi lo accetta (header Accept), WebP agli altri: la foto della
+  // hero, l'unica in pagina, è anche il file più pesante della home.
+  images: {
+    formats: ["image/avif", "image/webp"],
+  },
   // Vale solo in sviluppo: la build di produzione non ha risorse di sviluppo.
   allowedDevOrigins: indirizziDiRete,
   async headers() {
