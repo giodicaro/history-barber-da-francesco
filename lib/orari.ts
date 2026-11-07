@@ -16,10 +16,15 @@ export function minutiDaOra(ora: string) {
   return h * 60 + m;
 }
 
+// Creare un Intl.DateTimeFormat costa molto più che usarlo: uno solo, creato
+// alla prima chiamata e poi riusato (sul telefono era chiamato a ogni lettura
+// dello stato "Aperto ora").
+let formatoRoma: Intl.DateTimeFormat | undefined;
+
 // Il salone è a Mestre: l'ora che conta è quella di Roma, non quella del
 // telefono di chi guarda il sito da un altro fuso.
 export function oraDiRoma(adesso = new Date()) {
-  const parti = new Intl.DateTimeFormat("en-GB", {
+  formatoRoma ??= new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/Rome",
     weekday: "short",
     year: "numeric",
@@ -28,7 +33,8 @@ export function oraDiRoma(adesso = new Date()) {
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",
-  }).formatToParts(adesso);
+  });
+  const parti = formatoRoma.formatToParts(adesso);
   const valore = (tipo: string) => parti.find((p) => p.type === tipo)?.value ?? "";
   const giorni = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   return {
