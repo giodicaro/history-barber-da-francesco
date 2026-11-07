@@ -1,18 +1,12 @@
-"use client";
-
-import { useRef, type CSSProperties } from "react";
-import { gsap, prefersReducedMotion, useIsoLayoutEffect } from "@/lib/gsap";
+import type { CSSProperties } from "react";
 import { fotoHero, salone } from "@/lib/salone";
 import { cn } from "@/lib/utils";
 import { BookButton } from "./BookButton";
 import { MioAppuntamentoButton } from "./MioAppuntamentoButton";
 import { GridLines } from "./GridLines";
 import { OpenStatus } from "./OpenStatus";
+import { ParallasseHero } from "./ParallasseHero";
 import { Photo } from "./Photo";
-
-// Di quanto sale la foto mentre la hero esce dallo schermo, in % della sua
-// altezza. Oltre il 15% sul mobile si vede il bordo del contenitore.
-const PARALLASSE = 12;
 
 // Ogni riga è una maschera a sé: il titolo va a capo dove decidiamo noi.
 const RIGHE_TITOLO = ["L'eccellenza", "del grooming", "maschile"];
@@ -30,28 +24,13 @@ const INFO = "info max-[380px]:text-[0.6875rem]";
 const LARGHEZZA_FOTO = "(min-aspect-ratio: 21/10) 100vw, 208vh";
 
 export function Hero() {
-  const sezioneRef = useRef<HTMLElement>(null);
-
   // L'entrata (linee, zoom della foto, righe del titolo, blocchi) è in CSS
   // (app/globals.css, "Entrata della hero"): parte al primo disegno, senza
   // aspettare l'idratazione. Su un telefono lento con GSAP il testo restava
-  // invisibile per oltre 5 secondi (LCP). Qui resta solo la parallasse.
-  useIsoLayoutEffect(() => {
-    const sezione = sezioneRef.current;
-    if (!sezione || prefersReducedMotion()) return;
-    const ctx = gsap.context(() => {
-      gsap.to("[data-hero-parallax]", {
-        yPercent: PARALLASSE,
-        ease: "none",
-        scrollTrigger: { trigger: sezione, start: "top top", end: "bottom top", scrub: true },
-      });
-    }, sezione);
-    return () => ctx.revert();
-  }, []);
-
+  // invisibile per oltre 5 secondi (LCP). La parallasse è in ParallasseHero:
+  // la hero è un componente server e non si idrata.
   return (
     <section
-      ref={sezioneRef}
       id="top"
       tabIndex={-1}
       data-hero
@@ -158,6 +137,7 @@ export function Hero() {
           </div>
         </div>
       </div>
+      <ParallasseHero />
     </section>
   );
 }
