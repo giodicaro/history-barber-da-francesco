@@ -8,7 +8,7 @@ const puntiFermi = [
   {
     sigla: "A",
     titolo: "Solo su appuntamento",
-    testo: "Chiami, fissi l'orario, arrivi. Il tempo in poltrona è tuo e di nessun altro.",
+    testo: "Scegli online giorno e ora: a quell'ora tocca a te. Il tempo in poltrona è tuo e di nessun altro.",
   },
   {
     sigla: "B",
