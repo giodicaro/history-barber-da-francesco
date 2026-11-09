@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ComponentProps, type FormEvent, type ReactNode } from "react";
+import { useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { accessoWhatsApp, elimina, salvaAppuntamento, salvaBlocco } from "@/app/admin/azioni";
 import { formatoOra } from "@/lib/orari";
 import {
@@ -18,6 +18,7 @@ import { listino } from "@/lib/salone";
 import { cn, formatoPrezzo } from "@/lib/utils";
 import { FoglioInBasso, Rotella } from "./FoglioInBasso";
 import { bottonePieno, bottoneVuoto, campo } from "./stili";
+import { Tendina } from "./Tendina";
 
 /* Il foglio di una riga dell'agenda. Tre facce:
    - "modulo" per una riga libera: nuovo appuntamento o blocco;
@@ -261,26 +262,6 @@ function RigaDettaglio({ etichetta, children }: { etichetta: string; children: R
 
 // Menu a tendina con la sua freccia: appearance-none la toglie a tutti i
 // browser (e su iOS il menu nativo resta quello di sistema, comodo col pollice).
-function Tendina({ children, ...props }: ComponentProps<"select">) {
-  return (
-    <span className="relative block">
-      <select {...props} className={cn(campo, "pr-10")}>
-        {children}
-      </select>
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden
-        className="pointer-events-none absolute right-3 top-[calc(50%+0.25rem)] size-4 -translate-y-1/2"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-      >
-        <path d="M6 9l6 6 6-6" />
-      </svg>
-    </span>
-  );
-}
-
 function Avviso({ children }: { children: ReactNode }) {
   return (
     <p role="alert" className="info mb-5 border border-ink bg-ink px-4 py-3 text-paper">

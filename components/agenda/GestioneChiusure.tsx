@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
+import { flushSync } from "react-dom";
 import {
   cambiaAttiva,
   eliminaChiusuraAzione,
@@ -15,6 +16,7 @@ import { dataBreve, type Chiusura, type ErroriChiusura } from "@/lib/chiusure";
 import { cn } from "@/lib/utils";
 import { FoglioInBasso, Rotella } from "./FoglioInBasso";
 import { bottonePieno, bottoneVuoto, campo } from "./stili";
+import { Tendina } from "./Tendina";
 
 /* "Chiusure e ferie" dell'agenda (app/admin/chiusure).
 
@@ -25,6 +27,8 @@ import { bottonePieno, bottoneVuoto, campo } from "./stili";
    riaccende una chiusura spenta. */
 
 const MOTIVI = ["Ferie estive", "Ferie", "Natale", "Ponte", "Chiusura straordinaria"];
+// Valore tecnico dell'opzione "Altro…" nella tendina: non si salva mai.
+const VALORE_ALTRO = "__altro__";
 
 const giorni = (c: Pick<Chiusura, "dal" | "al">) =>
   Math.round((Date.parse(`${c.al}T12:00:00Z`) - Date.parse(`${c.dal}T12:00:00Z`)) / 86_400_000) + 1;
@@ -288,6 +292,9 @@ function FoglioChiusura({
   const [al, setAl] = useState(chiusura?.al ?? chiusura?.dal ?? oggi);
   const [unGiorno, setUnGiorno] = useState(chiusura ? chiusura.dal === chiusura.al : false);
   const [motivo, setMotivo] = useState(chiusura?.motivo ?? "");
+  // Motivo scritto a mano: la tendina sta su "Altro…" e sotto c'è il campo.
+  const [altro, setAltro] = useState(Boolean(chiusura?.motivo) && !MOTIVI.includes(chiusura?.motivo ?? ""));
+  const campoAltro = useRef<HTMLInputElement>(null);
   const [campi, setCampi] = useState<ErroriChiusura>({});
   const [errore, setErrore] = useState("");
   const [domanda, setDomanda] = useState<Domanda | null>(null);
@@ -296,6 +303,22 @@ function FoglioChiusura({
   const dati: DatiChiusura = { ...(chiusura ? { id: chiusura.id } : {}), dal, al: unGiorno ? dal : al, motivo };
   // Subito, senza aspettare il server: la fine prima dell'inizio.
   const fineSbagliata = !unGiorno && al && dal && al < dal;
+
+  const scegliMotivo = (valore: string) => {
+    if (valore !== VALORE_ALTRO) {
+      setAltro(false);
+      setMotivo(valore);
+      return;
+    }
+    // flushSync: il campo deve già esistere per ricevere il focus. Il focus
+    // sta qui e non in autoFocus: aprendo una chiusura esistente, o tornando
+    // da una domanda, la tastiera non deve aprirsi da sola.
+    flushSync(() => {
+      setAltro(true);
+      setMotivo("");
+    });
+    campoAltro.current?.focus();
+  };
 
   const salva = (opzioni: { unisci?: boolean; forza?: boolean } = {}) => {
     setErrore("");
@@ -412,21 +435,30 @@ function FoglioChiusura({
           </div>
           <label className="block">
             <span className="eyebrow text-steel">Motivo (facoltativo, lo vedono i clienti)</span>
-            <input
-              type="text"
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              list="motivi-chiusura"
-              maxLength={80}
-              placeholder="Ferie estive"
-              className={campo}
-            />
-            <datalist id="motivi-chiusura">
+            <Tendina value={altro ? VALORE_ALTRO : motivo} onChange={(e) => scegliMotivo(e.target.value)}>
+              <option value="">Nessun motivo</option>
               {MOTIVI.map((m) => (
-                <option key={m} value={m} />
+                <option key={m} value={m}>
+                  {m}
+                </option>
               ))}
-            </datalist>
+              <option value={VALORE_ALTRO}>Altro…</option>
+            </Tendina>
           </label>
+          {altro && (
+            <label className="block">
+              <span className="eyebrow text-steel">Motivo personalizzato</span>
+              <input
+                ref={campoAltro}
+                type="text"
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                maxLength={80}
+                placeholder="Scrivi il motivo"
+                className={campo}
+              />
+            </label>
+          )}
           <div aria-live="polite">
             {errore && (
               <p role="alert" className="border border-ink bg-ink px-4 py-3 text-sm text-paper">
