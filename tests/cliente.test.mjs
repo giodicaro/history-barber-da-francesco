@@ -8,8 +8,6 @@ import {
   firmato,
   intestazioneCookie,
   leggiCookie,
-  leggiSfida,
-  sfidaFirmata,
   DURATA_COOKIE_S,
 } from "../lib/prenotazioni/cliente.ts";
 
@@ -39,16 +37,6 @@ test("cookie firmato: valido, manomesso, con un'altra chiave", () => {
   assert.equal(clienteDalCookie(firmato("non-un-uuid", chiave), chiave), null);
   assert.equal(clienteDalCookie(undefined, chiave), null);
   assert.equal(clienteDalCookie("senza-punto", chiave), null);
-});
-
-test("sfida delle passkey: scopo, cliente e scadenza", () => {
-  const adesso = Date.parse("2026-11-01T10:00:00Z");
-  const c = sfidaFirmata({ scopo: "registra", sfida: "abc", clienteId: "id-1", adesso }, chiave);
-  assert.deepEqual(leggiSfida(c, "registra", chiave, adesso + 60_000), { sfida: "abc", clienteId: "id-1" });
-  assert.equal(leggiSfida(c, "accedi", chiave, adesso), null);
-  assert.equal(leggiSfida(c, "registra", chiave, adesso + 6 * 60_000), null);
-  const a = sfidaFirmata({ scopo: "accedi", sfida: "xyz", adesso }, chiave);
-  assert.deepEqual(leggiSfida(a, "accedi", chiave, adesso), { sfida: "xyz", clienteId: null });
 });
 
 test("intestazione Set-Cookie e lettura", () => {

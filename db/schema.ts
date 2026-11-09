@@ -77,8 +77,8 @@ begin
 end $$;
 
 -- ── Gestione dell'appuntamento da parte del cliente ────────────────────────
--- Alla prenotazione dal sito il cliente riceve un link personale e un codice
--- di 6 caratteri. Qui ne finiscono solo le impronte (SHA-256): chi legge il
+-- Alla prenotazione dal sito il cliente riceveva un link personale e un codice
+-- di 6 caratteri (il codice non si usa più dal 9/11/2026, la colonna resta). Qui ne finiscono solo le impronte (SHA-256): chi legge il
 -- database non può risalire né al link né al codice. Il codice è legato al
 -- telefono (sha256(telefono + ':' + codice)), così da solo non vale niente.
 -- Le righe inserite dall'agenda e quelle precedenti restano senza: niente
@@ -99,8 +99,9 @@ create index if not exists prenotazioni_codice on prenotazioni (codice_hash) whe
 alter table prenotazioni add column if not exists cliente_id uuid;
 create index if not exists prenotazioni_cliente on prenotazioni (cliente_id, data) where cliente_id is not null;
 
--- Face ID / impronta (passkey) per ritrovarsi su un altro dispositivo. Il
--- sito riceve solo la chiave pubblica: nessun dato biometrico.
+-- Face ID / impronta (passkey), tolti dal sito il 9/11/2026. La tabella resta
+-- per non toccare i dati: l'app non la scrive più e la pulizia di
+-- eliminaScadute la svuota con il tempo.
 create table if not exists passkey_clienti (
   id_credenziale  text primary key,
   chiave_pubblica bytea  not null,

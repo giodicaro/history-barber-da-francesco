@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
-import { CercaAppuntamento } from "@/components/gestione/CercaAppuntamento";
 import { PaginaGestione } from "@/components/gestione/Pagina";
 import { SpazioCliente } from "@/components/gestione/SpazioCliente";
 
 /* /appuntamento: "Il mio appuntamento" a tutta pagina, lo stesso spazio del
    foglio della home. Ci arrivano l'accesso monouso scaduto (?scaduto=1) e i
-   link diretti. In fondo, in disparte, la ricerca con telefono + codice della
-   v1, per chi ha ancora un codice consegnato prima del 30/10/2026. Niente
-   GSAP, Lenis né framer-motion. */
+   link diretti. Niente GSAP, Lenis né framer-motion. */
 
 export const metadata: Metadata = {
   title: "Il mio appuntamento — History Barber da Francesco",
@@ -26,12 +23,6 @@ export default async function PaginaMioAppuntamento(props: PageProps<"/appuntame
         </p>
       )}
       <SpazioCliente />
-      <details className="mt-12 border-t border-ink/15 pt-5">
-        <summary className="eyebrow inline-flex min-h-11 cursor-pointer items-center text-steel hover:text-ink">
-          Hai un codice di 6 caratteri?
-        </summary>
-        <CercaAppuntamento compatta />
-      </details>
     </PaginaGestione>
   );
 }

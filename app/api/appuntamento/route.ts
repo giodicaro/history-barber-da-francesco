@@ -1,7 +1,7 @@
 import { after } from "next/server";
 import { oraDiRoma } from "@/lib/orari";
 import { avvisaModifica, testoModifica, type ModificaCliente } from "@/lib/prenotazioni/avvisi";
-import { appuntamentiDelCliente, disdiciAppuntamento, passkeyDelCliente } from "@/lib/prenotazioni/archivio";
+import { appuntamentiDelCliente, disdiciAppuntamento } from "@/lib/prenotazioni/archivio";
 import { codiceErrore } from "@/lib/prenotazioni/db";
 import { nomeBreve } from "@/lib/prenotazioni/gestione";
 import { leggiCredenziale, riepilogo, statoDi, trovaAppuntamento } from "@/lib/prenotazioni/gestione-dati";
@@ -10,7 +10,6 @@ import {
   clienteDaRichiesta,
   cookieCliente,
   cookieDimentica,
-  freno,
   NO_STORE,
   origineValida,
   riconoscimentoAttivo,
@@ -25,8 +24,8 @@ import { salone } from "@/lib/salone";
    - azione "dimentica": cancella il cookie ("Dimentica questo dispositivo");
    - azioni "leggi" | "disdici" su un appuntamento:
      credenziale { prenotazioneId } con il cookie del suo cliente (v2),
-     oppure { token } / { telefono, codice } della v1, che valgono finché i
-     loro appuntamenti non sono passati.
+     oppure { token } della v1, che vale finché il suo appuntamento non è
+     passato.
 
    L'orario lo cambia solo il salone, dall'agenda: "orari" e "sposta" (pagine
    rimaste aperte da prima, o chiamate dirette) ricevono 403. Il server decide
@@ -42,9 +41,6 @@ const json = (dati: unknown, stato = 200, cookie?: string | null) => {
 const NON_TROVATO = {
   errore: `Non troviamo questo appuntamento. Per aiuto chiama il salone al ${salone.telefono}.`,
 };
-
-// v1: tentativi con telefono + codice. Un argine per istanza (bible §11).
-const troppiTentativi = freno("gestione-codice", 10, 10 * 60 * 1000);
 
 function avvisa(m: ModificaCliente, dataAgenda: string, id: string) {
   // Dopo la risposta al cliente: un avviso che non parte non deve mai far
@@ -77,8 +73,8 @@ export async function POST(request: Request) {
   if (azione === "elenco") {
     if (!riconoscimentoAttivo()) return json({ attivo: false, riconosciuto: false });
     if (!clienteId) return json({ attivo: true, riconosciuto: false });
-    const [elenco, passkey] = await Promise.all([appuntamentiDelCliente(clienteId, oraDiRoma().data), passkeyDelCliente(clienteId)]);
-    return json({ attivo: true, riconosciuto: true, appuntamenti: elenco.map((a) => riepilogo(a)), conFaceId: passkey.length > 0 }, 200, rinnovo);
+    const elenco = await appuntamentiDelCliente(clienteId, oraDiRoma().data);
+    return json({ attivo: true, riconosciuto: true, appuntamenti: elenco.map((a) => riepilogo(a)) }, 200, rinnovo);
   }
 
   if (azione === "orari" || azione === "sposta") {
@@ -88,9 +84,6 @@ export async function POST(request: Request) {
   const credenziale = leggiCredenziale(corpo?.credenziale);
   if (!credenziale || !["leggi", "disdici"].includes(azione)) {
     return json({ errore: "Richiesta non valida." }, 400);
-  }
-  if ("telefono" in credenziale && troppiTentativi(request)) {
-    return json({ errore: "Troppi tentativi. Riprova fra qualche minuto o chiama il salone." }, 429);
   }
   // v2: l'appartenenza al cliente si controlla nello SQL (id + cliente_id).
   const proprietario = "prenotazioneId" in credenziale ? clienteId : null;

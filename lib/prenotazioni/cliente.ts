@@ -11,11 +11,8 @@ import { createHmac, hkdfSync, timingSafeEqual } from "node:crypto";
    sbagliata vale come cookie assente. */
 
 export const NOME_COOKIE = "hb_cliente";
-export const NOME_SFIDA = "hb_sfida";
 /** 400 giorni: il massimo che Chrome accetta per un cookie. */
 export const DURATA_COOKIE_S = 400 * 24 * 60 * 60;
-/** La sfida delle passkey vale 5 minuti. */
-export const DURATA_SFIDA_S = 5 * 60;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -51,21 +48,6 @@ export function verificato(testo: string | undefined, chiave: Buffer): string | 
 export function clienteDalCookie(cookie: string | undefined, chiave: Buffer): string | null {
   const id = verificato(cookie, chiave);
   return id && UUID.test(id) ? id.toLowerCase() : null;
-}
-
-/** La sfida delle passkey, legata allo scopo e (per la registrazione) al
-    cliente: "<scopo>~<sfida>~<scade>~<cliente>". */
-export function sfidaFirmata(dati: { scopo: "registra" | "accedi"; sfida: string; clienteId?: string; adesso?: number }, chiave: Buffer) {
-  const scade = Math.floor((dati.adesso ?? Date.now()) / 1000) + DURATA_SFIDA_S;
-  return firmato([dati.scopo, dati.sfida, scade, dati.clienteId ?? ""].join("~"), chiave);
-}
-
-export function leggiSfida(cookie: string | undefined, scopo: "registra" | "accedi", chiave: Buffer, adesso = Date.now()) {
-  const v = verificato(cookie, chiave);
-  if (!v) return null;
-  const [s, sfida, scade, clienteId] = v.split("~");
-  if (s !== scopo || !sfida || Number(scade) < Math.floor(adesso / 1000)) return null;
-  return { sfida, clienteId: clienteId || null };
 }
 
 /** Un'intestazione Set-Cookie. HttpOnly sempre, SameSite=Lax, Path=/. */

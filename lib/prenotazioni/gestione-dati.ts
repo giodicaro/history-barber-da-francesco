@@ -1,10 +1,8 @@
 import "server-only";
-import { formatoOra, oraDiRoma } from "@/lib/orari";
+import { formatoOra } from "@/lib/orari";
 import { MARGINE_GESTIONE_MINUTI, RIPENSAMENTO_MINUTI, ULTIMO_AVVISO_MINUTI } from "@/lib/salone";
-import { appuntamentoDelCliente, appuntamentoDelCodice, appuntamentoDelToken } from "./archivio";
-import { codiceCompleto } from "./codice";
-import { impronta, improntaCodice, puoGestire, TOKEN_GESTIONE, type RegoleGestione, type StatoGestione } from "./gestione";
-import { normalizzaTelefono } from "./telefono";
+import { appuntamentoDelCliente, appuntamentoDelToken } from "./archivio";
+import { impronta, puoGestire, TOKEN_GESTIONE, type RegoleGestione, type StatoGestione } from "./gestione";
 import type { Prenotazione } from "./tipi";
 
 /* "Gestisci il tuo appuntamento", lato server: dalla credenziale
@@ -12,9 +10,9 @@ import type { Prenotazione } from "./tipi";
    (app/api/appuntamento) e la pagina del link (app/appuntamento/[token]). */
 
 /* v2: { prenotazioneId } vale solo insieme al cookie del cliente.
-   v1: token del link e telefono + codice, consegnati fino al 30/10/2026,
-   valgono finché i loro appuntamenti non sono passati (bible §11). */
-export type Credenziale = { prenotazioneId: string } | { token: string } | { telefono: string; codice: string };
+   v1: il token del link, consegnato fino al 30/10/2026, vale finché il suo
+   appuntamento non è passato (bible §11). */
+export type Credenziale = { prenotazioneId: string } | { token: string };
 
 export const REGOLE: RegoleGestione = {
   margineMinuti: MARGINE_GESTIONE_MINUTI,
@@ -26,7 +24,6 @@ export function leggiCredenziale(v: unknown): Credenziale | null {
   const c = v as Record<string, unknown> | null;
   if (typeof c?.prenotazioneId === "string") return { prenotazioneId: c.prenotazioneId };
   if (typeof c?.token === "string") return { token: c.token };
-  if (typeof c?.telefono === "string" && typeof c?.codice === "string") return { telefono: c.telefono, codice: c.codice };
   return null;
 }
 
@@ -36,13 +33,8 @@ export function leggiCredenziale(v: unknown): Credenziale | null {
     tempi di risposta non dicano niente. */
 export async function trovaAppuntamento(c: Credenziale, clienteId: string | null = null): Promise<Prenotazione | null> {
   if ("prenotazioneId" in c) return clienteId ? appuntamentoDelCliente(c.prenotazioneId, clienteId) : null;
-  if ("token" in c) {
-    const a = await appuntamentoDelToken(impronta(c.token));
-    return TOKEN_GESTIONE.test(c.token) ? a : null;
-  }
-  const telefono = normalizzaTelefono(c.telefono) ?? c.telefono.slice(0, 20);
-  const a = await appuntamentoDelCodice(improntaCodice(telefono, c.codice), oraDiRoma().data);
-  return codiceCompleto(c.codice) ? a : null;
+  const a = await appuntamentoDelToken(impronta(c.token));
+  return TOKEN_GESTIONE.test(c.token) ? a : null;
 }
 
 export const statoDi = (a: Prenotazione, adessoIstante = Date.now()): StatoGestione => puoGestire(a, adessoIstante, REGOLE);
