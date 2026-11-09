@@ -60,10 +60,7 @@ export default function Privacy() {
             </p>
             <p className="mt-3">
               <b>Ritrovare l&apos;appuntamento.</b> Se prenoti dal tuo telefono, il sito lo ricorda con un cookie tecnico
-              (vedi sotto): da «Il mio appuntamento» lo ritrovi con un tocco, per disdirlo da solo. Se
-              attivi <b>Face ID o l&apos;impronta</b>, il tuo telefono crea una chiave d&apos;accesso (passkey): il
-              riconoscimento del volto o dell&apos;impronta avviene solo sul dispositivo e al sito non arriva alcun dato
-              biometrico, solo una chiave pubblica che da sola non permette di risalire a te. Se il salone ti manda un
+              (vedi sotto): da «Il mio appuntamento» lo ritrovi con un tocco, per disdirlo da solo. Se il salone ti manda un
               link d&apos;accesso su WhatsApp, quel link vale una volta sola e scade dopo 48 ore.
             </p>
             <p className="mt-3">
@@ -116,15 +113,8 @@ export default function Privacy() {
                 appuntamento», o cancellando i cookie del browser. Se spunti «Non è il mio telefono» non viene
                 salvato.
               </li>
-              <li>
-                <b>hb_sfida</b>: dura 5 minuti, solo mentre attivi o usi Face ID o l&apos;impronta.
-              </li>
               <li>La sessione dell&apos;agenda, che serve solo al salone.</li>
             </ul>
-            <p className="mt-3">
-              Le chiavi d&apos;accesso (passkey) restano salvate finché hai appuntamenti, e vengono cancellate dopo{" "}
-              {CONSERVAZIONE_MESI} mesi senza uso né prenotazioni.
-            </p>
           </section>
         </div>
       </div>

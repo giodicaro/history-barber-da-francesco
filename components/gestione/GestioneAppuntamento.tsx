@@ -14,7 +14,7 @@ import { cn, formatoPrezzo } from "@/lib/utils";
    Il client non decide niente: il termine arriva da POST /api/appuntamento a
    ogni passo. Niente framer-motion, GSAP né Lenis: la pagina resta leggera. */
 
-export type Credenziale = { prenotazioneId: string } | { token: string } | { telefono: string; codice: string };
+export type Credenziale = { prenotazioneId: string } | { token: string };
 
 export type Riepilogo = {
   id: string;
@@ -67,21 +67,18 @@ export function GestioneAppuntamento({
   onPrenota,
   onIndietro,
   onCambiato,
-  piede,
 }: {
   credenziale: Credenziale;
   iniziale: Riepilogo;
-  /** "cliente": riconosciuto da questo dispositivo (v2); "link" e "codice":
-      le credenziali della v1, ancora valide per chi le ha. */
-  modo: "cliente" | "link" | "codice";
+  /** "cliente": riconosciuto da questo dispositivo (v2); "link": il link
+      personale della v1, ancora valido per chi lo ha. */
+  modo: "cliente" | "link";
   /** Dentro il foglio della home: apre il widget invece di cambiare pagina. */
   onPrenota?: () => void;
   /** Torna all'elenco dei propri appuntamenti. */
   onIndietro?: () => void;
   /** Dopo una disdetta (per aggiornare i bottoni). */
   onCambiato?: () => void;
-  /** Sotto Disdici, sopra il calendario: Face ID / impronta (SpazioCliente). */
-  piede?: ReactNode;
 }) {
   const [app, setApp] = useState(iniziale);
   const [schermata, setSchermata] = useState<Schermata>("riepilogo");
@@ -151,8 +148,7 @@ export function GestioneAppuntamento({
               <Contatti app={app} />
             </div>
           )}
-          {/* 5. Face ID / impronta (da SpazioCliente), 6. calendario. */}
-          {piede}
+          {/* 5. Calendario. */}
           <div className="mt-8 border-t border-ink/15 pt-5">
             <SalvaAppuntamento appuntamento={app} soloCalendario />
           </div>

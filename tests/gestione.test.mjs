@@ -1,14 +1,10 @@
 // "Gestisci il tuo appuntamento": le regole pure (lib/prenotazioni/gestione.ts,
-// codice.ts, calendario.ts). Si lancia con npm test.
+// calendario.ts). Si lancia con npm test.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatoCodice, normalizzaCodice, ALFABETO_CODICE } from "../lib/prenotazioni/codice.ts";
 import { fileCalendario, istanteInRoma, romaInIstante } from "../lib/prenotazioni/calendario.ts";
 import {
-  generaCodice,
-  generaToken,
   impronta,
-  improntaCodice,
   nomeBreve,
   puoGestire,
   TOKEN_GESTIONE,
@@ -19,29 +15,12 @@ import { chiaveTelefono } from "../lib/prenotazioni/telefono.ts";
 const REGOLE = { margineMinuti: 120 };
 const h = (ore, minuti = 0) => ore * 60 + minuti;
 
-test("il codice usa solo l'alfabeto senza caratteri ambigui", () => {
-  for (const c of "0O1IL") assert.ok(!ALFABETO_CODICE.includes(c), `contiene ${c}`);
-  for (let i = 0; i < 200; i++) {
-    const c = generaCodice();
-    assert.match(c, /^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/);
-  }
-});
-
-test("il codice si normalizza e si formatta", () => {
-  assert.equal(normalizzaCodice(" k7m-4qx "), "K7M4QX");
-  assert.equal(normalizzaCodice("k7m 4qx99"), "K7M4QX");
-  assert.equal(formatoCodice("k7m4qx"), "K7M-4QX");
-  assert.equal(formatoCodice("k7"), "K7");
-});
-
-test("token e impronte", () => {
-  const t = generaToken();
+test("token e impronta", () => {
+  const t = "a".repeat(43);
   assert.match(t, TOKEN_GESTIONE);
-  assert.notEqual(generaToken(), t);
+  assert.doesNotMatch("corto", TOKEN_GESTIONE);
   assert.match(impronta(t), /^[0-9a-f]{64}$/);
-  // Il codice vale solo con il suo telefono, ed è indifferente al formato.
-  assert.equal(improntaCodice("+393470001111", "k7m-4qx"), improntaCodice("+393470001111", "K7M4QX"));
-  assert.notEqual(improntaCodice("+393470001111", "K7M4QX"), improntaCodice("+393470002222", "K7M4QX"));
+  assert.notEqual(impronta(t), impronta("b".repeat(43)));
 });
 
 test("ora di Roma ⇄ istante, anche con l'ora legale", () => {

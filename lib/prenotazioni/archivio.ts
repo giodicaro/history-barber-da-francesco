@@ -270,12 +270,12 @@ export async function telefonoConAppuntamentoAttivo(telefono: string, adesso: { 
     numero si mettono in fila sul lock e il secondo vede la riga del primo: il
     controllo è una query a parte perché una query sola, dopo l'attesa,
     guarderebbe ancora i dati di prima. Con `clienteId` (v2, "Il mio
-    appuntamento") si lega al cliente riconosciuto dal cookie; le impronte di
-    link e codice erano della v1 e oggi non si generano più. */
+    appuntamento") si lega al cliente riconosciuto dal cookie; l'impronta del
+    link era della v1 e oggi non si genera più. */
 export async function salvaPrenotazione(
   richiesta: RichiestaPrenotazione,
   adesso: { data: string; minuti: number },
-  extra: { gestioneHash?: string; codiceHash?: string; clienteId?: string } = {},
+  extra: { gestioneHash?: string; clienteId?: string } = {},
 ): Promise<Prenotazione> {
   const chiave = chiaveTelefono(richiesta.cliente.telefono ?? "");
   return conVincolo(() => db().then((d) => d.transazione(async (tx) => {
@@ -287,13 +287,12 @@ export async function salvaPrenotazione(
       `insert into prenotazioni (
          tipo, data, inizio, fine, servizio_id, servizio_nome, prezzo,
          operatore_id, cliente_nome, cliente_telefono, note, origine,
-         gestione_hash, codice_hash, cliente_id
-       ) values ($1, $2::date, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::uuid)
+         gestione_hash, cliente_id
+       ) values ($1, $2::date, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::uuid)
        returning ${COLONNE}`,
       [
         ...colonne({ tipo: "appuntamento", ...richiesta }),
         extra.gestioneHash ?? null,
-        extra.codiceHash ?? null,
         extra.clienteId ?? null,
       ],
     );
@@ -382,7 +381,7 @@ export async function voce(id: string): Promise<VoceAgenda | null> {
 }
 
 /* ── Gestione dell'appuntamento da parte del cliente ─────────────────────
-   Si entra solo per impronta (del token o del codice+telefono), e sempre
+   Si entra solo per impronta (del token), e sempre
    con tipo = 'appuntamento': dal link di un cliente non si legge né si
    tocca un blocco o l'appuntamento di un altro. */
 
@@ -390,17 +389,6 @@ export async function appuntamentoDelToken(gestioneHash: string): Promise<Prenot
   const [r] = await (await db()).query<Riga>(
     `select ${COLONNE} from prenotazioni where gestione_hash = $1 and tipo = 'appuntamento'`,
     [gestioneHash],
-  );
-  return r ? (daRiga(r) as Prenotazione) : null;
-}
-
-/** Con telefono + codice si trovano solo gli appuntamenti da oggi in poi. */
-export async function appuntamentoDelCodice(codiceHash: string, oggi: string): Promise<Prenotazione | null> {
-  const [r] = await (await db()).query<Riga>(
-    `select ${COLONNE} from prenotazioni
-     where codice_hash = $1 and tipo = 'appuntamento' and data >= $2::date
-     order by data, inizio limit 1`,
-    [codiceHash, oggi],
   );
   return r ? (daRiga(r) as Prenotazione) : null;
 }
@@ -446,74 +434,6 @@ export async function appuntamentoDelCliente(id: string, clienteId: string): Pro
     [id, clienteId],
   );
   return r ? (daRiga(r) as Prenotazione) : null;
-}
-
-/* ── Face ID / impronta (passkey) ──────────────────────────────────────── */
-
-export interface PasskeyCliente {
-  idCredenziale: string;
-  chiavePubblica: Uint8Array<ArrayBuffer>;
-  contatore: number;
-  trasporti: string[];
-  clienteId: string;
-}
-
-export async function passkeyPerId(idCredenziale: string): Promise<PasskeyCliente | null> {
-  const [r] = await (await db()).query<{ id_credenziale: string; chiave_pubblica: unknown; contatore: string | number; trasporti: string | null; cliente_id: string }>(
-    `select id_credenziale, chiave_pubblica, contatore, trasporti, cliente_id from passkey_clienti where id_credenziale = $1`,
-    [idCredenziale.slice(0, 1024)],
-  );
-  if (!r) return null;
-  const byte = r.chiave_pubblica as Uint8Array;
-  return {
-    idCredenziale: r.id_credenziale,
-    // PGlite dà Uint8Array, postgres.js Buffer: per la libreria vanno bene entrambi.
-    chiavePubblica: new Uint8Array(byte),
-    contatore: Number(r.contatore),
-    trasporti: r.trasporti ? r.trasporti.split(",") : [],
-    clienteId: r.cliente_id,
-  };
-}
-
-/** L'id utente già usato dal cliente (così le sue passkey stanno insieme), se c'è. */
-export async function idUtenteDelCliente(clienteId: string): Promise<string | null> {
-  const [r] = await (await db()).query<{ id_utente: string }>(
-    `select id_utente from passkey_clienti where cliente_id = $1::uuid limit 1`,
-    [clienteId],
-  );
-  return r?.id_utente ?? null;
-}
-
-export async function passkeyDelCliente(clienteId: string): Promise<string[]> {
-  return (await (await db()).query<{ id_credenziale: string }>(
-    `select id_credenziale from passkey_clienti where cliente_id = $1::uuid`,
-    [clienteId],
-  )).map((r) => r.id_credenziale);
-}
-
-export async function salvaPasskey(p: {
-  idCredenziale: string;
-  chiavePubblica: Uint8Array;
-  contatore: number;
-  trasporti: string[];
-  idUtente: string;
-  clienteId: string;
-}) {
-  await (await db()).query(
-    `insert into passkey_clienti (id_credenziale, chiave_pubblica, contatore, trasporti, id_utente, cliente_id)
-     values ($1, $2::bytea, $3, $4, $5, $6::uuid) on conflict (id_credenziale) do nothing`,
-    [p.idCredenziale, Buffer.from(p.chiavePubblica), p.contatore, p.trasporti.join(",") || null, p.idUtente, p.clienteId],
-  );
-}
-
-/** Aggiorna il contatore solo se nessun altro l'ha già fatto: due accessi
-    con la stessa firma non passano entrambi. */
-export async function usaPasskey(idCredenziale: string, vecchio: number, nuovo: number): Promise<boolean> {
-  return (await (await db()).query(
-    `update passkey_clienti set contatore = $3, usata_il = now()
-     where id_credenziale = $1 and contatore = $2 returning id_credenziale`,
-    [idCredenziale, vecchio, nuovo],
-  )).length > 0;
 }
 
 /* ── Accesso monouso (WhatsApp da Francesco) ───────────────────────────── */

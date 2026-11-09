@@ -22,13 +22,11 @@ export const giornoLungo = (data: string) =>
 
 export function SalvaAppuntamento({
   link,
-  codice,
   appuntamento,
   soloCalendario = false,
 }: {
-  /** Link personale completo; assente nella pagina aperta con telefono + codice. */
+  /** Link personale completo. */
   link?: string;
-  codice?: string;
   appuntamento: { id: string; data: string; inizio: number; fine: number; ora: string; servizio: string };
   soloCalendario?: boolean;
 }) {
@@ -48,7 +46,6 @@ export function SalvaAppuntamento({
   const messaggio = [
     `Il mio appuntamento da ${salone.nomeCompleto}: ${appuntamento.servizio}, ${quando}.`,
     link && `Per disdirlo: ${link}`,
-    codice && `Codice: ${codice}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -63,7 +60,6 @@ export function SalvaAppuntamento({
       luogo: `${salone.nomeCompleto}, ${salone.via}, ${salone.cap} ${salone.citta} (${salone.provincia})`,
       descrizione: [
         link ? `Per disdire (fino a ${MARGINE_GESTIONE_MINUTI} minuti prima): ${link}` : "Per disdire: /appuntamento sul sito",
-        codice ? `Codice: ${codice}` : "",
         `Per cambiare orario, telefono del salone: ${salone.telefono}`,
       ]
         .filter(Boolean)

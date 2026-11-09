@@ -12,7 +12,6 @@ import { cn, formatoPrezzo } from "@/lib/utils";
 import { ArrowRight } from "./icons";
 import { aParole, AvvisoChiusureVicine, GIORNI_BREVI, GiornoChiuso, giorniProposti, GrigliaOrari, StrisciaGiorni } from "./prenotazione/GiorniEOrari";
 import { useChiusure } from "@/lib/chiusure-sito";
-import { AttivaFaceId } from "./gestione/AttivaFaceId";
 import { SalvaAppuntamento } from "./prenotazione/SalvaAppuntamento";
 import { aggiornaMiei } from "@/lib/gestione";
 
@@ -592,8 +591,8 @@ export function BookingWidget() {
 }
 
 /* Dopo la prenotazione: niente da salvare. Il telefono lo ricorda (se non
-   è stato spuntato "Non è il mio telefono"); in più, facoltativi, Face ID
-   per gli altri dispositivi e il calendario. */
+   è stato spuntato "Non è il mio telefono"); in più, facoltativo, il
+   calendario. */
 function RiquadroDopo({ conferma }: { conferma: Conferma }) {
   return (
     <section aria-labelledby="titolo-dopo" className="mt-8 border border-ink p-4 md:p-5">
@@ -610,7 +609,6 @@ function RiquadroDopo({ conferma }: { conferma: Conferma }) {
             </a>
             .
           </p>
-          <AttivaFaceId />
         </>
       ) : (
         <p className="mt-3 text-base">

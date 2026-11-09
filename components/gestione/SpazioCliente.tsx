@@ -2,12 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import {
-  browserSupportsWebAuthn,
-  platformAuthenticatorIsAvailable,
-  startAuthentication,
-  startRegistration,
-} from "@simplewebauthn/browser";
 import { Rotella } from "@/components/agenda/FoglioInBasso";
 import { giornoLungo } from "@/components/prenotazione/SalvaAppuntamento";
 import { aggiornaMiei } from "@/lib/gestione";
@@ -20,18 +14,18 @@ import { GestioneAppuntamento, type Riepilogo } from "./GestioneAppuntamento";
 
    Stati: caricamento; riconosciuto con appuntamenti (elenco, poi Disdici
    con le regole della v1); riconosciuto senza appuntamenti;
-   non riconosciuto (Face ID o impronta, poi telefono e WhatsApp);
+   non riconosciuto (telefono e WhatsApp);
    riconoscimento spento (solo telefono e WhatsApp).
 
    Il cliente non scrive niente e non salva niente: lo riconosce il cookie
-   del suo browser, o la sua passkey. Niente framer-motion, GSAP né Lenis. */
+   del suo browser. Niente framer-motion, GSAP né Lenis. */
 
 type Elenco =
   | { stato: "caricamento" }
   | { stato: "errore" }
   | { stato: "spento" }
   | { stato: "sconosciuto" }
-  | { stato: "riconosciuto"; appuntamenti: Riepilogo[]; conFaceId: boolean };
+  | { stato: "riconosciuto"; appuntamenti: Riepilogo[] };
 
 const bottonePieno =
   "eyebrow inline-flex min-h-14 w-full cursor-pointer items-center justify-center gap-3 border border-ink bg-ink px-6 text-paper transition-colors duration-200 hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-50";
@@ -54,7 +48,6 @@ async function posta(url: string, corpo: unknown) {
 export function SpazioCliente({ onPrenota }: { onPrenota?: () => void }) {
   const [elenco, setElenco] = useState<Elenco>({ stato: "caricamento" });
   const [aperto, setAperto] = useState<string | null>(null);
-  const [faceId, setFaceId] = useState(false);
   const [esito, setEsito] = useState("");
   const [inVolo, setInVolo] = useState(false);
   const [dimentica, setDimentica] = useState(false);
@@ -65,61 +58,17 @@ export function SpazioCliente({ onPrenota }: { onPrenota?: () => void }) {
       if (stato !== 200) return setElenco({ stato: "errore" });
       if (corpo.attivo === false) return setElenco({ stato: "spento" });
       if (!corpo.riconosciuto) return setElenco({ stato: "sconosciuto" });
-      setElenco({ stato: "riconosciuto", appuntamenti: corpo.appuntamenti ?? [], conFaceId: Boolean(corpo.conFaceId) });
+      setElenco({ stato: "riconosciuto", appuntamenti: corpo.appuntamenti ?? [] });
     } catch {
       setElenco({ stato: "errore" });
     }
   };
 
-  // Una lettura all'apertura, e la verifica che il dispositivo abbia Face ID,
-  // impronta o PIN integrati: se no, quei bottoni non compaiono e basta.
+  // Una lettura all'apertura.
   useEffect(() => {
-    let vivo = true;
     const t = setTimeout(() => void carica(), 0);
-    if (browserSupportsWebAuthn()) {
-      platformAuthenticatorIsAvailable()
-        .then((si) => vivo && setFaceId(si))
-        .catch(() => {});
-    }
-    return () => {
-      vivo = false;
-      clearTimeout(t);
-    };
+    return () => clearTimeout(t);
   }, []);
-
-  const entraConFaceId = async () => {
-    setEsito("");
-    setInVolo(true);
-    try {
-      const opzioni = await posta("/api/appuntamento/passkey/accedi", { fase: "opzioni" });
-      if (opzioni.stato !== 200) throw new Error(opzioni.corpo.errore);
-      const risposta = await startAuthentication({ optionsJSON: opzioni.corpo });
-      const verifica = await posta("/api/appuntamento/passkey/accedi", { fase: "verifica", risposta });
-      if (verifica.stato !== 200) throw new Error(verifica.corpo.errore);
-      await Promise.all([carica(), aggiornaMiei()]);
-    } catch (e) {
-      // Annullato dal cliente o non riconosciuto: si resta qui, con i contatti.
-      setEsito(e instanceof Error && e.message && !/NotAllowed|abort/i.test(e.name + e.message) ? e.message : "Non ti abbiamo riconosciuto. Riprova, o contatta il salone.");
-    }
-    setInVolo(false);
-  };
-
-  const attivaFaceId = async () => {
-    setEsito("");
-    setInVolo(true);
-    try {
-      const opzioni = await posta("/api/appuntamento/passkey/registra", { fase: "opzioni" });
-      if (opzioni.stato !== 200) throw new Error();
-      const risposta = await startRegistration({ optionsJSON: opzioni.corpo });
-      const verifica = await posta("/api/appuntamento/passkey/registra", { fase: "verifica", risposta });
-      if (verifica.stato !== 201) throw new Error();
-      setEsito("Fatto: sugli altri tuoi dispositivi entri con Face ID o impronta.");
-      await carica();
-    } catch {
-      setEsito("Non è stato attivato. Puoi riprovare quando vuoi.");
-    }
-    setInVolo(false);
-  };
 
   const dimenticaDispositivo = async () => {
     setInVolo(true);
@@ -158,7 +107,6 @@ export function SpazioCliente({ onPrenota }: { onPrenota?: () => void }) {
             onPrenota={onPrenota}
             onIndietro={unico ? undefined : () => setAperto(null)}
             onCambiato={() => void aggiornaMiei()}
-            piede={<BloccoFaceId faceId={faceId && !elenco.conFaceId} inVolo={inVolo} esito={esito} onFaceId={attivaFaceId} />}
           />
           {/* Per ultimo, dopo il calendario (C3). */}
           <div className="mt-8 border-t border-ink/15 pt-4">
@@ -176,8 +124,7 @@ export function SpazioCliente({ onPrenota }: { onPrenota?: () => void }) {
       {elenco.stato === "riconosciuto" && dimentica && (
         <div className="mt-6 border border-ink p-5">
           <p className="text-base">
-            Dimenticare questo dispositivo? Gli appuntamenti restano: per rivederli qui servirà Face ID o impronta,
-            oppure un messaggio dal salone.
+            Dimenticare questo dispositivo? Gli appuntamenti restano: per rivederli qui servirà un messaggio dal salone.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <button type="button" onClick={() => setDimentica(false)} disabled={inVolo} className={bottoneVuoto}>
@@ -227,27 +174,14 @@ export function SpazioCliente({ onPrenota }: { onPrenota?: () => void }) {
               ))}
             </ul>
           )}
-          <PiedeRiconosciuto
-            faceId={faceId && !elenco.conFaceId}
-            inVolo={inVolo}
-            esito={esito}
-            onFaceId={attivaFaceId}
-            onDimentica={() => setDimentica(true)}
-          />
+          <div className="mt-8 border-t border-ink/15 pt-4">
+            <BottoneDimentica onDimentica={() => setDimentica(true)} />
+          </div>
         </>
       )}
 
       {elenco.stato === "sconosciuto" && (
         <>
-          {faceId && (
-            <div className="mt-6">
-              <p className="text-base">Hai già attivato Face ID o impronta su un altro dispositivo? Ti ritrovi con un tocco.</p>
-              <button type="button" onClick={entraConFaceId} disabled={inVolo} aria-busy={inVolo} className={cn(bottonePieno, "mt-4")}>
-                {inVolo && <Rotella />}
-                Entra con Face ID o impronta
-              </button>
-            </div>
-          )}
           <Esito testo={esito} />
           <Contatti titolo="Hai prenotato per telefono o da un altro dispositivo?" />
         </>
@@ -272,49 +206,6 @@ function Intestazione() {
   );
 }
 
-function PiedeRiconosciuto({
-  faceId,
-  inVolo,
-  esito,
-  onFaceId,
-  onDimentica,
-}: {
-  faceId: boolean;
-  inVolo: boolean;
-  esito: string;
-  onFaceId: () => void;
-  onDimentica: () => void;
-}) {
-  return (
-    <>
-      <BloccoFaceId faceId={faceId} inVolo={inVolo} esito={esito} onFaceId={onFaceId} />
-      <div className="mt-8 border-t border-ink/15 pt-4">
-        <BottoneDimentica onDimentica={onDimentica} />
-      </div>
-    </>
-  );
-}
-
-/** "Ritrovalo con Face ID o impronta": solo se il dispositivo li ha e il
-    cliente non ne ha ancora uno. */
-function BloccoFaceId({ faceId, inVolo, esito, onFaceId }: { faceId: boolean; inVolo: boolean; esito: string; onFaceId: () => void }) {
-  if (!faceId && !esito) return null;
-  return (
-    <div className="mt-8 border-t border-ink/15 pt-6">
-      {faceId && (
-        <div>
-          <p className="text-sm text-steel">Così lo ritrovi anche dagli altri tuoi dispositivi, senza scrivere niente.</p>
-          <button type="button" onClick={onFaceId} disabled={inVolo} aria-busy={inVolo} className={cn(bottoneVuoto, "mt-3")}>
-            {inVolo && <Rotella />}
-            Ritrovalo con Face ID o impronta su ogni tuo dispositivo
-          </button>
-        </div>
-      )}
-      <Esito testo={esito} chiaro />
-    </div>
-  );
-}
-
 function BottoneDimentica({ onDimentica }: { onDimentica: () => void }) {
   return (
     <button type="button" onClick={onDimentica} className="eyebrow inline-flex min-h-11 cursor-pointer items-center text-steel underline-offset-4 hover:text-ink hover:underline">
@@ -323,11 +214,11 @@ function BottoneDimentica({ onDimentica }: { onDimentica: () => void }) {
   );
 }
 
-function Esito({ testo, chiaro = false }: { testo: string; chiaro?: boolean }) {
+function Esito({ testo }: { testo: string }) {
   return (
     <div aria-live="polite">
       {testo && (
-        <p role="status" className={cn("mt-5 px-4 py-3 text-sm", chiaro ? "border border-ink" : "border border-ink bg-ink text-paper")}>
+        <p role="status" className="mt-5 border border-ink bg-ink px-4 py-3 text-sm text-paper">
           {testo}
         </p>
       )}
